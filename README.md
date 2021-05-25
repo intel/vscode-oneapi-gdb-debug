@@ -1,1 +1,1 @@
-# frameworks.ide.vscode.extensions.oneapi-debug
+# applications.infrastructure.vscode.oneapi-gdb-oneapi
