@@ -1,15 +1,14 @@
 /**
  * Copyright (c) Intel Corporation
  * Licensed under the MIT License. See the project root LICENSE
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
 'use strict';
 import * as vscode from 'vscode';
-import { execSync } from 'child_process';
-import { posix, join, parse, normalize } from 'path';
-import { existsSync, writeFileSync } from 'fs';
+import { posix, join, parse } from 'path';
+import { existsSync } from 'fs';
 
 interface TaskConfigValue{
     label: string;
@@ -221,39 +220,6 @@ export class LaunchConfigurator {
         return true;
     }
 
-    async quickBuild(isSyclEnabled: boolean): Promise<boolean> {
-        if (!process.env.SETVARS_COMPLETED) {
-            vscode.window.showErrorMessage('Quick build failed. Initialize the oneAPI environment.', { modal: true });
-            return false;
-        }
-        const textEditor = vscode.window.activeTextEditor;
-        if (!textEditor) {
-            vscode.window.showErrorMessage('Quick build failed. No open file.', { modal: true });
-            return false;
-        }
-        const document = textEditor.document;
-        const language = document.languageId;
-        if (language !== 'cpp') {
-            vscode.window.showErrorMessage('Quick build failed. The open file must be a cpp file.', { modal: true });
-            return false;
-        }
-        const parsedPath = parse(document.fileName);
-        const source = document.fileName;
-        const dest = join(parsedPath.dir, parsedPath.name);
-        const cmd = isSyclEnabled ? `icpx -fsycl -fsycl-unnamed-lambda ${source} -o ${dest} -v` : `icpx ${source} -o ${dest} -v`;
-        try {
-            execSync(cmd);
-        }
-        catch (err) {
-            const logPath = join(parsedPath.dir, `compile_log`);
-            writeFileSync(logPath, err.message);
-            vscode.window.showErrorMessage(`Quick build failed. See compile log: ${logPath}`, { modal: true });
-            return false;
-        }
-        vscode.window.showInformationMessage(`File ${dest} was builded.`);
-        return true;
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async checkTaskItem(listItems: any, newItem: TaskConfigValue): Promise<boolean> {
         if (listItems.length === 0) {
@@ -339,112 +305,6 @@ export class LaunchConfigurator {
             debugConfig.postDebugTask = postDebugTask;
         }
         return true;
-    }
-
-    private async findExecutables(projectRootDir: string): Promise<string[]> {
-        try {
-            const cmd = process.platform === 'win32' ?
-                `pwsh -command "Get-ChildItem '${projectRootDir}' -recurse -Depth 3 -include '*.exe' -Name | ForEach-Object -Process {$execPath='${projectRootDir}' +'\\'+ $_;echo $execPath}"` :
-                `find ${projectRootDir} -maxdepth 3 -exec file {} \\; | grep -i elf | cut -f1 -d ':'`;
-            const pathsToExecutables = execSync(cmd).toString().split('\n');
-            pathsToExecutables.pop();
-            pathsToExecutables.forEach(async function (onePath, index, execList) {
-                //This is the only known way to replace \\ with /
-                execList[index] = posix.normalize(onePath.replace('\r', '')).split(/[\\\/]/g).join(posix.sep);
-            });
-            return pathsToExecutables;
-        }
-        catch (err) {
-            console.log(err);
-            return [];
-        }
-    }
-
-    private async getExecNameFromCmake(projectRootDir: string): Promise<string[]> {
-        try {
-            let execNames: string[] = [];
-            const cmd = process.platform === 'win32' ?
-                `where /r ${projectRootDir} CMakeLists.txt` :
-                `find ${projectRootDir} -name 'CMakeLists.txt'`;
-            const pathsToCmakeLists = execSync(cmd).toString().split('\n');
-            pathsToCmakeLists.pop();
-            pathsToCmakeLists.forEach(async (onePath) => {
-                const normalizedPath = normalize(onePath.replace(`\r`, "")).split(/[\\\/]/g).join(posix.sep);
-                const cmd = process.platform === 'win32' ?
-                    `pwsh -Command "$execNames=(gc ${normalizedPath}) | Select-String -Pattern '\\s*add_executable\\s*\\(\\s*(\\w*)' ; $execNames.Matches | ForEach-Object -Process {echo $_.Groups[1].Value} | Select-Object -Unique | ? {$_.trim() -ne '' } "` :
-                    `awk '/^ *add_executable *\\( *[^\$]/' ${normalizedPath} | sed -e's/add_executable *(/ /; s/\\r/ /' | awk '{print $1}' | uniq`;
-                execNames = execNames.concat(execSync(cmd, { cwd: projectRootDir }).toString().split('\n'));
-                execNames.pop();
-                execNames.forEach(async function (oneExec, index, execList) {
-                    execList[index] = normalize(oneExec.replace(`\r`, "")).split(/[\\\/]/g).join(posix.sep);
-                });
-            });
-
-            return execNames;
-        }
-        catch (err) {
-            console.error(err);
-            return [];
-        }
-    }
-
-    private async getTargets(projectRootDir: string, buildSystem: string): Promise<vscode.QuickPickItem[]> {
-        try {
-            let targets: string[];
-            switch (buildSystem) {
-                case 'make': {
-                    targets = execSync(
-                        `make -pRrq : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($1 !~ "^[#.]") {print $1}}' | egrep -v '^[^[:alnum:]]' | sort`,
-                        { cwd: projectRootDir }).toString().split('\n');
-                    targets.pop();
-
-                    const workspaceFolderName = vscode.workspace.workspaceFolders?.find(folder => projectRootDir.split('/').find(el => el === folder.name));
-                    const path = workspaceFolderName ? projectRootDir.slice(projectRootDir.indexOf(workspaceFolderName.name)) : projectRootDir;
-                    
-                    return targets.map(oneTarget => {
-                        return {
-                        label: oneTarget,
-                        description: `target from ${path}/Makefile`
-                        };
-                    });
-                }
-                case 'cmake': {
-                    targets = ['all', 'clean'];
-
-                    const cmd = process.platform === 'win32' ?
-                        `where /r ${projectRootDir} CMakeLists.txt` :
-                        `find ${projectRootDir} -name 'CMakeLists.txt'`;
-                    const pathsToCmakeLists = execSync(cmd).toString().split('\n');
-                    const optinosItems: vscode.QuickPickItem[] = [];
-                    pathsToCmakeLists.pop();
-                    pathsToCmakeLists.forEach(async (onePath) => {
-                        const normalizedPath = normalize(onePath.replace(`\r`, "")).split(/[\\\/]/g).join(posix.sep);
-                        const workspaceFolderName = vscode.workspace.workspaceFolders?.find(folder => normalizedPath.split('/').find(el => el === folder.name));
-                        const path = workspaceFolderName ? normalizedPath.slice(normalizedPath.indexOf(workspaceFolderName.name)) : normalizedPath;
-                        const cmd = process.platform === 'win32' ?
-                            `pwsh -Command "$targets=(gc ${normalizedPath}) | Select-String -Pattern '\\s*add_custom_target\\s*\\(\\s*(\\w*)' ; $targets.Matches | ForEach-Object -Process {echo $_.Groups[1].Value} | Select-Object -Unique | ? {$_.trim() -ne '' } "` :
-                            `awk '/^ *add_custom_target/' ${normalizedPath} | sed -e's/add_custom_target *(/ /; s/\\r/ /' | awk '{print $1}' | uniq`;
-                        targets = targets.concat(execSync(cmd, { cwd: projectRootDir }).toString().split('\n'));
-                        targets.pop();
-                        targets.forEach((oneTarget) => {
-                            optinosItems.push({
-                                label: posix.normalize(oneTarget.replace(`\r`, "")),
-                                description: `target from ${path}`
-                            });
-                        });
-                    });
-                    return optinosItems;
-                }
-                default: {
-                    break;
-                }
-            }
-            return [];
-        }
-        catch (err) {
-            console.error(err);
-            return [];
-        }
     }
 }
 

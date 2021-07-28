@@ -1,14 +1,10 @@
 /**
  * Copyright (c) 2020 Intel Corporation
  * Licensed under the MIT License. See the project root LICENSE
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 import * as vscode from 'vscode';
-import * as os from 'os';
-import { ProjectSettings } from './ProjectSettings';
-import { AdvisorLaunchScriptWriter } from './AdvisorLaunchScriptWriter';
-import { VtuneLaunchScriptWriter } from './VtuneLaunchScriptWriter';
 import { LaunchConfigurator } from './LaunchConfigurator';
 
 // Return the uri corresponding to the base folder of the item currently selected in the explorer.
@@ -35,58 +31,14 @@ function getBaseUri(node: vscode.Uri): vscode.Uri | undefined {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
-	// Todo: The extension is currently activated at startup, as activationEvents in package.json uses '*'. 
+	// Todo: The extension is currently activated at startup, as activationEvents in package.json uses '*'.
 	// Find the viewID for explorer so it could be activated via 'onView:viewId'.
 
 	// Register the commands that will interact with the user and write the launcher scripts.
-	vscode.commands.registerCommand('intelOneAPI.analysis.launchAdvisor', async (selectedNode: vscode.Uri) => {
-		const settings = new ProjectSettings('advisor', 'Intel(R) Advisor', getBaseUri(selectedNode));
-		await settings.getProjectSettings();
-
-		const writer = new AdvisorLaunchScriptWriter();
-		writer.writeLauncherScript(settings);
-	});
-	vscode.commands.registerCommand('intelOneAPI.analysis.launchVTune', async (selectedNode: vscode.Uri) => {
-		let vtuneName = 'vtune';
-		if (os.type() === 'Darwin') {
-			// On MacOS, the vtune tool is installed in a different folder.
-			vtuneName = "vtune_profiler";
-		}
-		const settings = new ProjectSettings(vtuneName, 'Intel(R) VTune™ Profiler', getBaseUri(selectedNode));
-		await settings.getProjectSettings();
-
-		const writer = new VtuneLaunchScriptWriter();
-		writer.writeLauncherScript(settings);
-	});
-
-	// Register the tasks that will invoke the launcher scripts.
-	const type = 'toolProvider';
-	vscode.tasks.registerTaskProvider(type, {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		provideTasks(token?: vscode.CancellationToken) {
-			const advisor = new AdvisorLaunchScriptWriter();
-			const vtune = new VtuneLaunchScriptWriter();
-
-			return [
-				new vscode.Task({ type: type }, vscode.TaskScope.Workspace,
-					'Launch Advisor', 'Intel(R) oneAPI', new vscode.ShellExecution(advisor.getLauncherScriptPath())),
-				new vscode.Task({ type: type }, vscode.TaskScope.Workspace,
-					'Launch VTune Profiler', 'Intel(R) oneAPI', new vscode.ShellExecution(vtune.getLauncherScriptPath()))
-			];
-		},
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		resolveTask(task: vscode.Task, token?: vscode.CancellationToken) {
-			return task;
-		}
-	});
-
 	const launchConfigurator = new LaunchConfigurator();
 	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
-	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateTaskJson', () => launchConfigurator.makeTasksFile()));
-	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.quickBuild', () => launchConfigurator.quickBuild(false)));
-	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.quickBuildSycl', () => launchConfigurator.quickBuild(true)));
 
-	// Check that oneapi-environment-variables already installed 
+	// Check that oneapi-environment-variables already installed
 	const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-variables');
 	if (!tsExtension) {
 		const GoToInstall = 'Install';

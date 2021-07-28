@@ -46,20 +46,12 @@ describe("Launcher Extension basic tests", () => {
         execSync("killall -9 vtune-gui");
     });
 
-    it("Advisor should run", async function () {
-        this.timeout(30000);
+    // Tests here
+    //
+    // it("TestName", function(){});
+    //
+    // ----------
 
-        await browser.driver.sleep(3000);
-        await workbench.executeCommand("advisor");
-        const dialog = await DialogHandler.getOpenDialog();
-
-        await dialog.confirm(); // Confirm install path
-        await dialog.confirm(); // Confirm project path
-
-        await browser.driver.sleep(1500);
-        expect(execSync("ps -a | grep advisor-gui").includes("advisor-gui")).to.be.true;
-        execSync("killall -9 advisor-gui");
-    });
 
     after(() => {
         rmdirSync(workspacePath, { recursive: true });
@@ -190,96 +182,6 @@ describe("Generating tasks and launch configuration", async function () {
     });
     after(() => {
         rmdirSync(samplePath, { recursive: true });
-    });
-});
-
-describe("Quick build functions", async function () {
-    let driver: WebDriver;
-    before(async function () {
-        driver = VSBrowser.instance.driver;
-    });
-    describe("Intel oneAPI: Quick build current file with ICPX", async function () {
-        const sourcePath = path.join(process.cwd(), "src", "test", "ui", "assets", "hello-world.cpp");
-        const binaryPath = path.join(process.cwd(), "src", "test", "ui", "assets", "hello-world");
-
-        before(async function () {
-            this.timeout(20000);
-            const workbench = new Workbench();
-            const input = await workbench.openCommandPrompt() as InputBox;
-            await input.setText('>File: Open File');
-            await input.selectQuickPick('File: Open File');
-            const dialog = await DialogHandler.getOpenDialog();
-            await dialog.selectPath(sourcePath);
-            await dialog.confirm();
-
-        });
-
-        it('Quick pick contain command', async function () {
-            this.timeout(10000);
-            const workbench = new Workbench();
-            const input = await workbench.openCommandPrompt() as InputBox;
-            await input.setText('>Intel oneAPI: Quick build current file with ICPX');
-            const pick = await input.findQuickPick('Intel oneAPI: Quick build current file with ICPX');
-            expect(pick).not.undefined;
-        });
-        
-        //TODO:Oneapi environment required
-
-        // it('A binary file is built', async function () {
-        //     this.timeout(10000);
-        //     const workbench = new Workbench();
-        //     const input = await workbench.openCommandPrompt() as InputBox;
-        //     await input.setText('>Intel oneAPI: Quick build current file with ICPX');
-        //     await input.selectQuickPick('Intel oneAPI: Quick build current file with ICPX');
-
-        //     await driver.sleep(5000);
-        //     expect(existsSync(binaryPath)).equals(true);
-        // });
-
-        // after(async function () {
-        //     unlinkSync(binaryPath);
-        // });
-    });
-
-    describe("Intel oneAPI: Quick build current file with ICPX and SYCL enabled", async function () {
-        const sourcePath = path.join(process.cwd(), "src", "test", "ui", "assets", "matrix_mul_dpcpp.cpp");
-        const binaryPath = path.join(process.cwd(), "src", "test", "ui", "assets", "matrix_mul_dpcpp");
-
-        before(async function () {
-            this.timeout(20000);
-            const workbench = new Workbench();
-            const input = await workbench.openCommandPrompt() as InputBox;
-            await input.setText('>File: Open File');
-            await input.selectQuickPick('File: Open File');
-            const dialog = await DialogHandler.getOpenDialog();
-            await dialog.selectPath(sourcePath);
-            await dialog.confirm();
-
-        });
-
-        it('Quick pick contain command', async function () {
-            this.timeout(10000);
-            const workbench = new Workbench();
-            const input = await workbench.openCommandPrompt() as InputBox;
-            await input.setText('>Intel oneAPI: Quick build current file with ICPX and SYCL enabled');
-            const pick = await input.findQuickPick('Intel oneAPI: Quick build current file with ICPX and SYCL enabled');
-            expect(pick).not.undefined;
-        });
-        
-        //TODO:Oneapi environment required
-        
-        // it('A binary file is built', async function () {
-        //     this.timeout(10000);
-        //     const workbench = new Workbench();
-        //     const input = await workbench.openCommandPrompt() as InputBox;
-        //     await input.setText('>Intel oneAPI: Quick build current file with ICPX');
-        //     await input.selectQuickPick('Intel oneAPI: Quick build current file with ICPX');
-        //     expect(existsSync(binaryPath)).equals(true);
-        // });
-
-        // after(async function () {
-        //     unlinkSync(binaryPath);
-        // });
     });
 });
 
