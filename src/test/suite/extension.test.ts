@@ -1,6 +1,5 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
-import * as intellauncher from '../../extension';
 
 suite('Extension Test Suite', async () => {
 	vscode.window.showInformationMessage('Start all tests.');
