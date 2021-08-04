@@ -37,17 +37,4 @@ export function activate(context: vscode.ExtensionContext): void {
 	// Register the commands that will interact with the user and write the launcher scripts.
 	const launchConfigurator = new LaunchConfigurator();
 	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
-
-	// Check that oneapi-environment-variables already installed
-	const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-variables');
-	if (!tsExtension) {
-		const GoToInstall = 'Install';
-		vscode.window.showInformationMessage('It is recommended to install Environment configurator for Intel oneAPI Toolkits to simplify oneAPI environment setup', GoToInstall)
-			.then(selection => {
-				if (selection === GoToInstall) {
-					vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-variables');
-
-				}
-			});
-		}
 }
