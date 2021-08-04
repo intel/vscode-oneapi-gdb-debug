@@ -29,7 +29,6 @@
 				"title": "Intel oneAPI: Generate launch configurations"
 			}
 		],
-		"configuration": [],
 		"taskDefinitions": [
 			{
 				"type": "toolProvider",
