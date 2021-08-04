@@ -147,37 +147,6 @@ export class LaunchConfigurator {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private async checkTaskItem(listItems: any, newItem: TaskConfigValue): Promise<boolean> {
-        if (listItems.length === 0) {
-            return true; // for tests
-        }
-        restartcheck:
-        for (const existItem in listItems) {
-            const dialogOptions: string[] = [`Skip target`, `Rename task`];
-            if (newItem.label === listItems[existItem].label) {
-                const options: vscode.InputBoxOptions = {
-                    placeHolder: `Task for target "${newItem.label}" already exist. Do you want to rename current task or skip target?`
-                };
-                const selection = await vscode.window.showQuickPick(dialogOptions, options);
-                if (!selection || selection === `Skip target`) {
-                    return false;
-                }
-                else {
-                    const inputBoxText: vscode.InputBoxOptions = {
-                        placeHolder: "Please provide new task name:"
-                    };
-                    const inputLabel = await vscode.window.showInputBox(inputBoxText);
-                    if (inputLabel) {
-                        newItem.label = inputLabel;
-                    }
-                    continue restartcheck;
-                }
-            }
-        }
-        return true;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private async checkLaunchItem(listItems: any, newItem: any): Promise<boolean> {
         if (listItems.length === 0) {
             return true; // for tests
