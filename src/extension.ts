@@ -9,8 +9,6 @@ import { LaunchConfigurator } from './LaunchConfigurator';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
-	// Todo: The extension is currently activated at startup, as activationEvents in package.json uses '*'.
-	// Find the viewID for explorer so it could be activated via 'onView:viewId'.
 
 	// Register the commands that will interact with the user and write the launcher scripts.
 	const launchConfigurator = new LaunchConfigurator();

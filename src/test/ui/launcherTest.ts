@@ -1,4 +1,4 @@
-import { Workbench, VSBrowser, Notification} from "vscode-extension-tester";
+import { Workbench, VSBrowser} from "vscode-extension-tester";
 import { DialogHandler } from "vscode-extension-tester-native";
 import { execSync } from "child_process";
 import { mkdirSync, rmdirSync } from "fs";
@@ -41,13 +41,3 @@ describe("Launcher Extension basic tests", () => {
         rmdirSync(workspacePath, { recursive: true });
     });
 });
-
-async function getNotifications(text: string): Promise<Notification | undefined> {
-    const notifications = await new Workbench().getNotifications();
-    for (const notification of notifications) {
-        const message = await notification.getMessage();
-        if (message.indexOf(text) >= 0) {
-            return notification;
-        }
-    }
-}
