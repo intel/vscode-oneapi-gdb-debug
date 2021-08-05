@@ -11,15 +11,6 @@ import { execSync } from 'child_process';
 import { posix, join, parse, normalize } from 'path';
 import { existsSync } from 'fs';
 
-interface TaskConfigValue{
-    label: string;
-    command: string;
-    type: string;
-    options: {
-        cwd: string;
-    };
-}
-
 const debugConfig = {
     name: '(gdb-oneapi) ${workspaceFolderBasename} Launch',
     type: 'cppdbg',
@@ -249,7 +240,6 @@ export class LaunchConfigurator {
         }
     }
 }
-
 
 async function getworkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined> {
     if (vscode.workspace.workspaceFolders?.length === 1) {
