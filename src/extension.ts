@@ -11,6 +11,8 @@ import { LaunchConfigurator } from './LaunchConfigurator';
 export function activate(context: vscode.ExtensionContext): void {
 
 	// Register the commands that will interact with the user and write the launcher scripts.
-	const launchConfigurator = new LaunchConfigurator();
-	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
+	if (process.platform !== 'win32') {
+		const launchConfigurator = new LaunchConfigurator();
+		context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
+	}
 }
