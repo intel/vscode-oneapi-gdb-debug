@@ -1,7 +1,7 @@
 {
-	"name": "oneapi-debug",
-	"displayName": "oneapi-debug (temporary)",
-	"description": "oneapi-debug (temporary)",
+	"name": "oneapi-gdb-debug",
+	"displayName": "GDB with GPU Debug Support for Intel(R) oneAPI Toolkits",
+	"description": "An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.",
 	"publisher": "intel-corporation",
 	"version": "0.0.1",
 	"license": "MIT",
@@ -9,7 +9,8 @@
 	"keywords": [
 		"intel",
 		"oneapi",
-		"debug"
+		"debug",
+		"gdb"
 	],
 	"engines": {
 		"vscode": "^1.56.0"
