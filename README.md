@@ -10,7 +10,7 @@ An extension to expose additional features of GPU debugging with GDB for Intel(R
 1.
 
 ## Prepare Launch Configuration
-* Note that this feature is only available for the Linux target  platform.
+* Note that this feature is only available for the Linux target platform.
 
 This extension enables the ability to prepare launch configurations for running and debugging projects created using Intel oneAPI toolkits:
 1. Using the VS Code explorer, click `File -> Open Folder`.
