@@ -1,4 +1,4 @@
-GDB with GPU Debug Support for Intel(R) oneAPI Toolkits
+## GDB with GPU Debug Support for Intel(R) oneAPI Toolkits
 
 An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.
 
