@@ -28,6 +28,11 @@
 			{
 				"command": "intelOneAPI.launchConfigurator.generateLaunchJson",
 				"title": "Intel oneAPI: Generate launch configurations"
+			},
+			{
+				"command": "intelOneAPI.debug.fetchSIMDInfo",
+				"title": "Intel oneAPI: Refresh SIMD Data",
+				"icon": "$(zap)"
 			}
 		],
 		"taskDefinitions": [
@@ -40,7 +45,25 @@
 					}
 				}
 			}
-		]
+		],
+		"views": {
+			"debug": [
+				{
+					"id": "intelOneAPI.debug.simdview",
+					"type": "webview",
+					"name": "SIMD Lanes"
+				}
+			]
+		},
+		"menus": {
+			"view/title": [
+				{
+					"command": "intelOneAPI.debug.fetchSIMDInfo",
+					"when": "view == intelOneAPI.debug.simdview",
+					"group": "navigation"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",
@@ -73,5 +96,8 @@
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/intel/vscode-analyzers.git"
+	},
+	"dependencies": {
+		"vscode-debugprotocol": "^1.48.0"
 	}
 }
