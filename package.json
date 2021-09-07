@@ -19,8 +19,7 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:workbench.action.tasks.runTask",
-		"onDebug:cppdbg"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
