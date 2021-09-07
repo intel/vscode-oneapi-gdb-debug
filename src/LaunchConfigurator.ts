@@ -90,11 +90,11 @@ export class LaunchConfigurator {
         break;
       }
     }
-    execFiles.push('Put temporal target path "a.out" to replace it later with correct path manually');
+    execFiles.push('Leave it empty');
     execFiles.push('Provide path to the executable file manually');
     let isContinue = true;
     const options: vscode.InputBoxOptions = {
-      placeHolder: 'Choose executable target or push ESC for exit'
+      placeHolder: 'Select the executable you want to debug. Press ESC to exit or if done creating debug config.'
     };
     do {
       let selection = await vscode.window.showQuickPick(execFiles, options);
@@ -102,8 +102,8 @@ export class LaunchConfigurator {
         isContinue = false;
         break;
       }
-      if (selection === 'Put temporal target path "a.out" to replace it later with correct path manually') {
-        selection = 'a.out';
+      if (selection === 'Leave it empty') {
+        selection = '';
         await vscode.window.showInformationMessage('Note: Launch template cannot be launched immediately after creation.\nPlease edit the launch.json file according to your needs before run.', { modal: true });
       }
       if (selection === 'Provide path to the executable file manually') {
@@ -124,7 +124,7 @@ export class LaunchConfigurator {
       const launchConfig = vscode.workspace.getConfiguration('launch');
       const configurations = launchConfig.configurations;
 
-      debugConfig.name = selection === 'a.out'
+      debugConfig.name = selection === ''
         ? 'Launch_template'
         : `(gdb-oneapi) ${parse(execFile).base} Launch`;
       debugConfig.program = `${execFile}`.split(/[\\/]/g).join(posix.sep);
@@ -149,14 +149,14 @@ export class LaunchConfigurator {
     }
 
     const existItem = listItems.find((item: { label: any; }) => item.label === newItem.label);
-    const dialogOptions: string[] = ['Skip target', 'Rename configuration'];
+    const dialogOptions: string[] = ['Cancel', 'Rename configuration'];
 
     if (existItem) {
       const options: vscode.InputBoxOptions = {
-        placeHolder: `Launch configuration for target "${newItem.name}" already exist. Do you want to rename current configuration or skip target?`
+        placeHolder: `A debug launch config already exists with this name. Do you want to rename this config or cancel?`
       };
       const selection = await vscode.window.showQuickPick(dialogOptions, options);
-      if (!selection || selection === 'Skip target ') {
+      if (!selection || selection === 'Cancel ') {
         return false;
       } else {
         const inputBoxText: vscode.InputBoxOptions = {
@@ -178,7 +178,7 @@ export class LaunchConfigurator {
     }
     tasksList.push('Skip adding preLaunchTask');
     const preLaunchTaskOptions: vscode.InputBoxOptions = {
-      placeHolder: 'Choose task for adding to preLaunchTask'
+      placeHolder: 'Choose a task to run before starting the debugger'
     };
     const preLaunchTask = await vscode.window.showQuickPick(tasksList, preLaunchTaskOptions);
     if (preLaunchTask && preLaunchTask !== 'Skip adding preLaunchTask') {
@@ -186,7 +186,7 @@ export class LaunchConfigurator {
     }
     tasksList.pop();
     const postDebugTaskOptions: vscode.InputBoxOptions = {
-      placeHolder: 'Choose task for adding to postDebugTask'
+      placeHolder: 'Choose a task to run after starting the debugger'
     };
     tasksList.push('Skip adding postDebugTask');
     const postDebugTask = await vscode.window.showQuickPick(tasksList, postDebugTaskOptions);
