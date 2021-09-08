@@ -10,7 +10,7 @@ An extension to expose additional features of GPU debugging with GDB for Intel(R
 1.
 
 ## Prepare Launch Configuration
-* Note that this feature is only available for the Linux target platform.
+Note that this feature is only available for the Linux target platform.
 
 This extension enables the ability to prepare launch configurations for running and debugging projects created using Intel oneAPI toolkits:
 1. Using the VS Code explorer, click `File -> Open Folder`.
@@ -19,7 +19,17 @@ This extension enables the ability to prepare launch configurations for running 
 4. Type **Intel oneAPI** and select `Intel oneAPI: Generate launch configurations`.
 5. Follow the prompts to add launch configurations.
 6. Using the VS Code Explorer, open the C++ file for your project.
-7. The configuration is now available to debug and run using the gdb-oneapi debugger. To debug and run, click on the **Run** icon or press `Ctrl+Shift+D`.
+8. The configuration is now available to debug and run using the gdb-oneapi debugger. You can find it in .vscode/launch.json. To debug and run, click on the **Run** icon or press `Ctrl+Shift+D`.
+
+Note that you can modify the configuration manually. For example, you may need to change:
+
+* `"args"` - Example `["arg1", "arg2"]`. If you are escaping characters, you will need to double escape them. For example, `["{\\\"arg1\\\": true}"]` will send `{"arg1": true}` to your application.
+* `"stopAtEntry"` - If set to true, the debugger should stop at the entry-point of the target (ignored on attach). Default value is false.
+* `"cwd"` - Sets the working directory of the application launched by the debugger.
+* `"environment"` - Environment variables to add to the environment for the program. Example: `[ { "name": "config", "value": "Debug" } ], not [ { "config": "Debug" } ]`.
+
+More information about all the `launch.json` features can be found on page [Configuring C/C++ debugging
+](https://code.visualstudio.com/docs/cpp/launch-json-reference).
 
 ## SIMD View
 This extension provides a view in the debug view that displays the SIMD lane state of a Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
