@@ -43,6 +43,10 @@ const debugConfig = {
 export class LaunchConfigurator {
 
   async makeLaunchFile(): Promise<boolean> {
+    if (process.platform === 'win32') {
+      vscode.window.showInformationMessage('This function cannot be used for Windows as a target platform. Generating configurations for debugging is only possible for use on Linux.', { modal: true });
+      return false;
+    }
     const workspaceFolder = await getworkspaceFolder();
     if (!workspaceFolder) {
       return false; // for unit tests
