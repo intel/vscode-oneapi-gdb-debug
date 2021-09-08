@@ -13,10 +13,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const simd = new SimdProvider(context);
-	if (process.platform !== 'win32') {
     	// Register the commands that will interact with the user and write the launcher scripts.
 
 		const launchConfigurator = new LaunchConfigurator();
 		context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
-	}
 }
