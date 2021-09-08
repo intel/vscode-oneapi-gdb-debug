@@ -21,6 +21,21 @@ This extension enables the ability to prepare launch configurations for running 
 6. Using the VS Code Explorer, open the C++ file for your project.
 7. The configuration is now available to debug and run using the gdb-oneapi debugger. To debug and run, click on the **Run** icon or press `Ctrl+Shift+D`.
 
+## SIMD View
+This extension provides a view in the debug view that displays the SIMD lane state of a Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
+
+### ThreadID
+The thread ID as GDB see in in the GPU inferior process. I.e. `2.1` in the GDB console would be `1` 
+
+### Name
+The string name that the VSCode knows the GPU thread as.
+
+### SIMD Lanes
+The status of the SIMD lanes in the thread. The bits indicate how many lanes are active (typically SIMD8 so 8 lanes) and 0 indicates inactive lane.
+Ideally, all lanes should be active.
+
+![View of SIMD view in VSCode debug session](/media/simd.png)
+
 ## Contributing
 Install Visual Studio Code (at least version 1.42) and open this project within it. You also need `node + npm`.
 - Switch to project root folder
