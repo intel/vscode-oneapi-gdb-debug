@@ -13,7 +13,6 @@ module.exports = {
     ],
     "extends": ["plugin:@typescript-eslint/recommended"],
     "rules": {
-        "@typescript-eslint/class-name-casing": "warn",
         "@typescript-eslint/member-delimiter-style": [
             "warn",
             {

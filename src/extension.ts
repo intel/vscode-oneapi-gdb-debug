@@ -6,7 +6,9 @@
  */
 import * as vscode from 'vscode';
 import { LaunchConfigurator } from './LaunchConfigurator';
+import { UserHelp, DebuggerCommandsPanel, getWebviewOptions } from './UserHelp';
 import { SimdProvider } from './SimdProvider';
+
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
@@ -17,4 +19,27 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		const launchConfigurator = new LaunchConfigurator();
 		context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
+
+	// Register commands that will let user search through documentation easily
+	const userHelp = new UserHelp();
+	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.userHelp.openOnlineDocumentation', () => userHelp.openOnlineDocumentation()));
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('intelOneAPI.userHelp.displayDebuggerCommands', () => {
+			DebuggerCommandsPanel.createOrShow(context.extensionUri);
+		})
+	);
+
+	if (vscode.window.registerWebviewPanelSerializer) {
+		// Make sure we register a serializer in activation event
+		vscode.window.registerWebviewPanelSerializer(DebuggerCommandsPanel.viewType, {
+			async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state) {
+				console.log(`Got state: ${state}`);
+				// Reset the webview options so we use latest uri for `localResourceRoots`.
+				webviewPanel.webview.options = getWebviewOptions(context.extensionUri);
+				DebuggerCommandsPanel.revive(webviewPanel, context.extensionUri);
+			}
+		});
+	}
 }
+
