@@ -1,6 +1,7 @@
 ## GDB with GPU Debug Support for Intel(R) oneAPI Toolkits
 
-An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.
+This extension for Visual Studio Code (VS Code) enables
+additional features of GPU debugging with GDB for Intel® oneAPI toolkits.
 
 
 - [eventual additional tool] description
@@ -8,6 +9,11 @@ An extension to expose additional features of GPU debugging with GDB for Intel(R
 
 ## How to use
 1.
+
+
+To learn more about using extensions with oneAPI, see [Using Visual Studio Code with Intel® oneAPI Toolkits](https://software.intel.com/content/www/us/en/develop/documentation/using-vs-code-with-intel-oneapi/top.html)
+
+
 
 ## Prepare Launch Configuration
 Note that this feature is only available for the Linux target platform.
