@@ -3,17 +3,9 @@
 This extension for Visual Studio Code (VS Code) enables
 additional features of GPU debugging with GDB for Intel® oneAPI toolkits.
 
-
 - [eventual additional tool] description
 
-
-## How to use
-1.
-
-
 To learn more about using extensions with oneAPI, see [Using Visual Studio Code with Intel® oneAPI Toolkits](https://software.intel.com/content/www/us/en/develop/documentation/using-vs-code-with-intel-oneapi/top.html)
-
-
 
 ## Prepare Launch Configuration
 Note that this feature is only available for the Linux target platform.
@@ -51,6 +43,14 @@ The status of the SIMD lanes in the thread. The bits indicate how many lanes are
 Ideally, all lanes should be active.
 
 ![View of SIMD view in VSCode debug session](/media/simd.png)
+
+## Differences between GDB and GDB-oneapi
+All differences between these two distributions of GDB can be listed by one of help function:
+1. Press `Ctrl+Shift+P ( or View -> Command Palette... )` to open the Command Palette.
+2. Type **help** to see help commands
+3. Choose `Intel oneAPI: List gdb-oneapi debugger unique commands (help)`
+4. New window will open with all differences and important documentation links
+5. If you want quick access to GDB-oneAPI Online Documentation choose `Intel oneAPI: Open gdb-oneapi debugger online documentation (help)`
 
 ## Contributing
 Install Visual Studio Code (at least version 1.42) and open this project within it. You also need `node + npm`.

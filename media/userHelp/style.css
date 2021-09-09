@@ -1,0 +1,83 @@
+body{
+    color: white;
+}
+
+
+p {
+    text-align: justify;
+    text-indent: 20px;
+}
+
+div.title{
+    text-align:center;
+}
+
+div.header{
+    text-align:center;
+    width:100%;
+}
+
+table {
+    border-width: 2px;
+    border-color: #343434;
+    border-collapse: collapse;
+    border-spacing: 0;
+    width: 100%;
+}
+
+.table > thead > tr > th,
+.table > tbody > tr > th,
+.table > thead > tr > td,
+.table > tbody > tr > td {
+  padding: 8px;
+  line-height: 1.42857143;
+  vertical-align: top;
+  border-top: 1px solid #ddd;
+}
+
+.table > thead > tr > th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #ddd;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) {
+    background-color: #343434;
+}
+
+.table-col-first-300 > tbody > tr > td:nth-child(1) {
+    min-width: 300px;
+}
+
+.table-row-50 > tbody > tr {
+    height: 50px;
+}
+
+.table-content-center{
+    text-align: center;
+    vertical-align: middle;
+}
+
+span.command-word {
+    margin-left:10px;
+    letter-spacing: 3px;
+}
+
+.button-documentation-mark {
+    border-radius: 50%;
+    background-color: gray;
+    color: white;
+}
+
+.button-exit-mark{
+    border-radius: 25%;
+    background-color: transparent;
+    color: white;
+}
+
+.gray{
+    color: grey;
+}
+
+.min-width{
+    width:min-content;
+}
