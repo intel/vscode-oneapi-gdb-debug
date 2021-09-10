@@ -1,3 +1,10 @@
+/**
+ * Copyright (c) Intel Corporation
+ * Licensed under the MIT License. See the project root LICENSE
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 /* eslint-disable @typescript-eslint/no-unused-vars */
 (function () {
 
