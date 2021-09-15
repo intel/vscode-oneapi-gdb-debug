@@ -76,6 +76,8 @@ export class DebuggerCommandsPanel {
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
+	userHelpPath = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8');
+	userHelp: UserHelpJSONFormat = JSON.parse(this.userHelpPath);
 
 	public static createOrShow(extensionUri: vscode.Uri): void {
 		const column = vscode.window.activeTextEditor
@@ -97,6 +99,7 @@ export class DebuggerCommandsPanel {
 		);
 
 		DebuggerCommandsPanel.currentPanel = new DebuggerCommandsPanel(panel, extensionUri);
+		DebuggerCommandsPanel.currentPanel._panel.webview.postMessage({command:"userHelp", data:DebuggerCommandsPanel.currentPanel.userHelp});
 	}
 
 	public static revive(panel: vscode.WebviewPanel, extensionUri: vscode.Uri): void {
@@ -156,6 +159,7 @@ export class DebuggerCommandsPanel {
 	private _update() {
 		const webview = this._panel.webview;
 		this._panel.webview.html = this._getHtmlForWebview(webview);
+		this._panel.webview.postMessage({command:"userHelp", data:this.userHelp});
 	}
 
 	private _generateHtmlTable_description(firstColumnTitle: string, tableContent: Array<SimpleDescription>) {
@@ -198,7 +202,7 @@ export class DebuggerCommandsPanel {
 		const style_table = 'table table-striped table-content-center';
 		const style_tr = 'row-50';
 		const style_button = 'button-documentation-mark';
-		let gdbComparisonTable = `<table class="${style_table}"><tr><th>GDB</th><th></th><th>GDB-OneAPI</th><th></th></tr>`;
+		let gdbComparisonTable = `<table class="${style_table}"><tr><th>GDB</th><th></th><th>Intel® Distribution for GDB</th><th></th></tr>`;
 		for (const i in gdbOneapiDifferences.oneapiCommandsToCompare) {
 			const commandGdb: GDBCommandObject = gdbOneapiDifferences.gdbCommandsToCompare[i];
 			const commandOneapi: GDBCommandObject = gdbOneapiDifferences.oneapiCommandsToCompare[i];
@@ -226,7 +230,7 @@ export class DebuggerCommandsPanel {
 	private _getHtmlForWebview(webview: vscode.Webview) {
 		// Links to documentations
 		const gdbReferenceSheetLink = 'https://software.intel.com/content/www/us/en/develop/download/gdb-reference-sheet.html';
-		const gdbUserManualLink = 'https://software.intel.com/content/www/us/en/develop/download/gdb-oneapi-user-guide.html';
+		const gdbOneapiUserManualLink = 'https://software.intel.com/content/www/us/en/develop/download/gdb-oneapi-user-guide.html';
 		const gdbOneapiDocumentationLink = 'https://software.intel.com/gdb-oneapi-documentation';
 		const gdbDocumentationLink = 'https://www.gnu.org/software/gdb/documentation/';
 
@@ -279,7 +283,7 @@ export class DebuggerCommandsPanel {
 					</div>
 					<div class="header">
 						<a href='${gdbReferenceSheetLink}'>[GDB-oneAPI Cheat Sheet]</a>
-						<a href='${gdbUserManualLink}'>[GDB-oneAPI User Manual]</a>
+						<a href='${gdbOneapiUserManualLink}'>[GDB-oneAPI User Manual]</a>
 						<a href='${gdbOneapiDocumentationLink}''>[GDB-oneAPI Online Documentation</a>
 						<a href='${gdbDocumentationLink}'>[GDB Documentation]</a>
 					</div>
