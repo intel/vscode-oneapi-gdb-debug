@@ -1,3 +1,14 @@
+/*
+ * Copyright (c) Intel Corporation
+
+ * Permission is granted to copy, distribute and/or modify this document
+ * under the terms of the GNU Free Documentation License, Version 1.3
+ * or any later version published by the Free Software Foundation;
+ * with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+ * A copy of the license is included in the section entitled "GNU
+ * Free Documentation License".
+*/
+
 {
     "intro": "Hello, here you can find some important informations about differnces between GDB and GDB-oneAPI. These information have to point you what should you check before starting your work. When you get familiar with below content, go to GDB-oneAPI user manual to check details. There is also GDB-oneAPI cheat sheet which can be helpful on daily work. If you have a problem with installation and cofiguring you can always check GDB-oneAPI online documentation. If you want to compare some command with pure GDB, then check GDB online documentation",
     "intro_oneapiFeatures": "1. Below you can find what have changed in Intel® Distribution for GDB compared to pure GD. Here are some important features which comes to GDB-OneAPI. Point your mouse the command or word to see short description, click on it, to see more informations, if you want to localize command in the documentation - click on the '?' mark",
