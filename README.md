@@ -59,7 +59,21 @@ Install Visual Studio Code (at least version 1.42) and open this project within 
 At this point you should be able to run the extension in the "Extension Development Host".
 
 ## License
-This extension is released under the MIT License.
+1. This extension is released under the MIT License.
 
-*Other names and brands may be claimed as the property of others.
+
+2. oneapi-gdb-debug-0.0.1.vsix\extension\media\userHelp\content.json
+    
+    Copyright (c) Intel Corporation
+    
+    Permission is granted to copy, distribute and/or modify this document under the terms of 
+    the GNU Free Documentation License, Version 1.3 or any later version published by the Free 
+    Software Foundation; with the Invariant Sections being “Free Software” and “FreeSoftware 
+    Needs Free Documentation”, with the Front-Cover Texts being “A GNU Manual,”and with the 
+    Back-Cover Texts as in (a) below.
+    (a) The FSF’s Back-Cover Text is: “You are free to copy and modify this GNU Manual. 
+    Buying copies from GNU Press supports the FSF in developing 
+    GNU and promoting software freedom.”
+
+Other names and brands may be claimed as the property of others.
 
