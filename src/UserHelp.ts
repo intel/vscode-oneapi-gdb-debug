@@ -76,7 +76,7 @@ export class DebuggerCommandsPanel {
 	private readonly _panel: vscode.WebviewPanel;
 	private readonly _extensionUri: vscode.Uri;
 	private _disposables: vscode.Disposable[] = [];
-	userHelpPath = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8');
+	userHelpPath = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8').split('\n*/\n\n')[1];
 	userHelp: UserHelpJSONFormat = JSON.parse(this.userHelpPath);
 
 	public static createOrShow(extensionUri: vscode.Uri): void {
@@ -250,7 +250,7 @@ export class DebuggerCommandsPanel {
 		const nonce = getNonce();
 
 		// Local path to JSON with descriptions of commands which differ between GDB and GDB-oneapi
-		const userHelpPath = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8');
+		const userHelpPath = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8').split('\n*/\n\n')[1];
 		const userHelp: UserHelpJSONFormat = JSON.parse(userHelpPath);
 
 		// Generate HTML tables
