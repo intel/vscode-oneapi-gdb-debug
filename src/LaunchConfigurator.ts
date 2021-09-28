@@ -125,6 +125,15 @@ export class LaunchConfigurator {
         execFile = selection;
       }
 
+      const stopAtEntrySelection = await vscode.window.showQuickPick(['yes', 'no'], {
+        placeHolder: 'Automatically break on main'
+      });
+
+      if (!stopAtEntrySelection) {
+        isContinue = false;
+        break;
+      }
+
       let argument: string | undefined;
       const args = [];
 
@@ -141,6 +150,7 @@ export class LaunchConfigurator {
       const launchConfig = vscode.workspace.getConfiguration('launch');
       const configurations = launchConfig.configurations;
 
+      debugConfig.stopAtEntry = stopAtEntrySelection === 'yes' ? true : false;
       debugConfig.args = [...args];
       debugConfig.name = selection === ''
         ? 'Launch_template'
