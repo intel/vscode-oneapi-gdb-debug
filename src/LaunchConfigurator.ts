@@ -18,7 +18,7 @@ const debugConfig = {
   preLaunchTask: '',
   postDebugTask: '',
   program: '',
-  args: [],
+  args: [] as string[],
   stopAtEntry: false,
   cwd: '${workspaceFolder}',
   environment: [],
@@ -125,9 +125,23 @@ export class LaunchConfigurator {
         execFile = selection;
       }
 
+      let argument: string | undefined;
+      const args = [];
+
+      do {
+        argument = await vscode.window.showInputBox({
+          placeHolder: 'Argument',
+          title: 'Type new command-line argument or press ENTER with empty string to skip'
+        });
+        if (argument?.trim().length) {
+          args.push(argument);
+        }
+      } while (argument?.trim().length);
+
       const launchConfig = vscode.workspace.getConfiguration('launch');
       const configurations = launchConfig.configurations;
 
+      debugConfig.args = [...args];
       debugConfig.name = selection === ''
         ? 'Launch_template'
         : `(gdb-oneapi) ${parse(execFile).base} Launch`;
