@@ -13,12 +13,19 @@ import { SimdProvider } from './SimdProvider';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
 
+	if (process.platform !== 'linux') {
+		vscode.window.showWarningMessage(`The Windows and macOS operating systems are \
+		not currently supported by the "GDB GPU Support for Intel® oneAPI Toolkits" \
+		extension. Debugging remote Linux systems from a Windows and macOS host is \
+		supported when using the various Microsoft "Remote" extensions.`, { modal: true });
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const simd = new SimdProvider(context);
-    	// Register the commands that will interact with the user and write the launcher scripts.
+	// Register the commands that will interact with the user and write the launcher scripts.
 
-		const launchConfigurator = new LaunchConfigurator();
-		context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
+	const launchConfigurator = new LaunchConfigurator();
+	context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
 
 	// Register commands that will let user search through documentation easily
 	const userHelp = new UserHelp();
@@ -42,4 +49,3 @@ export function activate(context: vscode.ExtensionContext): void {
 		});
 	}
 }
-
