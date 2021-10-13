@@ -9,20 +9,20 @@ To learn more about using extensions with oneAPI, see [Using Visual Studio Code 
 Note that this feature is only available for the Linux target platform.
 
 This extension enables the ability to prepare launch configurations for running and debugging projects created using Intel oneAPI toolkits:
-1. Using the VS Code explorer, click `File -> Open Folder`.
-2. Navigate to the folder where your project is located and click `OK`.
+1. Open your DPC++ project in VS Code.
+2. Build your DPC++ project with the `-g` and `-O0` options to prepare for debugging.
 3. Press `Ctrl+Shift+P ( or View -> Command Palette... )` to open the Command Palette.
 4. Type **Intel oneAPI** and select `Intel oneAPI: Generate launch configurations`.
-5. Follow the prompts to add launch configurations.
-6. Using the VS Code Explorer, open the C++ file for your project.
-8. The configuration is now available to debug and run using the gdb-oneapi debugger. You can find it in .vscode/launch.json. To debug and run, click on the **Run** icon or press `Ctrl+Shift+D`.
+5. Follow the prompts to add a DPC++ launch configuration.
+6. Open the C++ source file(s) that you will be debugging in the VS Code edit window..
+7. The configuration is now available to debug and run using the gdb-oneapi debugger. You can find it in .vscode/launch.json. To debug and run, click on the **Run** icon or press `Ctrl+Shift+D`.
 
 Note that you can modify the configuration manually. For example, you may need to change:
 
-* `"args"` - Example `["arg1", "arg2"]`. If you are escaping characters, you will need to double escape them. For example, `["{\\\"arg1\\\": true}"]` will send `{"arg1": true}` to your application.
-* `"stopAtEntry"` - If set to true, the debugger should stop at the entry-point of the target (ignored on attach). Default value is false.
+* `"args"` - An array of arguments to be passed to your app by the debugger. 
+* `"stopAtEntry"` - Setting to "true" forces a break on your main() function. Default value is false.
 * `"cwd"` - Sets the working directory of the application launched by the debugger.
-* `"environment"` - Environment variables to add to the environment for the program. Example: `[ { "name": "config", "value": "Debug" } ], not [ { "config": "Debug" } ]`.
+* `"environment"` - Environment variables to add to the environment for the program.
 
 More information about all the `launch.json` features can be found on page [Configuring C/C++ debugging
 ](https://code.visualstudio.com/docs/cpp/launch-json-reference).
@@ -76,4 +76,3 @@ At this point you should be able to run the extension in the "Extension Developm
     GNU and promoting software freedom.”
 
 Other names and brands may be claimed as the property of others.
-
