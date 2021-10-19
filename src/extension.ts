@@ -6,7 +6,7 @@
  */
 import * as vscode from 'vscode';
 import { LaunchConfigurator } from './LaunchConfigurator';
-import { UserHelp, DebuggerCommandsPanel, getWebviewOptions } from './UserHelp';
+import { DebuggerCommandsPanel, getWebviewOptions, UserHelp} from './UserHelp';
 import { SimdProvider } from './SimdProvider';
 
 
