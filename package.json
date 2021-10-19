@@ -1,110 +1,250 @@
 {
-	"name": "oneapi-gdb-debug",
-	"displayName": "GDB with GPU Debug Support for Intel(R) oneAPI Toolkits",
-	"description": "An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.",
-	"publisher": "intel-corporation",
-	"version": "0.0.1",
-	"license": "MIT",
-	"icon": "media/oneapi-logo.png",
-	"keywords": [
-		"intel",
-		"oneapi",
-		"debug",
-		"gdb"
-	],
-	"engines": {
-		"vscode": "^1.56.0"
-	},
-	"categories": [
-		"Other"
-	],
-	"activationEvents": [
-		"onStartupFinished"
-	],
-	"main": "./out/extension.js",
-	"contributes": {
-		"commands": [
-			{
-				"command": "intelOneAPI.launchConfigurator.generateLaunchJson",
-				"title": "Intel oneAPI: Generate launch configurations"
-			},
-			{
-				"command": "intelOneAPI.userHelp.openOnlineDocumentation",
-				"title": "Intel oneAPI: Open gdb-oneapi debugger online documentation (help)"
-			},
-			{
-				"command": "intelOneAPI.debug.fetchSIMDInfo",
-				"title": "Intel oneAPI: Refresh SIMD Data",
-				"icon": "$(zap)"
-			},
-			{
-				"command": "intelOneAPI.userHelp.displayDebuggerCommands",
-				"title": "Intel oneAPI: List gdb-oneapi debugger unique commands (help)"
-			}
-		],
-		"taskDefinitions": [
-			{
-				"type": "toolProvider",
-				"properties": {
-					"test1": {
-						"type": "string",
-						"description": "Testing"
-					}
-				}
-			}
-		],
-		"views": {
-			"debug": [
-				{
-					"id": "intelOneAPI.debug.simdview",
-					"type": "webview",
-					"name": "SIMD Lanes"
-				}
-			]
-		},
-		"menus": {
-			"view/title": [
-				{
-					"command": "intelOneAPI.debug.fetchSIMDInfo",
-					"when": "view == intelOneAPI.debug.simdview",
-					"group": "navigation"
-				}
-			]
-		}
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run compile",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile",
-		"test": "node ./out/test/runTest.js",
-		"lint": "eslint -c .eslintrc.js --ext .ts ./",
-		"package": "vsce package --yarn",
-		"ui-test": "extest setup-and-run -o ./src/test/ui/configs/settings.json --yarn out/test/ui/*.js"
-	},
-	"devDependencies": {
-		"@types/chai": "^4.2.18",
-		"@types/mkdirp": "^1.0.1",
-		"@types/mocha": "^8.2.2",
-		"@types/node": "^15.0.3",
-		"@types/rimraf": "^3.0.0",
-		"@types/vscode": "^1.56.0",
-		"@typescript-eslint/eslint-plugin": "^4.24.0",
-		"@typescript-eslint/parser": "^4.24.0",
-		"chai": "^4.3.4",
-		"eslint": "^7.26.0",
-		"mocha": "^8.4.0",
-		"typescript": "^4.2.4",
-		"vsce": "^1.88.0",
-		"vscode-extension-tester": "^4.0.3",
-		"vscode-extension-tester-native": "^3.0.0",
-		"vscode-test": "^1.5.2"
-	},
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/intel/vscode-oneapi-gdb-debug.git"
-	},
-	"dependencies": {
-		"vscode-debugprotocol": "^1.48.0"
-	}
+    "name": "oneapi-gdb-debug",
+    "displayName": "GDB with GPU Debug Support for Intel(R) oneAPI Toolkits",
+    "description": "An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.",
+    "publisher": "intel-corporation",
+    "version": "0.0.1",
+    "license": "MIT",
+    "icon": "media/oneapi-logo.png",
+    "keywords": [
+        "intel",
+        "oneapi",
+        "debug",
+        "gdb"
+    ],
+    "engines": {
+        "vscode": "^1.56.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onStartupFinished"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "intelOneAPI.launchConfigurator.generateLaunchJson",
+                "title": "Intel oneAPI: Generate launch configurations"
+            },
+            {
+                "command": "intelOneAPI.userHelp.openOnlineDocumentation",
+                "title": "Intel oneAPI: Open gdb-oneapi debugger online documentation (help)"
+            },
+            {
+                "command": "intelOneAPI.debug.fetchSIMDInfo",
+                "title": "Intel oneAPI: Refresh SIMD Data",
+                "icon": "$(zap)"
+            },
+            {
+                "command": "intelOneAPI.userHelp.displayDebuggerCommands",
+                "title": "Intel oneAPI: List gdb-oneapi debugger unique commands (help)"
+            }
+        ],
+        "taskDefinitions": [
+            {
+                "type": "toolProvider",
+                "properties": {
+                    "test1": {
+                        "type": "string",
+                        "description": "Testing"
+                    }
+                }
+            }
+        ],
+        "views": {
+            "debug": [
+                {
+                    "id": "intelOneAPI.debug.simdview",
+                    "type": "webview",
+                    "name": "SIMD Lanes"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "intelOneAPI.debug.fetchSIMDInfo",
+                    "when": "view == intelOneAPI.debug.simdview",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "debuggers": [
+            {
+                "type": "cppdbg",
+                "label": "oneAPI C++ (gdb-oneapi)",
+                "languages": [
+                    "c",
+                    "cpp"
+                ],
+                "configurationAttributes": {
+                    "launch": {
+                        "type": "object",
+                        "required": [
+                            "program"
+                        ]
+                    },
+                    "attach": {}
+                },
+                "initialConfigurations": [
+                    {
+                        "name": "oneAPI C++: Launch & Break",
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "preLaunchTask": "",
+                        "postDebugTask": "",
+                        "program": "",
+                        "args":"",
+                        "stopAtEntry": "true",
+                        "cwd": "${workspaceFolder}",
+                        "environment": [],
+                        "externalConsole": false,
+                        "MIMode": "gdb",
+                        "miDebuggerPath": "gdb-oneapi",
+                        "setupCommands": [
+                            {
+                                "description": "Enable pretty-printing for gdb",
+                                "text": "-enable-pretty-printing",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Disable target async",
+                                "text": "set target-async off",
+                                "ignoreFailures": true
+                            }
+                        ]
+                    },
+                    {
+                        "name": "oneAPI C++: Launch & Run",
+                        "type": "cppdbg",
+                        "request": "launch",
+                        "preLaunchTask": "",
+                        "postDebugTask": "",
+                        "program": "",
+                        "args":"",
+                        "stopAtEntry": "false",
+                        "cwd": "${workspaceFolder}",
+                        "environment": [],
+                        "externalConsole": false,
+                        "MIMode": "gdb",
+                        "miDebuggerPath": "gdb-oneapi",
+                        "setupCommands": [
+                            {
+                                "description": "Enable pretty-printing for gdb",
+                                "text": "-enable-pretty-printing",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Disable target async",
+                                "text": "set target-async off",
+                                "ignoreFailures": true
+                            }
+                        ]
+                    }
+                ],
+                "configurationSnippets": [
+                    {
+                        "label": "oneAPI C++: Launch & Run",
+                        "description": "Launch a oneAPI program in debug mode without stopping at entry point",
+                        "body": {
+                            "name": "oneAPI C++: Launch & Run",
+                            "type": "cppdbg",
+                            "request": "launch",
+                            "preLaunchTask": "",
+                            "postDebugTask": "",
+                            "program": "",
+                            "args":"",
+                            "stopAtEntry": "false",
+                            "cwd": "${workspaceFolder}",
+                            "environment": [],
+                            "externalConsole": false,
+                            "MIMode": "gdb",
+                            "miDebuggerPath": "gdb-oneapi",
+                            "setupCommands": [
+                                {
+                                    "description": "Enable pretty-printing for gdb",
+                                    "text": "-enable-pretty-printing",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Disable target async",
+                                    "text": "set target-async off",
+                                    "ignoreFailures": true
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        "label": "oneAPI C++: Launch & Break",
+                        "description": "Launch a oneAPI program in debug mod with a stop at entry point",
+                        "body": {
+                            "name": "oneAPI C++: Launch & Break",
+                            "type": "cppdbg",
+                            "request": "launch",
+                            "preLaunchTask": "",
+                            "postDebugTask": "",
+                            "program": "",
+                            "args":"",
+                            "stopAtEntry": "true",
+                            "cwd": "${workspaceFolder}",
+                            "environment": [],
+                            "externalConsole": false,
+                            "MIMode": "gdb",
+                            "miDebuggerPath": "gdb-oneapi",
+                            "setupCommands": [
+                                {
+                                    "description": "Enable pretty-printing for gdb",
+                                    "text": "-enable-pretty-printing",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Disable target async",
+                                    "text": "set target-async off",
+                                    "ignoreFailures": true
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "variables": {}
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile",
+        "test": "node ./out/test/runTest.js",
+        "lint": "eslint -c .eslintrc.js --ext .ts ./",
+        "package": "vsce package --yarn",
+        "ui-test": "extest setup-and-run -o ./src/test/ui/configs/settings.json --yarn out/test/ui/*.js"
+    },
+    "devDependencies": {
+        "@types/chai": "^4.2.18",
+        "@types/mkdirp": "^1.0.1",
+        "@types/mocha": "^8.2.2",
+        "@types/node": "^15.0.3",
+        "@types/rimraf": "^3.0.0",
+        "@types/vscode": "^1.56.0",
+        "@typescript-eslint/eslint-plugin": "^4.24.0",
+        "@typescript-eslint/parser": "^4.24.0",
+        "chai": "^4.3.4",
+        "eslint": "^7.26.0",
+        "mocha": "^8.4.0",
+        "typescript": "^4.2.4",
+        "vsce": "^1.88.0",
+        "vscode-extension-tester": "^4.0.3",
+        "vscode-extension-tester-native": "^3.0.0",
+        "vscode-test": "^1.5.2"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/intel/vscode-oneapi-gdb-debug.git"
+    },
+    "dependencies": {
+        "vscode-debugprotocol": "^1.48.0"
+    }
 }
