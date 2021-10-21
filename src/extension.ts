@@ -90,4 +90,15 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         });
     }
+
+const tsExtension = vscode.extensions.getExtension('ms-vscode.cpptools');
+  if (!tsExtension) {
+    const GoToInstall = 'Install C/C++ Extension';
+    vscode.window.showInformationMessage('No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.', GoToInstall)
+      .then((selection) => {
+        if (selection === GoToInstall) {
+          vscode.commands.executeCommand('workbench.extensions.installExtension', 'ms-vscode.cpptools');
+        }
+      });
+  }
 }
