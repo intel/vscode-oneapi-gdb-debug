@@ -51,7 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
     checkExtensionsConflict();
 
     if (process.platform !== 'linux') {
-        vscode.window.showWarningMessage(`The Windows and macOS operating systems are not currently supported \n by the "GDB GPU Support for Intel® oneAPI Toolkits" extension.\nDebugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft "Remote" extensions.`, { modal: true });
+        vscode.window.showWarningMessage(`The Windows and macOS operating systems are not currently supported by the "GDB GPU Support for Intel® oneAPI Toolkits" extension. Debugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft "Remote" extensions.`);
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
