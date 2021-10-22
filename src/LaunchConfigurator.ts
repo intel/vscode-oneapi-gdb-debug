@@ -15,7 +15,7 @@ const debugConfig = {
   comments: [
     "Full launch.json configuration details can be found here:",
     "https://code.visualstudio.com/docs/cpp/launch-json-reference"
-],
+  ],
   name: '(gdb-oneapi) ${workspaceFolderBasename} Launch',
   type: 'cppdbg',
   request: 'launch',
@@ -175,7 +175,7 @@ export class LaunchConfigurator {
   }
   async checkGdb(): Promise<void> {
     if (!process.env.SETVARS_COMPLETED) {
-      if (this.checkEnvConfigurator()) {
+      if (await this.checkEnvConfigurator()) {
         const default_env = "default environment";
         const custom_env = "custom environment using SETVARS_CONFIG";
         const selection = await vscode.window.showInformationMessage(`oneAPI environment is not configured.\
@@ -194,16 +194,14 @@ export class LaunchConfigurator {
         If you use setvars_config file make sure it includes a debugger`);
     }
   }
-  private checkEnvConfigurator(): boolean {
+  private async checkEnvConfigurator(): Promise<boolean> {
     const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
     if (!tsExtension) {
       const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
-      vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall)
-        .then((selection) => {
-          if (selection === GoToInstall) {
-            vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
-          }
-        });
+      const selection = await vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall);
+      if (selection === GoToInstall) {
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
+      }
       return false;
     }
     return true;
@@ -241,6 +239,9 @@ export class LaunchConfigurator {
           placeHolder: 'Please provide new configuration name:'
         };
         const inputName = await vscode.window.showInputBox(inputBoxText);
+        if (!inputName) {
+          return false;
+        }
         newItem.name = inputName;
       }
     }
