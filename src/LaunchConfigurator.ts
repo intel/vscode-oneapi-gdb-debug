@@ -173,6 +173,33 @@ export class LaunchConfigurator {
     } while (isContinue);
     return true;
   }
+  async checkLaunchConfig(): Promise<void> {
+    if (!await this.isThereDebugConfig()) {
+      const yes = "Yes";
+      const no = "No";
+      const selection = await vscode.window.showInformationMessage(`Unable to identify oneAPI C++ launch configuration in your launch.json file.\
+       Would you like to create a debug launch configuration now?`, yes, no);
+      if (selection === yes) {
+        await vscode.commands.executeCommand('intelOneAPI.launchConfigurator.generateLaunchJson');
+        return;
+      }
+      if (selection === no) {
+        return;
+      }
+    }
+  }
+
+  async isThereDebugConfig(): Promise<boolean> {
+    const launchConfig = vscode.workspace.getConfiguration('launch');
+    const configs = launchConfig.configurations;
+    for (const cfg of configs) {
+      if (cfg.type === "cppdbg" && cfg.miDebuggerPath === "gdb-oneapi") {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async checkGdb(): Promise<void> {
     if (!process.env.SETVARS_COMPLETED) {
       if (await this.checkEnvConfigurator()) {
@@ -194,6 +221,7 @@ export class LaunchConfigurator {
         If you use setvars_config file make sure it includes a debugger`);
     }
   }
+
   private async checkEnvConfigurator(): Promise<boolean> {
     const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
     if (!tsExtension) {

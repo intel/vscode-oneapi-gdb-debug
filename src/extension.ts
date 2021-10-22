@@ -60,6 +60,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const launchConfigurator = new LaunchConfigurator();
     launchConfigurator.checkGdb();
+    if (vscode.workspace.workspaceFolders) {
+        launchConfigurator.checkLaunchConfig();
+    }
     context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
 
     // Register commands that will let user search through documentation easily
