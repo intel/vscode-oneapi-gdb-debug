@@ -9,37 +9,33 @@ import { LaunchConfigurator } from './LaunchConfigurator';
 import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from './UserHelp';
 import { SimdProvider } from './SimdProvider';
 
-enum ExtensionState {
-    deprecated,
-    actual,
-}
-
 function checkExtensionsConflict() {
     // The function of generating a launcher configuration from an deprecated extension conflicts with the same function from the current one.
     const deprecatedExtension = vscode.extensions.getExtension('intel-corporation.oneapi-launch-configurator');
     const actualExtension = vscode.extensions.getExtension('intel-corporation.oneapi-analysis-configurator');
 
     // if only the deprecated version is installed, otherwise the new version will solve this problem and no action is required.
-    if (actualExtension == undefined && deprecatedExtension !== undefined) {
+    if (actualExtension === undefined && deprecatedExtension !== undefined) {
         if (deprecatedExtension) {
             const Update = 'Update';
-            let deprExtName = deprecatedExtension.packageJSON.displayName;
+            const deprExtName = deprecatedExtension.packageJSON.displayName;
             vscode.window.showInformationMessage(`${deprExtName} is an deprecated version! This may lead to the unavailability of overlapping functions.`, Update, 'Ignore')
                 .then((selection) => {
                     if (selection === Update) {
                         vscode.commands.executeCommand('workbench.extensions.uninstallExtension', deprecatedExtension.id).then(function () {
-                            vscode.window.showErrorMessage(`Completed uninstalling ${deprExtName} extension.`)
+                            vscode.window.showErrorMessage(`Completed uninstalling ${deprExtName} extension.`);
                             vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-analysis-configurator').then(function () {
                                 const actualExtension = vscode.extensions.getExtension('intel-corporation.oneapi-analysis-configurator');
                                 if (actualExtension) {
                                     const Reload = 'Reload';
                                     vscode.window.showInformationMessage(`Extension update completed. Please reload Visual Studio Code.`, Reload)
                                         .then((selection) => {
-                                            if (selection === Reload)
+                                            if (selection === Reload){
                                                 vscode.commands.executeCommand('workbench.action.reloadWindow');
+                                            }
                                         });
                                 } else {
-                                    vscode.window.showErrorMessage(`Extension could not be installed!`)
+                                    vscode.window.showErrorMessage(`Extension could not be installed!`);
                                 }
                             });
                         });
@@ -47,7 +43,6 @@ function checkExtensionsConflict() {
                 });
         }
     }
-
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -56,10 +51,7 @@ export function activate(context: vscode.ExtensionContext): void {
     checkExtensionsConflict();
 
     if (process.platform !== 'linux') {
-        vscode.window.showWarningMessage(`The Windows and macOS operating systems are \
-        not currently supported by the "GDB GPU Support for Intel® oneAPI Toolkits" \
-        extension. Debugging remote Linux systems from a Windows and macOS host is \
-        supported when using the various Microsoft "Remote" extensions.`, { modal: true });
+        vscode.window.showWarningMessage(`The Windows and macOS operating systems are not currently supported \n by the "GDB GPU Support for Intel® oneAPI Toolkits" extension.\nDebugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft "Remote" extensions.`, { modal: true });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
