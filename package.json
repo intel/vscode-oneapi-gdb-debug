@@ -90,6 +90,10 @@
                 },
                 "initialConfigurations": [
                     {
+                        "comments": [
+                            "Full launch.json configuration details can be found here:",
+                            "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+                        ],
                         "name": "oneAPI C++: Launch & Break",
                         "type": "cppdbg",
                         "request": "launch",
@@ -117,6 +121,10 @@
                         ]
                     },
                     {
+                        "comments": [
+                            "Full launch.json configuration details can be found here:",
+                            "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+                        ],
                         "name": "oneAPI C++: Launch & Run",
                         "type": "cppdbg",
                         "request": "launch",
@@ -149,6 +157,10 @@
                         "label": "oneAPI C++: Launch & Run",
                         "description": "Launch a oneAPI program in debug mode without stopping at entry point",
                         "body": {
+                            "comments": [
+                                "Full launch.json configuration details can be found here:",
+                                "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+                            ],
                             "name": "oneAPI C++: Launch & Run",
                             "type": "cppdbg",
                             "request": "launch",
@@ -178,8 +190,12 @@
                     },
                     {
                         "label": "oneAPI C++: Launch & Break",
-                        "description": "Launch a oneAPI program in debug mod with a stop at entry point",
+                        "description": "Launch a oneAPI program in debug mode with a stop at entry point",
                         "body": {
+                            "comments": [
+                                "Full launch.json configuration details can be found here:",
+                                "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+                            ],
                             "name": "oneAPI C++: Launch & Break",
                             "type": "cppdbg",
                             "request": "launch",

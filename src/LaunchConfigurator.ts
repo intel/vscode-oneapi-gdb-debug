@@ -12,6 +12,10 @@ import { posix, join, parse, normalize } from 'path';
 import { existsSync } from 'fs';
 
 const debugConfig = {
+  comments: [
+    "Full launch.json configuration details can be found here:",
+    "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+],
   name: '(gdb-oneapi) ${workspaceFolderBasename} Launch',
   type: 'cppdbg',
   request: 'launch',
