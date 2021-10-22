@@ -170,6 +170,15 @@ export class LaunchConfigurator {
     return true;
   }
 
+  isGdbInPath(): boolean {
+    if (process.env.PATH) {
+      if (process.env.PATH.indexOf("oneAPI\\debugger\\latest\\gdb\\intel64\\bin") !== -1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async checkLaunchItem(listItems: any, newItem: any): Promise<boolean> {
     if (listItems.length === 0) {

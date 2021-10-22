@@ -20,7 +20,7 @@ function checkExtensionsConflict() {
     const actualExtension = vscode.extensions.getExtension('intel-corporation.oneapi-analysis-configurator');
 
     // if only the deprecated version is installed, otherwise the new version will solve this problem and no action is required.
-    if (actualExtension == undefined && deprecatedExtension !== undefined ) {
+    if (actualExtension == undefined && deprecatedExtension !== undefined) {
         if (deprecatedExtension) {
             const Update = 'Update';
             let deprExtName = deprecatedExtension.packageJSON.displayName;
@@ -32,12 +32,12 @@ function checkExtensionsConflict() {
                             vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-analysis-configurator').then(function () {
                                 const actualExtension = vscode.extensions.getExtension('intel-corporation.oneapi-analysis-configurator');
                                 if (actualExtension) {
-                                const Reload = 'Reload';
-                                vscode.window.showInformationMessage(`Extension update completed. Please reload Visual Studio Code.`, Reload)
-                                    .then((selection) => {
-                                        if (selection === Reload)
-                                            vscode.commands.executeCommand('workbench.action.reloadWindow');
-                                    });
+                                    const Reload = 'Reload';
+                                    vscode.window.showInformationMessage(`Extension update completed. Please reload Visual Studio Code.`, Reload)
+                                        .then((selection) => {
+                                            if (selection === Reload)
+                                                vscode.commands.executeCommand('workbench.action.reloadWindow');
+                                        });
                                 } else {
                                     vscode.window.showErrorMessage(`Extension could not be installed!`)
                                 }
@@ -67,6 +67,19 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register the commands that will interact with the user and write the launcher scripts.
 
     const launchConfigurator = new LaunchConfigurator();
+    if (!launchConfigurator.isGdbInPath()) {
+        vscode.window.showInformationMessage(`Unable to locate the gdb-oneapi debugger in the PATH. Have you configured your development environment using the "Environment Configurator for Intel oneAPI Toolkits"?`);
+        const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
+        if (!tsExtension) {
+            const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
+            vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall)
+                .then((selection) => {
+                    if (selection === GoToInstall) {
+                        vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
+                    }
+                });
+        }
+    }
     context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
 
     // Register commands that will let user search through documentation easily
@@ -91,14 +104,14 @@ export function activate(context: vscode.ExtensionContext): void {
         });
     }
 
-const tsExtension = vscode.extensions.getExtension('ms-vscode.cpptools');
-  if (!tsExtension) {
-    const GoToInstall = 'Install C/C++ Extension';
-    vscode.window.showInformationMessage('No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.', GoToInstall)
-      .then((selection) => {
-        if (selection === GoToInstall) {
-          vscode.commands.executeCommand('workbench.extensions.installExtension', 'ms-vscode.cpptools');
-        }
-      });
-  }
+    const tsExtension = vscode.extensions.getExtension('ms-vscode.cpptools');
+    if (!tsExtension) {
+        const GoToInstall = 'Install C/C++ Extension';
+        vscode.window.showInformationMessage('No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.', GoToInstall)
+            .then((selection) => {
+                if (selection === GoToInstall) {
+                    vscode.commands.executeCommand('workbench.extensions.installExtension', 'ms-vscode.cpptools');
+                }
+            });
+    }
 }
