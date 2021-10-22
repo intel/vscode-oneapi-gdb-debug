@@ -173,10 +173,47 @@ export class LaunchConfigurator {
     } while (isContinue);
     return true;
   }
+  async checkGdb(): Promise<void> {
+    if (!process.env.SETVARS_COMPLETED) {
+      if (this.checkEnvConfigurator()) {
+        const default_env = "default environment";
+        const custom_env = "custom environment using SETVARS_CONFIG";
+        const selection = await vscode.window.showInformationMessage(`oneAPI environment is not configured.\
+         Configure your development environment using "Environment Configurator for Intel oneAPI Toolkits".`,
+          default_env, custom_env);
+        if (selection === default_env) {
+          await vscode.commands.executeCommand('intel-corporation.oneapi-environment-configurator.initializeEnvironment');
+        }
+        if (selection === custom_env) {
+          await vscode.commands.executeCommand('intel-corporation.oneapi-environment-configurator.initializeEnvironmentConfig');
+        }
+      }
+    }
+    if (!this.isGdbInPath()) {
+      vscode.window.showInformationMessage(`Unable to locate the gdb-oneapi debugger in the PATH.\
+        If you use setvars_config file make sure it includes a debugger`);
+    }
+  }
+  private checkEnvConfigurator(): boolean {
+    const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
+    if (!tsExtension) {
+      const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
+      vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall)
+        .then((selection) => {
+          if (selection === GoToInstall) {
+            vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
+          }
+        });
+      return false;
+    }
+    return true;
+  }
 
-  isGdbInPath(): boolean {
+  private isGdbInPath(): boolean {
     if (process.env.PATH) {
-      if (process.env.PATH.indexOf("oneAPI\\debugger\\latest\\gdb\\intel64\\bin") !== -1) {
+      const path = /oneAPI[\/\\]debugger[\/\\].+[\/\\]gdb[\/\\]intel64[\/\\]bin/gi;
+      const index = process.env.PATH.search(path);
+      if (index !== -1) {
         return true;
       }
     }

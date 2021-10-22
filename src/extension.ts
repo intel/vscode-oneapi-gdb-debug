@@ -30,7 +30,7 @@ function checkExtensionsConflict() {
                                     const Reload = 'Reload';
                                     vscode.window.showInformationMessage(`Extension update completed. Please reload Visual Studio Code.`, Reload)
                                         .then((selection) => {
-                                            if (selection === Reload){
+                                            if (selection === Reload) {
                                                 vscode.commands.executeCommand('workbench.action.reloadWindow');
                                             }
                                         });
@@ -59,19 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
     // Register the commands that will interact with the user and write the launcher scripts.
 
     const launchConfigurator = new LaunchConfigurator();
-    if (!launchConfigurator.isGdbInPath()) {
-        vscode.window.showInformationMessage(`Unable to locate the gdb-oneapi debugger in the PATH. Have you configured your development environment using the "Environment Configurator for Intel oneAPI Toolkits"?`);
-        const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
-        if (!tsExtension) {
-            const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
-            vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall)
-                .then((selection) => {
-                    if (selection === GoToInstall) {
-                        vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
-                    }
-                });
-        }
-    }
+    launchConfigurator.checkGdb();
     context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.launchConfigurator.generateLaunchJson', () => launchConfigurator.makeLaunchFile()));
 
     // Register commands that will let user search through documentation easily
