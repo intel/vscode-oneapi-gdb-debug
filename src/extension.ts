@@ -4,6 +4,7 @@
  *
  * SPDX-License-Identifier: MIT
  */
+ 'use strict';
 import * as vscode from 'vscode';
 import { LaunchConfigurator } from './LaunchConfigurator';
 import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from './UserHelp';

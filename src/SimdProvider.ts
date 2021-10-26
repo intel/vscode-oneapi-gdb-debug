@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+'use strict';
 import * as vscode from 'vscode';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
