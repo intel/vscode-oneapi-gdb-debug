@@ -130,7 +130,7 @@ export class LaunchConfigurator {
       }
 
       const stopAtEntrySelection = await vscode.window.showQuickPick(['yes', 'no'], {
-        placeHolder: 'Automatically break on main'
+        placeHolder: 'Automatically break on main?'
       });
 
       if (!stopAtEntrySelection) {
@@ -252,7 +252,7 @@ export class LaunchConfigurator {
       return true; // for tests
     }
 
-    const existItem = listItems.find((item: { label: any; }) => item.label === newItem.label);
+    const existItem = listItems.find((item: { label: any }) => item.label === newItem.label);
     const dialogOptions: string[] = ['Cancel', 'Rename configuration'];
 
     if (existItem) {
@@ -260,7 +260,7 @@ export class LaunchConfigurator {
         placeHolder: `A debug launch config already exists with this name. Do you want to rename this config or cancel?`
       };
       const selection = await vscode.window.showQuickPick(dialogOptions, options);
-      if (!selection || selection === 'Cancel ') {
+      if (!selection || selection === 'Cancel') {
         return false;
       } else {
         const inputBoxText: vscode.InputBoxOptions = {
