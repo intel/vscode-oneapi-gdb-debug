@@ -56,48 +56,10 @@ export class LaunchConfigurator {
       return false; // for unit tests
     }
     const projectRootDir = `${workspaceFolder?.uri.fsPath}`;
-    let buildSystem = '';
-    let makeFileName = undefined;
-    if (existsSync(`${projectRootDir}/Makefile`)) {
-      makeFileName = 'Makefile';
-    } else if (existsSync(`${projectRootDir}/makefile`)) {
-      makeFileName = 'makefile';
-    }
-    if (makeFileName !== undefined) {
-      buildSystem = 'make';
-    }
-    if (existsSync(`${projectRootDir}/CMakeLists.txt`)) {
-      buildSystem = 'cmake';
-    }
-    if (buildSystem === '') {
-      vscode.window.showErrorMessage('Generating launch configurations failed. The project does not contain CMakeLists.txt or MakeFile.', { modal: true });
-      return false;
-    }
     let execFiles: string[] = [];
     let execFile;
-    switch (buildSystem) {
-      case 'make': {
-        execFiles = await this.findExecutables(projectRootDir);
-        break;
-      }
-      case 'cmake': {
-        execFiles = await this.findExecutables(projectRootDir);
-        if (execFiles.length === 0) {
-          const execNames = await this.getExecNameFromCmake(projectRootDir);
-          execNames.forEach(async (name: string) => {
-            execFiles.push(join(`${projectRootDir}`, 'build', 'src', name));
-          });
-          if (execFiles.length !== 0) {
-            vscode.window.showInformationMessage('Could not find executable files.\nThe name of the executable will be taken from CMakeLists.txt, and the executable is expected to be located in /build/src.');
-          }
-        }
-
-        break;
-      }
-      default: {
-        break;
-      }
-    }
+    
+    execFiles = await this.findExecutables(projectRootDir);
     execFiles.push('Leave it empty');
     execFiles.push('Provide path to the executable file manually');
     let isContinue = true;
@@ -165,9 +127,9 @@ export class LaunchConfigurator {
       if (isUniq) {
         configurations.push(debugConfig);
         launchConfig.update('configurations', configurations, false);
-        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program}" was added`);
+        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program || 'empty path'}" was added`);
       } else {
-        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program}" was skipped as duplicate`);
+        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program || 'empty path'}" was skipped as duplicate`);
         return false;
       }
     } while (isContinue);
@@ -317,33 +279,6 @@ export class LaunchConfigurator {
       return pathsToExecutables;
     } catch (err) {
       console.log(err);
-      return [];
-    }
-  }
-
-  private async getExecNameFromCmake(projectRootDir: string): Promise<string[]> {
-    try {
-      let execNames: string[] = [];
-      const cmd = process.platform === 'win32'
-        ? `where /r ${projectRootDir} CMakeLists.txt`
-        : `find ${projectRootDir} -name 'CMakeLists.txt'`;
-      const pathsToCmakeLists = execSync(cmd).toString().split('\n');
-      pathsToCmakeLists.pop();
-      pathsToCmakeLists.forEach(async (onePath) => {
-        const normalizedPath = normalize(onePath.replace('\r', '')).split(/[\\/]/g).join(posix.sep);
-        const cmd = process.platform === 'win32'
-          ? `pwsh -Command "$execNames=(gc ${normalizedPath}) | Select-String -Pattern '\\s*add_executable\\s*\\(\\s*(\\w*)' ; $execNames.Matches | ForEach-Object -Process {echo $_.Groups[1].Value} | Select-Object -Unique | ? {$_.trim() -ne '' } "`
-          : `awk '/^ *add_executable *\\( *[^$]/' ${normalizedPath} | sed -e's/add_executable *(/ /; s/\\r/ /' | awk '{print $1}' | uniq`;
-        execNames = execNames.concat(execSync(cmd, { cwd: projectRootDir }).toString().split('\n'));
-        execNames.pop();
-        execNames.forEach(async function (oneExec, index, execList) {
-          execList[index] = normalize(oneExec.replace('\r', '')).split(/[\\/]/g).join(posix.sep);
-        });
-      });
-
-      return execNames;
-    } catch (err) {
-      console.error(err);
       return [];
     }
   }
