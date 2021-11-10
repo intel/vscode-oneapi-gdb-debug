@@ -3,7 +3,7 @@
     "displayName": "GDB with GPU Debug Support for Intel(R) oneAPI Toolkits",
     "description": "An extension to expose additional features of GPU debugging with GDB for Intel(R) oneAPI.",
     "publisher": "intel-corporation",
-    "version": "0.1.1",
+    "version": "0.1.2",
     "license": "MIT",
     "icon": "media/oneapi-logo.png",
     "keywords": [
