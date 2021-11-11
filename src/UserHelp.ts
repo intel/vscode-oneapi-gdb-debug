@@ -227,7 +227,7 @@ export class DebuggerCommandsPanel {
                             </div>
                             <div class="documentation-resources-list-wrapper">
                                 <ul class="documentation-resources" id="documentation-resources">
-                                    <li class="section-name">Intel® distribution for GDB</li>
+                                    <li class="section-name">Intel® Distribution for GDB</li>
                                     <li class="inner"><a class="header-link" href="${oneapiDocumentationLink}">Online Documentation</a></li>
                                     <li class="inner"><a class="header-link" href="${oneapiUserManualLink}">User Manual (PDF)</a></li>
                                     <li class="inner"><a class="header-link" href="${oneapiCheatsheetLink}">Cheatsheet (PDF)</a></li>
