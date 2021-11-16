@@ -10,6 +10,7 @@
 - Added extension compatibility checks
 
 - Added additional error handling and fixed bugs
+
 ##  0.0.1
 
 - Initial release
