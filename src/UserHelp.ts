@@ -166,9 +166,9 @@ export class DebuggerCommandsPanel {
 
     getTable(content: Array<SimpleDescription>, cssClass: string): string {
         let table = `<table class="${cssClass}">${cssClass.includes('small-table')
-                ? ''
-                : '<thead><tr><th>Command</th><th>Description</th></tr></thead>'
-            }<tbody>`;
+            ? ''
+            : '<thead><tr><th>Command</th><th>Description</th></tr></thead>'
+        }<tbody>`;
         const oneapiExtCssClass = 'oneapi-ext';
         for (const i in content) {
             const name = content[i].name
@@ -205,6 +205,12 @@ export class DebuggerCommandsPanel {
         // Use a nonce to only allow specific scripts to be run
         const nonce = getNonce();
 
+        // vscode.window.activeColorTheme.kind
+        // 1 - light mode
+        // 2 - dark mode
+        // 3 - high contrast mode
+        const activeColorTheme = vscode.window.activeColorTheme.kind;
+
         return `<!DOCTYPE html>
              <html lang="en">
              <head>
@@ -219,7 +225,7 @@ export class DebuggerCommandsPanel {
                  <title>Usefull GDB-oneAPI Commands</title>
              </head>
              <body>
-                <div class="body-wrapper">
+                <div class="body-wrapper ${activeColorTheme===1 ? 'light-mode' : 'dark-mode'}">
                     <div class="left-menu">
                         <div class="left-menu-positioning">
                             <div class="documentation-resources title">
@@ -231,7 +237,7 @@ export class DebuggerCommandsPanel {
                                     <li class="inner"><a class="header-link" href="${oneapiDocumentationLink}">Online Documentation</a></li>
                                     <li class="inner"><a class="header-link" href="${oneapiUserManualLink}">User Manual (PDF)</a></li>
                                     <li class="inner"><a class="header-link" href="${oneapiCheatsheetLink}">Cheatsheet (PDF)</a></li>
-                                    <li class="section-name">GDB</a></li>
+                                    <li class="section-name}">GDB</a></li>
                                     <li class="inner"><a class="header-link" href="${gdbDocumentationLink}">Online Documentation</a></li>
                                 </ul>
                             </div>
@@ -249,7 +255,7 @@ export class DebuggerCommandsPanel {
                             <p class="intro">${this.userHelp.comparison.intro}</p>
                             ${this.getTable(this.userHelp.comparison.commands, "table")}
                             <p class="intro">${this.userHelp.oneapiNewCommands.intro}</p>
-                            <div class="oneapi-new-commands">
+                            <div class="oneapi-new-commands ${activeColorTheme===1 ? 'light-mode' : 'dark-mode'}">
                                 ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
                             </div>
                         </div>
