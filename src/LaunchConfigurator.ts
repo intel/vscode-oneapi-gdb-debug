@@ -8,8 +8,7 @@
 'use strict';
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
-import { posix, join, parse, normalize } from 'path';
-import { existsSync } from 'fs';
+import { posix, parse } from 'path';
 
 const debugConfig = {
   comments: [
@@ -58,7 +57,7 @@ export class LaunchConfigurator {
     const projectRootDir = `${workspaceFolder?.uri.fsPath}`;
     let execFiles: string[] = [];
     let execFile;
-    
+
     execFiles = await this.findExecutables(projectRootDir);
     execFiles.push('Leave it empty');
     execFiles.push('Provide path to the executable file manually');
@@ -214,6 +213,7 @@ export class LaunchConfigurator {
       return true; // for tests
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existItem = listItems.find((item: { label: any }) => item.label === newItem.label);
     const dialogOptions: string[] = ['Cancel', 'Rename configuration'];
 
