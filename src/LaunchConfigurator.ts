@@ -12,6 +12,10 @@ import { posix, join, parse, normalize } from 'path';
 import { existsSync } from 'fs';
 
 const debugConfig = {
+  comments: [
+    "Full launch.json configuration details can be found here:",
+    "https://code.visualstudio.com/docs/cpp/launch-json-reference"
+  ],
   name: '(gdb-oneapi) ${workspaceFolderBasename} Launch',
   type: 'cppdbg',
   request: 'launch',
@@ -52,48 +56,10 @@ export class LaunchConfigurator {
       return false; // for unit tests
     }
     const projectRootDir = `${workspaceFolder?.uri.fsPath}`;
-    let buildSystem = '';
-    let makeFileName = undefined;
-    if (existsSync(`${projectRootDir}/Makefile`)) {
-      makeFileName = 'Makefile';
-    } else if (existsSync(`${projectRootDir}/makefile`)) {
-      makeFileName = 'makefile';
-    }
-    if (makeFileName !== undefined) {
-      buildSystem = 'make';
-    }
-    if (existsSync(`${projectRootDir}/CMakeLists.txt`)) {
-      buildSystem = 'cmake';
-    }
-    if (buildSystem === '') {
-      vscode.window.showErrorMessage('Generating launch configurations failed. The project does not contain CMakeLists.txt or MakeFile.', { modal: true });
-      return false;
-    }
     let execFiles: string[] = [];
     let execFile;
-    switch (buildSystem) {
-      case 'make': {
-        execFiles = await this.findExecutables(projectRootDir);
-        break;
-      }
-      case 'cmake': {
-        execFiles = await this.findExecutables(projectRootDir);
-        if (execFiles.length === 0) {
-          const execNames = await this.getExecNameFromCmake(projectRootDir);
-          execNames.forEach(async (name: string) => {
-            execFiles.push(join(`${projectRootDir}`, 'build', 'src', name));
-          });
-          if (execFiles.length !== 0) {
-            vscode.window.showInformationMessage('Could not find executable files.\nThe name of the executable will be taken from CMakeLists.txt, and the executable is expected to be located in /build/src.');
-          }
-        }
-
-        break;
-      }
-      default: {
-        break;
-      }
-    }
+    
+    execFiles = await this.findExecutables(projectRootDir);
     execFiles.push('Leave it empty');
     execFiles.push('Provide path to the executable file manually');
     let isContinue = true;
@@ -126,7 +92,7 @@ export class LaunchConfigurator {
       }
 
       const stopAtEntrySelection = await vscode.window.showQuickPick(['yes', 'no'], {
-        placeHolder: 'Automatically break on main'
+        placeHolder: 'Automatically break on main?'
       });
 
       if (!stopAtEntrySelection) {
@@ -161,13 +127,85 @@ export class LaunchConfigurator {
       if (isUniq) {
         configurations.push(debugConfig);
         launchConfig.update('configurations', configurations, false);
-        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program}" was added`);
+        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program || 'empty path'}" was added`);
       } else {
-        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program}" was skipped as duplicate`);
+        vscode.window.showInformationMessage(`Launch configuration "${debugConfig.name}" for "${debugConfig.program || 'empty path'}" was skipped as duplicate`);
         return false;
       }
     } while (isContinue);
     return true;
+  }
+  async checkLaunchConfig(): Promise<void> {
+    if (!await this.isThereDebugConfig()) {
+      const yes = "Yes";
+      const no = "No";
+      const selection = await vscode.window.showInformationMessage(`Unable to identify oneAPI C++ launch configuration in your launch.json file.\
+       Would you like to create a debug launch configuration now?`, yes, no);
+      if (selection === yes) {
+        await vscode.commands.executeCommand('intelOneAPI.launchConfigurator.generateLaunchJson');
+        return;
+      }
+      if (selection === no) {
+        return;
+      }
+    }
+  }
+
+  async isThereDebugConfig(): Promise<boolean> {
+    const launchConfig = vscode.workspace.getConfiguration('launch');
+    const configs = launchConfig.configurations;
+    for (const cfg of configs) {
+      if (cfg.type === "cppdbg" && cfg.miDebuggerPath === "gdb-oneapi") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async checkGdb(): Promise<void> {
+    if (!process.env.SETVARS_COMPLETED) {
+      if (await this.checkEnvConfigurator()) {
+        const default_env = "default environment";
+        const custom_env = "custom environment using SETVARS_CONFIG";
+        const selection = await vscode.window.showInformationMessage(`oneAPI environment is not configured.\
+         Configure your development environment using "Environment Configurator for Intel oneAPI Toolkits".`,
+          default_env, custom_env);
+        if (selection === default_env) {
+          await vscode.commands.executeCommand('intel-corporation.oneapi-environment-configurator.initializeEnvironment');
+        }
+        if (selection === custom_env) {
+          await vscode.commands.executeCommand('intel-corporation.oneapi-environment-configurator.initializeEnvironmentConfig');
+        }
+      }
+    }
+    if (!this.isGdbInPath()) {
+      vscode.window.showInformationMessage(`Unable to locate the gdb-oneapi debugger in the PATH.\
+        If you use setvars_config file make sure it includes a debugger`);
+    }
+  }
+
+  private async checkEnvConfigurator(): Promise<boolean> {
+    const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
+    if (!tsExtension) {
+      const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
+      const selection = await vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall);
+      if (selection === GoToInstall) {
+        await vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  private isGdbInPath(): boolean {
+    if (process.env.PATH) {
+      const path = /oneAPI[\/\\]debugger[\/\\].+[\/\\]gdb[\/\\]intel64[\/\\]bin/gi;
+      const index = process.env.PATH.search(path);
+      if (index !== -1) {
+        return true;
+      }
+    }
+    return false;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -176,7 +214,7 @@ export class LaunchConfigurator {
       return true; // for tests
     }
 
-    const existItem = listItems.find((item: { label: any; }) => item.label === newItem.label);
+    const existItem = listItems.find((item: { label: any }) => item.label === newItem.label);
     const dialogOptions: string[] = ['Cancel', 'Rename configuration'];
 
     if (existItem) {
@@ -184,13 +222,16 @@ export class LaunchConfigurator {
         placeHolder: `A debug launch config already exists with this name. Do you want to rename this config or cancel?`
       };
       const selection = await vscode.window.showQuickPick(dialogOptions, options);
-      if (!selection || selection === 'Cancel ') {
+      if (!selection || selection === 'Cancel') {
         return false;
       } else {
         const inputBoxText: vscode.InputBoxOptions = {
           placeHolder: 'Please provide new configuration name:'
         };
         const inputName = await vscode.window.showInputBox(inputBoxText);
+        if (!inputName) {
+          return false;
+        }
         newItem.name = inputName;
       }
     }
@@ -238,33 +279,6 @@ export class LaunchConfigurator {
       return pathsToExecutables;
     } catch (err) {
       console.log(err);
-      return [];
-    }
-  }
-
-  private async getExecNameFromCmake(projectRootDir: string): Promise<string[]> {
-    try {
-      let execNames: string[] = [];
-      const cmd = process.platform === 'win32'
-        ? `where /r ${projectRootDir} CMakeLists.txt`
-        : `find ${projectRootDir} -name 'CMakeLists.txt'`;
-      const pathsToCmakeLists = execSync(cmd).toString().split('\n');
-      pathsToCmakeLists.pop();
-      pathsToCmakeLists.forEach(async (onePath) => {
-        const normalizedPath = normalize(onePath.replace('\r', '')).split(/[\\/]/g).join(posix.sep);
-        const cmd = process.platform === 'win32'
-          ? `pwsh -Command "$execNames=(gc ${normalizedPath}) | Select-String -Pattern '\\s*add_executable\\s*\\(\\s*(\\w*)' ; $execNames.Matches | ForEach-Object -Process {echo $_.Groups[1].Value} | Select-Object -Unique | ? {$_.trim() -ne '' } "`
-          : `awk '/^ *add_executable *\\( *[^$]/' ${normalizedPath} | sed -e's/add_executable *(/ /; s/\\r/ /' | awk '{print $1}' | uniq`;
-        execNames = execNames.concat(execSync(cmd, { cwd: projectRootDir }).toString().split('\n'));
-        execNames.pop();
-        execNames.forEach(async function (oneExec, index, execList) {
-          execList[index] = normalize(oneExec.replace('\r', '')).split(/[\\/]/g).join(posix.sep);
-        });
-      });
-
-      return execNames;
-    } catch (err) {
-      console.error(err);
       return [];
     }
   }

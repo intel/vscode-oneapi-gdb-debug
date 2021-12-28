@@ -1,10 +1,11 @@
 /**
  * Copyright (c) Intel Corporation
  * Licensed under the MIT License. See the project root LICENSE
- * 
+ *
  * SPDX-License-Identifier: MIT
  */
 
+'use strict';
 import * as vscode from 'vscode';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
@@ -71,13 +72,13 @@ export class SimdProvider {
         const session = vscode.debug.activeDebugSession;
         if (session) {
             const r = await session.customRequest("threads");
-            
+
             const threads = r.threads as DebugProtocol.Thread[];
 
             const masks: emask[] = []; //optimise?
 
             for (const t of threads) {
-                
+
                 const strarg: DebugProtocol.StackTraceArguments = { threadId: t.id };
                 const sTrace = await session.customRequest('stackTrace', strarg);
                 let evalargs: DebugProtocol.EvaluateArguments = { expression: "$emask", context: "repl", frameId: sTrace.stackFrames[0].id, format: {hex: true}};
@@ -101,9 +102,9 @@ export class SimdProvider {
                 if (evalresult.result !== 'void' ) {
                     tid = parseInt(evalresult.result);
                 }
-                
+
                 masks.push({name: t.name, threadId: tid, value: maskvar, length: maskLength});
-                
+
             }
             if (!masks.length) {
                 return; //exit, no simd detected
