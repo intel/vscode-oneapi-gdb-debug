@@ -8,8 +8,7 @@
 'use strict';
 import * as vscode from 'vscode';
 import { execSync } from 'child_process';
-import { posix, join, parse, normalize } from 'path';
-import { existsSync } from 'fs';
+import { posix, parse } from 'path';
 
 const debugConfig = {
   comments: [
@@ -58,13 +57,12 @@ export class LaunchConfigurator {
     const projectRootDir = `${workspaceFolder?.uri.fsPath}`;
     let execFiles: string[] = [];
     let execFile;
-    
     execFiles = await this.findExecutables(projectRootDir);
     execFiles.push('Leave it empty');
     execFiles.push('Provide path to the executable file manually');
     let isContinue = true;
     const options: vscode.InputBoxOptions = {
-      placeHolder: 'Select the executable you want to debug. Press ESC to exit or if done creating debug config.'
+      placeHolder: 'Select the executable you want to debug. Press ESC to exit or if done creating debug configuration.'
     };
     do {
       let selection = await vscode.window.showQuickPick(execFiles, options);
@@ -74,7 +72,7 @@ export class LaunchConfigurator {
       }
       if (selection === 'Leave it empty') {
         selection = '';
-        await vscode.window.showInformationMessage('Note: Launch template cannot be launched immediately after creation.\nPlease edit the launch.json file according to your needs before run.', { modal: true });
+        await vscode.window.showInformationMessage('Note: Launch template cannot be launched immediately after creation.\nPlease edit the launch.json file according to your needs before running.', { modal: true });
       }
       if (selection === 'Provide path to the executable file manually') {
         const options: vscode.OpenDialogOptions = {
@@ -188,7 +186,7 @@ export class LaunchConfigurator {
     const tsExtension = vscode.extensions.getExtension('intel-corporation.oneapi-environment-configurator');
     if (!tsExtension) {
       const GoToInstall = 'Environment Configurator for Intel oneAPI Toolkits';
-      const selection = await vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configured your development environment.`, GoToInstall);
+      const selection = await vscode.window.showInformationMessage(`Please install the "Environment Configurator for Intel oneAPI Toolkits" to configure your development environment.`, GoToInstall);
       if (selection === GoToInstall) {
         await vscode.commands.executeCommand('workbench.extensions.installExtension', 'intel-corporation.oneapi-environment-configurator');
       }
@@ -214,12 +212,13 @@ export class LaunchConfigurator {
       return true; // for tests
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const existItem = listItems.find((item: { label: any }) => item.label === newItem.label);
     const dialogOptions: string[] = ['Cancel', 'Rename configuration'];
 
     if (existItem) {
       const options: vscode.InputBoxOptions = {
-        placeHolder: `A debug launch config already exists with this name. Do you want to rename this config or cancel?`
+        placeHolder: `A debug launch configuration already exists with this name. Do you want to rename this configuration or cancel?`
       };
       const selection = await vscode.window.showQuickPick(dialogOptions, options);
       if (!selection || selection === 'Cancel') {
@@ -290,7 +289,7 @@ async function getworkspaceFolder(): Promise<vscode.WorkspaceFolder | undefined>
   }
   const selection = await vscode.window.showWorkspaceFolderPick();
   if (!selection) {
-    vscode.window.showErrorMessage("Cannot find the working directory!", { modal: true });
+    vscode.window.showErrorMessage("Cannot find the working directory.", { modal: true });
     vscode.window.showInformationMessage("Please add one or more working directories and try again.");
     return undefined; // for unit tests
   }
