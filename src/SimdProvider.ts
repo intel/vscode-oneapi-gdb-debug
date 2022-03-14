@@ -9,10 +9,16 @@
 import * as vscode from 'vscode';
 import { DebugProtocol } from 'vscode-debugprotocol';
 
+interface ThreadInfo {
+    index: number;
+    threadId: number; 
+    name: string;
+}
 
 export class SimdProvider {
 
     private view: SimdViewProvider;
+    private threadsInfoArray: ThreadInfo[] = [];
 
     constructor(
         private context: vscode.ExtensionContext
@@ -41,6 +47,14 @@ export class SimdProvider {
             console.log(e);
         }));
     }
+
+    set threadsInfo(value: ThreadInfo[]){
+        this.threadsInfoArray = value;
+      }
+      
+      get threadsInfo():ThreadInfo[]{
+         return this.threadsInfoArray;
+      }
 
     public updateWithSimdData(s: SimdStatusData): void {
 
@@ -74,11 +88,13 @@ export class SimdProvider {
             const r = await session.customRequest("threads");
 
             const threads = r.threads as DebugProtocol.Thread[];
-
+          
+            await session.customRequest('evaluate', {expression: '-exec info threads', context: 'repl'});
+            
             const masks: emask[] = []; //optimise?
+            let i = 0;
 
             for (const t of threads) {
-
                 const strarg: DebugProtocol.StackTraceArguments = { threadId: t.id };
                 const sTrace = await session.customRequest('stackTrace', strarg);
                 let evalargs: DebugProtocol.EvaluateArguments = { expression: "$emask", context: "repl", frameId: sTrace.stackFrames[0].id, format: {hex: true}};
@@ -103,8 +119,9 @@ export class SimdProvider {
                     tid = parseInt(evalresult.result);
                 }
 
-                masks.push({name: t.name, threadId: tid, value: maskvar, length: maskLength});
+                masks.push({name: this.threadsInfoArray[i]?.name || t.name, threadId: tid, value: maskvar, length: maskLength});
 
+                i++;
             }
             if (!masks.length) {
                 return; //exit, no simd detected
@@ -163,6 +180,7 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
             const e = m as DebugProtocol.Event;
             switch (e.event) {
                 case "stopped": {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     const stopped = e as DebugProtocol.StoppedEvent;
                     this.simdtracker.fetchEMaskForAll();
                 }

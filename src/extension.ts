@@ -20,7 +20,7 @@ function checkExtensionsConflict() {
         if (deprecatedExtension) {
             const Update = 'Update';
             const deprExtName = deprecatedExtension.packageJSON.displayName;
-            vscode.window.showInformationMessage(`${deprExtName} is an deprecated version! This may lead to the unavailability of overlapping functions.`, Update, 'Ignore')
+            vscode.window.showInformationMessage(`${deprExtName} is a deprecated version. This may lead to the unavailability of overlapping functions.`, Update, 'Ignore')
                 .then((selection) => {
                     if (selection === Update) {
                         vscode.commands.executeCommand('workbench.extensions.uninstallExtension', deprecatedExtension.id).then(function () {
@@ -36,7 +36,7 @@ function checkExtensionsConflict() {
                                             }
                                         });
                                 } else {
-                                    vscode.window.showErrorMessage(`Extension could not be installed!`);
+                                    vscode.window.showErrorMessage(`Extension could not be installed.`);
                                 }
                             });
                         });
@@ -75,6 +75,44 @@ export function activate(context: vscode.ExtensionContext): void {
             DebuggerCommandsPanel.createOrShow(context.extensionUri);
         })
     );
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const session = vscode.debug.activeDebugSession;
+    vscode.debug.registerDebugAdapterTrackerFactory('*', {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            createDebugAdapterTracker(session) {
+              return {
+                onDidSendMessage: m => {
+                    if(JSON.stringify(m, undefined, 2).indexOf('Target Id') !== -1){
+                        const body = m.body.output;
+                        const threadsNumber = (body).match(/[+-]?([0-9]*[.])?[0-9]:\[[0-9]-[0-9]]/g);
+                        const threadsResult = [];
+                        for (const prop in threadsNumber) {
+                            let second;
+                            if(+prop === threadsNumber.length-1) {
+                                second = body.length;
+                            } else {
+                                second = body.indexOf(threadsNumber[+prop+1]);
+                            }
+                            const first = body.indexOf(threadsNumber[prop]);
+                            const threadInfo = body.substring(first, second);
+                            const nameTemplate = threadInfo.match(/(?<=Thread)(.*)(?=main::)/g)?.[0];
+                            const firstQuotes = nameTemplate.indexOf('"');
+                            const lastQuotes = nameTemplate.lastIndexOf('"');
+                            const name = ( firstQuotes !== -1 && lastQuotes !== -1 ) ? nameTemplate.substring(firstQuotes + 1, lastQuotes) : '';
+
+                            threadsResult.push({
+                                index: +prop,
+                                threadId: +threadsNumber[prop],
+                                name
+                            });
+                        }
+                        simd.threadsInfo = threadsResult;
+                    }
+                }
+              };
+            }
+          });
 
     if (vscode.window.registerWebviewPanelSerializer) {
         // Make sure we register a serializer in activation event
