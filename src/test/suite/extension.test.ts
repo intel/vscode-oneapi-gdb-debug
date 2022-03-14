@@ -1,10 +1,11 @@
 import * as assert from 'assert';
+import { after } from 'mocha';
+
 import * as vscode from 'vscode';
 import * as intellauncher from '../../extension';
 
-suite('Extension Test Suite', async () => {
-	vscode.window.showInformationMessage('Start all tests.');
-	await vscode.extensions.getExtension("intel-corporation.analysis-tools-launcher");
+suite('Extension Test Suite', () => {
+    vscode.window.showInformationMessage('Extension test started!');
 
 	test('Sample test', () => {
 		assert.equal([1, 2, 3].indexOf(5), -1);
