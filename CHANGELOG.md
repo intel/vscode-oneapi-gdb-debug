@@ -1,4 +1,13 @@
 # Change Log
+
+##  0.1.6
+
+- Updated test dependencies
+
+- Added ability to see updated threads' names in SIMD-lane panel while debugging
+
+- Updated info and error messages
+
 ##  0.1.4
 
 - Added help page for debugger commands
