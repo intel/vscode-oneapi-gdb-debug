@@ -33,7 +33,7 @@ More information about all the `launch.json` features can be found on page [Conf
 
 ## SIMD View
 This extension provides a view in the debug view that displays the SIMD lane state of a Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
-You can edit thread name during debug process by fillowing this steps:
+You can edit thread name during debug process by following these steps:
 1. Make sure that you can see SIMD LANES while debugging
 2. Open Debug Console
 3. Choose needed thread using this command '-exec thread THREADID'
