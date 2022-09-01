@@ -4,10 +4,10 @@
  *
  * SPDX-License-Identifier: MIT
  */
-'use strict';
-import * as vscode from 'vscode';
-import * as fs from 'fs';
-import * as path from 'path';
+"use strict";
+import * as vscode from "vscode";
+import * as fs from "fs";
+import * as path from "path";
 
 
 export function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions {
@@ -16,18 +16,18 @@ export function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptio
         enableScripts: true,
 
         // And restrict the webview to only loading content from our extension's `media/userHelp` directory.
-        localResourceRoots: [vscode.Uri.joinPath(extensionUri, 'media', 'userHelp')]
+        localResourceRoots: [vscode.Uri.joinPath(extensionUri, "media", "userHelp")]
     };
 }
 
 export class UserHelp {
-    private gdbOneapiDocumentationLink = 'https://software.intel.com/gdb-oneapi-documentation';
+    private gdbOneapiDocumentationLink = "https://software.intel.com/gdb-oneapi-documentation";
 
     openOnlineDocumentation(): void {
         vscode.window
-            .showInformationMessage('Open online documentation', 'Open')
+            .showInformationMessage("Open online documentation", "Open")
             .then(selection => {
-                if (selection === 'Open') {
+                if (selection === "Open") {
                     vscode.env.openExternal(vscode.Uri.parse(this.gdbOneapiDocumentationLink));
                 }
             });
@@ -66,19 +66,18 @@ type SimpleDescription = {
 };
 export class DebuggerCommandsPanel {
     public static currentPanel: DebuggerCommandsPanel | undefined;
-    public static readonly viewType = 'debuggerCommands';
+    public static readonly viewType = "debuggerCommands";
     private readonly _panel: vscode.WebviewPanel;
     private readonly _extensionUri: vscode.Uri;
     private _disposables: vscode.Disposable[] = [];
-    userHelpJSONFile = fs.readFileSync(path.join(__dirname, '..', 'media', 'userHelp', 'content.json'), 'utf8');
+    userHelpJSONFile = fs.readFileSync(path.join(__dirname, "..", "media", "userHelp", "content.json"), "utf8");
     userHelp: UserHelpData = JSON.parse(this.userHelpJSONFile);
 
     public static createOrShow(extensionUri: vscode.Uri): void {
         const column = vscode.window.activeTextEditor
             ? vscode.window.activeTextEditor.viewColumn
-            : undefined;
+            : undefined; // If we already have a panel, show it.
 
-        // If we already have a panel, show it.
         if (DebuggerCommandsPanel.currentPanel) {
             DebuggerCommandsPanel.currentPanel._panel.reveal(column);
             return;
@@ -87,7 +86,7 @@ export class DebuggerCommandsPanel {
         // Otherwise, create a new panel.
         const panel = vscode.window.createWebviewPanel(
             DebuggerCommandsPanel.viewType,
-            'Debugger Commands',
+            "Debugger Commands",
             column || vscode.ViewColumn.One,
             getWebviewOptions(extensionUri),
         );
@@ -126,9 +125,9 @@ export class DebuggerCommandsPanel {
         this._panel.webview.onDidReceiveMessage(
             message => {
                 switch (message.command) {
-                    case 'alert':
-                        vscode.window.showErrorMessage(message.text);
-                        return;
+                case "alert":
+                    vscode.window.showErrorMessage(message.text);
+                    return;
                 }
             },
             null,
@@ -144,6 +143,7 @@ export class DebuggerCommandsPanel {
 
         while (this._disposables.length) {
             const x = this._disposables.pop();
+
             if (x) {
                 x.dispose();
             }
@@ -152,36 +152,41 @@ export class DebuggerCommandsPanel {
 
     private _update() {
         const webview = this._panel.webview;
+
         this._panel.webview.html = this._getHtmlForWebview(webview);
     }
 
     listPoints(list: Array<string>): string {
-        let htmlList = '<ul class="pointed-list">';
+        let htmlList = "<ul class=\"pointed-list\">";
+
         for (const i in list) {
             htmlList += `<li>${list[i]}</li>`;
         }
-        htmlList += ('</ul>');
+        htmlList += ("</ul>");
         return htmlList;
     }
 
     getTable(content: Array<SimpleDescription>, cssClass: string): string {
-        let table = `<table class="${cssClass}">${cssClass.includes('small-table')
-            ? ''
-            : '<thead><tr><th>Command</th><th>Description</th></tr></thead>'
+        let table = `<table class="${cssClass}">${cssClass.includes("small-table")
+            ? ""
+            : "<thead><tr><th>Command</th><th>Description</th></tr></thead>"
         }<tbody>`;
-        const oneapiExtCssClass = 'oneapi-ext';
+        const oneapiExtCssClass = "oneapi-ext";
+
         for (const i in content) {
             const name = content[i].name
-                .replace(`<oneapiExt>`, `<span class='${oneapiExtCssClass}'>`)
-                .replace('</oneapiExt>', `</span>`);
-            table += `<tr><td>${cssClass.includes('numeric') ? `${(parseInt(i) + 1)}.</td><td>` : ''}${name.trim()}</td><td>${content[i]['description'] ? content[i].description : ''}</td></tr>`;
+                .replace("<oneapiExt>", `<span class='${oneapiExtCssClass}'>`)
+                .replace("</oneapiExt>", "</span>");
+
+            table += `<tr><td>${cssClass.includes("numeric") ? `${(parseInt(i) + 1)}.</td><td>` : ""}${name.trim()}</td><td>${content[i]["description"] ? content[i].description : ""}</td></tr>`;
         }
-        table += '</tbody></table>';
+        table += "</tbody></table>";
         return table;
     }
 
     listTablesWithTitles(content: Array<Chapter>): string {
-        let list = '';
+        let list = "";
+
         for (const entry of content) {
             list += `<p class="small-intro">${entry.name}</p>`;
             list += this.getTable(entry.commands, "small-table numeric");
@@ -191,13 +196,13 @@ export class DebuggerCommandsPanel {
 
     private _getHtmlForWebview(webview: vscode.Webview) {
         // Links to documentations
-        const oneapiCheatsheetLink = 'https://software.intel.com/gdb-oneapi-cheatsheet ';
-        const oneapiUserManualLink = 'https://software.intel.com/gdb-oneapi-manual ';
-        const oneapiDocumentationLink = 'https://software.intel.com/gdb-oneapi-documentation';
-        const gdbDocumentationLink = 'https://www.gnu.org/software/gdb/documentation/';
+        const oneapiCheatsheetLink = "https://software.intel.com/gdb-oneapi-cheatsheet ";
+        const oneapiUserManualLink = "https://software.intel.com/gdb-oneapi-manual ";
+        const oneapiDocumentationLink = "https://software.intel.com/gdb-oneapi-documentation";
+        const gdbDocumentationLink = "https://www.gnu.org/software/gdb/documentation/";
 
         // Local path to css styles
-        const styleMainPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'userHelp', 'style.css');
+        const styleMainPath = vscode.Uri.joinPath(this._extensionUri, "media", "userHelp", "style.css");
 
         // Uri to load styles into webview
         const styleMainUri = webview.asWebviewUri(styleMainPath);
@@ -225,7 +230,7 @@ export class DebuggerCommandsPanel {
                  <title>Usefull GDB-oneAPI Commands</title>
              </head>
              <body>
-                <div class="body-wrapper ${activeColorTheme===1 ? 'light-mode' : 'dark-mode'}">
+                <div class="body-wrapper ${activeColorTheme===1 ? "light-mode" : "dark-mode"}">
                     <div class="left-menu">
                         <div class="left-menu-positioning">
                             <div class="documentation-resources title">
@@ -255,7 +260,7 @@ export class DebuggerCommandsPanel {
                             <p class="intro">${this.userHelp.comparison.intro}</p>
                             ${this.getTable(this.userHelp.comparison.commands, "table")}
                             <p class="intro">${this.userHelp.oneapiNewCommands.intro}</p>
-                            <div class="oneapi-new-commands ${activeColorTheme===1 ? 'light-mode' : 'dark-mode'}">
+                            <div class="oneapi-new-commands ${activeColorTheme===1 ? "light-mode" : "dark-mode"}">
                                 ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
                             </div>
                         </div>
@@ -267,8 +272,9 @@ export class DebuggerCommandsPanel {
 }
 
 function getNonce() {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let text = "";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
     for (let i = 0; i < 32; i++) {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }

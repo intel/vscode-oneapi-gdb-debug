@@ -1,0 +1,30 @@
+table {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+  
+  .dot {
+    animation: blink 2s infinite;
+  }
+
+  .zero{
+    background-color:#F6F6F6;
+    min-width: 12px;
+    min-height: 12px;
+    width: 12px;
+    height: 12px;
+  }
+
+  .one{
+    background-color:#00ff0d;
+    min-width: 12px;
+    min-height: 12px;
+    width: 12px;
+    height: 12px;
+  }
