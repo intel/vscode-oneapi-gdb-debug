@@ -234,7 +234,7 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile",
         "test": "node ./out/test/runTest.js",
-        "lint": "eslint -c .eslintrc.js --ext .ts ./",
+        "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
         "package": "vsce package",
         "ui-test": "extest setup-and-run out/test/ui/*.js -m ./src/test/ui/configs/settings.json"
     },
@@ -260,6 +260,7 @@
         "url": "https://github.com/intel/vscode-oneapi-gdb-debug.git"
     },
     "dependencies": {
+        "@vscode/webview-ui-toolkit": "^1.0.0",
         "vscode-debugprotocol": "^1.51.0"
     }
 }
