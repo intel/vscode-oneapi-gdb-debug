@@ -75,7 +75,7 @@ export class SimdProvider {
  
             const threads = r.threads as DebugProtocol.Thread[];
  
-            await session.customRequest("evaluate", { expression: "-exec -threads-info", context: "repl" });
+            await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
  
             const masks: emask[] = []; //optimise?
             let i = 0;
