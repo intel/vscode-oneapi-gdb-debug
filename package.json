@@ -59,6 +59,11 @@
                     "id": "intelOneAPI.debug.simdview",
                     "type": "webview",
                     "name": "SIMD Lanes"
+                },
+                {
+                    "id": "intelOneAPI.debug.deviceView",
+                    "type": "webview",
+                    "name": "Hardware Info"
                 }
             ]
         },

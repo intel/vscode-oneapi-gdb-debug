@@ -8,6 +8,7 @@
 "use strict";
 import * as vscode from "vscode";
 import { DebugProtocol } from "vscode-debugprotocol";
+import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
  
  interface ThreadInfo {
@@ -22,7 +23,8 @@ export class SimdProvider {
  
     constructor(
           private context: vscode.ExtensionContext,
-          private viewProvider: SIMDViewProvider
+          private simdViewProvider: SIMDViewProvider,
+          private deviceViewProvider: DeviceViewProvider
     ) {
  
         context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this)));
@@ -37,7 +39,8 @@ export class SimdProvider {
         //We need to test if multi debug sessions get effected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
-            this.viewProvider.cleanView();
+            this.simdViewProvider.cleanView();
+            this.deviceViewProvider.cleanView();
         }));
  
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
@@ -78,11 +81,11 @@ export class SimdProvider {
  
             await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
  
-            const masks: emask[] = []; //optimise?
+            const masks: Emask[] = []; //optimise?
             let i = 0;
  
             for (const t of threads) {
-                this.viewProvider.setLoadingView();
+                this.simdViewProvider.setLoadingView();
                 const strarg: DebugProtocol.StackTraceArguments = { threadId: t.id };
                 const sTrace = await session.customRequest("stackTrace", strarg);
                 let evalargs: DebugProtocol.EvaluateArguments = { expression: "$emask", context: "repl", frameId: sTrace.stackFrames[0].id, format: { hex: true } };
@@ -117,7 +120,7 @@ export class SimdProvider {
                 return; //exit, no simd detected
             }
  
-            this.viewProvider.setView(masks);
+            this.simdViewProvider.setView(masks);
         }
     }
 
@@ -125,17 +128,28 @@ export class SimdProvider {
         const session = vscode.debug.activeDebugSession;
 
         if (session) {
-            const r = await session.customRequest("threads");
+            await session.customRequest("threads");
             const evalresult = await session.customRequest("evaluate", { expression: "-exec -device-info", context: "repl" });
 
             const devicesInfo = this.parseDeviceInfo(evalresult);
 
             if ( devicesInfo === undefined) {
+                this.deviceViewProvider.setErrorView();
                 return;
             }
-            const name = devicesInfo.devices[0].device_name;
-            const a = name;
+            
+            this.deviceViewProvider.setView(this.getDeviceNames(devicesInfo.devices));
         }
+    }
+
+    private getDeviceNames(devices: Device[]): SortedDevices {
+        const devicesByGroups: SortedDevices = {};
+
+        for (const device of devices){
+            devicesByGroups[device.thread_groups] ? devicesByGroups[device.thread_groups].push(device.device_name) 
+                : devicesByGroups[device.thread_groups] = [device.device_name];
+        }
+        return devicesByGroups;
     }
 
     public parseDeviceInfo(evalresult : any ): any | undefined {
@@ -182,25 +196,35 @@ export class SimdProvider {
                     if (deviseIndex !== devicesList.length - 1) {
                         devicesJSON += ", ";
                     }
-                    
                 }
 
                 devicesJSON += "]}";
-
             }
-
-
         }
+        
         if (devicesJSON !== "") {
-            const jsonObj = JSON.parse(devicesJSON);
+            try {
+                const jsonObj = JSON.parse(devicesJSON);
 
-            return jsonObj;
+                return jsonObj;
+            } catch(e) {
+                return undefined;
+            }
         }
         return undefined;
     }
+} 
+
+export interface Device {
+    device_name: string;
+    thread_groups: string;
+}
+
+export interface SortedDevices {
+    [key: string]: string[];
 }
  
-export interface emask {
+export interface Emask {
      name: string;
      threadId: number;
      value: number;

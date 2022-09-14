@@ -6,7 +6,7 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import { emask } from "../SimdProvider";
+import { Emask } from "../SimdProvider";
 
 enum ViewState{
     COLORS,
@@ -16,7 +16,7 @@ enum ViewState{
 export class SIMDViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.simdview";
     public _view!: WebviewView;
-    private _masks!: emask[];
+    private _masks!: Emask[];
 
     private htmlStart = "";
     private htmlEnd = "";
@@ -85,14 +85,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
         }
     }
 
-    public setView(masks: emask[]){
+    public setView(masks: Emask[]){
         const upd = this.getColorsView(masks);
 
         this._masks = masks;
         this._view.webview.html = this.htmlStart + upd + "<vscode-button id='change-view-button'>Change view</vscode-button>" + this.htmlEnd;
     }
 
-    private getColorsView(masks: emask[]){
+    private getColorsView(masks: Emask[]){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
 
         const reg0 = /0/gm;
@@ -108,7 +108,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return upd;
     }
 
-    private getNumbersView(masks: emask[]){
+    private getNumbersView(masks: Emask[]){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
 
         for (const m of masks) {

@@ -10,6 +10,7 @@ import { LaunchConfigurator } from "./LaunchConfigurator";
 import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from "./UserHelp";
 import { SimdProvider } from "./SimdProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
+import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 
 function checkExtensionsConflict() {
     // The function of generating a launcher configuration from an deprecated extension conflicts with the same function from the current one.
@@ -58,16 +59,24 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("The Windows and macOS operating systems are not currently supported by the \"GDB GPU Support for Intel® oneAPI Toolkits\" extension. Debugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft \"Remote\" extensions.");
     }
  
-    const provider = new SIMDViewProvider(context.extensionUri);
+    const simdViewProvider = new SIMDViewProvider(context.extensionUri);
     const simdViewDisposable = vscode.window.registerWebviewViewProvider(
         SIMDViewProvider.viewType,
-        provider
+        simdViewProvider
     );
  
     context.subscriptions.push(simdViewDisposable);
  
+    const deviceViewProvider = new DeviceViewProvider(context.extensionUri);
+    const deviceViewDisposable = vscode.window.registerWebviewViewProvider(
+        DeviceViewProvider.viewType,
+        deviceViewProvider
+    );
+ 
+    context.subscriptions.push(deviceViewDisposable);
+ 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const simd = new SimdProvider(context, provider);
+    const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider);
     // Register the commands that will interact with the user and write the launcher scripts.
  
     const launchConfigurator = new LaunchConfigurator();
