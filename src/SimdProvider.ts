@@ -29,6 +29,7 @@ export class SimdProvider {
  
         context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
             this.fetchEMaskForAll();
+            this.fetcDevicesForAll();
             return;
  
         }));
@@ -119,6 +120,84 @@ export class SimdProvider {
             this.viewProvider.setView(masks);
         }
     }
+
+    public async fetcDevicesForAll(): Promise<void> {
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            const r = await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec -device-info", context: "repl" });
+
+            const devicesInfo = this.parseDeviceInfo(evalresult);
+
+            if ( devicesInfo === undefined) {
+                return;
+            }
+            const name = devicesInfo.devices[0].device_name;
+            const a = name;
+        }
+    }
+
+    public parseDeviceInfo(evalresult : any ): any | undefined {
+
+        if (evalresult.result === "void") {
+            return undefined;
+        }
+
+        const deviseList: string = evalresult.result;
+        const parsedDeviseList = deviseList.split("\r\n");
+
+        if (parsedDeviseList === undefined || parsedDeviseList.length <= 2) {
+            return undefined;
+        }
+
+        let devicesJSON = "";
+
+        for (const elem of parsedDeviseList) {
+            const elemJSON: string[] = elem.split(": ");
+
+            if (elemJSON[0] === "devices") {
+                devicesJSON = "{\"" + elemJSON[0] + "\"" + ":" + "[";
+
+                const devicesList = elemJSON[1].split(/{([^}]+)}/g).slice(1, -1);
+
+                for (const { deviseIndex, device } of devicesList.map((device, deviseIndex) => ({ deviseIndex, device }))) {
+                    devicesJSON += "{";
+
+                    const property = device.split(",");
+                    let jsonField;
+
+                    for (const { itemIndex, item } of property.map((item, itemIndex) => ({ itemIndex, item }))) {
+                        const field = item.split("=");
+
+                        jsonField = "\"" + field[0].replace("-","_") + "\"" + ":" + "\"" + field[1] + "\"";
+                        devicesJSON += jsonField;
+                        if (itemIndex !== property.length - 1) {
+                            devicesJSON += ", ";
+                        }
+                    }
+
+                    devicesJSON += "}";
+
+                    if (deviseIndex !== devicesList.length - 1) {
+                        devicesJSON += ", ";
+                    }
+                    
+                }
+
+                devicesJSON += "]}";
+
+            }
+
+
+        }
+        if (devicesJSON !== "") {
+            const jsonObj = JSON.parse(devicesJSON);
+
+            return jsonObj;
+        }
+        return undefined;
+    }
 }
  
 export interface emask {
@@ -159,6 +238,7 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
                 const stopped = e as DebugProtocol.StoppedEvent;
  
                 this.simdtracker.fetchEMaskForAll();
+                this.simdtracker.fetcDevicesForAll();
             }}}
         return;
     }}
