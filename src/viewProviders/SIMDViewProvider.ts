@@ -99,7 +99,9 @@ export class SIMDViewProvider implements WebviewViewProvider {
         const reg1 = /1/gm;
 
         for (const m of masks) {
-            const newSimdRow = m.value.toString(2).padStart(m.length, "0").replace(reg0,"<td class ='zero'></td>").replace(reg1,"<td class ='one'></td>");
+            const binSimdRow = m.value.toString(2);
+            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split('').reverse().join('');
+            const newSimdRow = reverseBinSimdRow.padStart(m.length, "0").replace(reg0,"<td class ='zero'></td>").replace(reg1,"<td class ='one'></td>");
 
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${newSimdRow}</tr></table></td></tr>`;
         }
@@ -112,7 +114,9 @@ export class SIMDViewProvider implements WebviewViewProvider {
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
 
         for (const m of masks) {
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><code>${m.value.toString(2).padStart(m.length, "0")}</code></td></tr>`;
+            const binSimdRow = m.value.toString(2);
+            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split('').reverse().join('');
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><code>${reverseBinSimdRow}</code></td></tr>`;
         }
         upd = upd + "</tbody></table>";
         return upd;

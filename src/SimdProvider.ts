@@ -42,7 +42,7 @@ export class SimdProvider {
             this.simdViewProvider.cleanView();
             this.deviceViewProvider.cleanView();
         }));
- 
+        
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
             console.log(e);
         }));
@@ -55,22 +55,6 @@ export class SimdProvider {
         return this.threadsInfoArray;
     }
  
-    private matchIeMasktoSIMD(i: string): number {
-        switch (i.toLowerCase()) {
-        case "0xff": {
-            return 8;
-        }
-        case "0xffff": {
-            return 16;
-        }
-        case "0xffffffff": {
-            return 32;
-        }
-        }
-        //Did not match against known types
-        return 0;
-    }
- 
     public async fetchEMaskForAll(): Promise<void> {
         const session = vscode.debug.activeDebugSession;
  
@@ -79,43 +63,87 @@ export class SimdProvider {
  
             const threads = r.threads as DebugProtocol.Thread[];
  
-            await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
- 
-            const masks: Emask[] = []; //optimise?
-            let i = 0;
- 
-            for (const t of threads) {
-                this.simdViewProvider.setLoadingView();
-                const strarg: DebugProtocol.StackTraceArguments = { threadId: t.id };
-                const sTrace = await session.customRequest("stackTrace", strarg);
-                let evalargs: DebugProtocol.EvaluateArguments = { expression: "$emask", context: "repl", frameId: sTrace.stackFrames[0].id, format: { hex: true } };
-                let evalresult = await session.customRequest("evaluate", evalargs);
- 
-                if (evalresult.result === "void" ) {
-                    continue; //Filter Threads without EMASK
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
+            if (evalresult.result === 'void') {
+                return;
+            }
+
+            const masks: Emask[] = []; // optimise?
+            let simd_with: number = 0;
+            let execution_mask : number = 0;
+            let hit_lane_mask : number = 0;
+            let target_id : string = "";
+            let thread_id: number = 0;
+            let i: number = 0;
+
+            // If there are no GPU threads
+            if (false === evalresult.result.includes(("arch=intelgt"))) {
+                return;
+            }
+            
+            // Roughly divide the string by threads
+            const rougeThreads = evalresult.result.split("{id=");
+            
+            for (const t of rougeThreads) {
+                // Process only GPU threads
+                if (false === t.includes(("arch=intelgt"))) {
+                    continue;
                 }
-                const maskvar = parseInt(evalresult.result, 16);
- 
-                evalargs = { expression: "$iemask", context: "repl", frameId: sTrace.stackFrames[0].id,format: { hex: true } };
-                evalresult = await session.customRequest("evaluate", evalargs);
-                let maskLength = 0;
- 
-                if (evalresult.result !== "void" ) {
-                    maskLength = this.matchIeMasktoSIMD(evalresult.result as string);
+
+                // Find thread with hit-lanes-mask
+                if (true === t.includes(("hit-lanes-mask"))) {
+                    const property = t.split(",");
+                    for (const item of property)
+                    {
+                        const pair = item.split("=");
+                        if(pair[0] === "hit-lanes-mask") {
+                            hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                        }
+                    }
                 }
- 
-                evalargs = { expression: "$_thread", context: "repl", frameId: sTrace.stackFrames[0].id };
-                evalresult = await session.customRequest("evaluate", evalargs);
-                let tid = 0;
- 
-                if (evalresult.result !== "void" ) {
-                    tid = parseInt(evalresult.result);
+
+                // Find thread with execution_mask
+                if (true === t.includes(("execution-mask"))) {
+                    const property = t.split(",");
+                    for (const item of property)
+                    {
+                        const pair = item.split("=");
+                        if(pair[0] === "execution-mask") {
+                            execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                        }
+                    }
                 }
- 
-                masks.push({ name: this.threadsInfoArray[i]?.name || t.name, threadId: tid, value: maskvar, length: maskLength });
- 
+
+                // Find thread with simd_with
+                if (true === t.includes(("simd-width"))) {
+                    const property = t.split(",");
+                    thread_id = property[0];
+                    for (const item of property)
+                    {
+                        const pair = item.split("=");
+                        if(pair[0] === "simd-width") {
+                            simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                        }
+                    }
+                }
+
+                // Find thread name
+                if (true === t.includes(("target-id"))) {
+                    const property = t.split(",");
+                    for (const item of property)
+                    {
+                        const pair = item.split("=");
+                        if(pair[0] === "target-id") {
+                            target_id = pair[1];
+                        }
+                    }
+                }
+
+                masks.push({ name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, value: execution_mask, length: simd_with });
                 i++;
             }
+ 
+ 
             if (!masks.length) {
                 return; //exit, no simd detected
             }
@@ -260,7 +288,7 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
             case "stopped": {
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 const stopped = e as DebugProtocol.StoppedEvent;
- 
+
                 this.simdtracker.fetchEMaskForAll();
                 this.simdtracker.fetcDevicesForAll();
             }}}
