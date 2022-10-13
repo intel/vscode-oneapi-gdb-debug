@@ -64,17 +64,18 @@ export class SimdProvider {
             const threads = r.threads as DebugProtocol.Thread[];
  
             const evalresult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
-            if (evalresult.result === 'void') {
+
+            if (evalresult.result === "void") {
                 return;
             }
 
             const masks: Emask[] = []; // optimise?
-            let simd_with: number = 0;
-            let execution_mask : number = 0;
-            let hit_lane_mask : number = 0;
-            let target_id : string = "";
-            let thread_id: number = 0;
-            let i: number = 0;
+            let simd_with = 0;
+            let execution_mask  = 0;
+            let hit_lane_mask  = 0;
+            let target_id  = "";
+            let thread_id = 0;
+            let i = 0;
 
             // If there are no GPU threads
             if (false === evalresult.result.includes(("arch=intelgt"))) {
@@ -86,43 +87,49 @@ export class SimdProvider {
             
             for (const t of rougeThreads) {
                 // Process only GPU threads
-                if (false === t.includes(("arch=intelgt"))) {
+                if (!t.includes(("arch=intelgt"))) {
                     continue;
                 }
 
                 // Find thread with hit-lanes-mask
-                if (true === t.includes(("hit-lanes-mask"))) {
+                if (t.includes(("hit-lanes-mask"))) {
                     const property = t.split(",");
+
                     for (const item of property)
                     {
                         const pair = item.split("=");
+
                         if(pair[0] === "hit-lanes-mask") {
-                            hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                            hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
                         }
                     }
                 }
 
                 // Find thread with execution_mask
-                if (true === t.includes(("execution-mask"))) {
+                if (t.includes(("execution-mask"))) {
                     const property = t.split(",");
+
                     for (const item of property)
                     {
                         const pair = item.split("=");
+
                         if(pair[0] === "execution-mask") {
-                            execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                            execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
                         }
                     }
                 }
 
                 // Find thread with simd_with
-                if (true === t.includes(("simd-width"))) {
+                if (t.includes(("simd-width"))) {
                     const property = t.split(",");
+
                     thread_id = property[0];
                     for (const item of property)
                     {
                         const pair = item.split("=");
+
                         if(pair[0] === "simd-width") {
-                            simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16)
+                            simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
                         }
                     }
                 }
@@ -130,9 +137,11 @@ export class SimdProvider {
                 // Find thread name
                 if (true === t.includes(("target-id"))) {
                     const property = t.split(",");
+
                     for (const item of property)
                     {
                         const pair = item.split("=");
+
                         if(pair[0] === "target-id") {
                             target_id = pair[1];
                         }

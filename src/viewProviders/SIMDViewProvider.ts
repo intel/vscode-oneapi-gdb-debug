@@ -24,10 +24,6 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     constructor(private readonly _extensionUri: Uri) {}
 
-    getUri(webview: Webview, extensionUri: Uri, pathList: string[]) {
-        return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
-    }
-
     public resolveWebviewView(
         webviewView: WebviewView,
         context: WebviewViewResolveContext,
@@ -38,45 +34,60 @@ export class SIMDViewProvider implements WebviewViewProvider {
         // Allow scripts in the webview
         webviewView.webview.options = {
             enableScripts: true,
+
+            localResourceRoots: [
+                this._extensionUri
+            ]
         };
 
-        // Set the HTML content that will fill the webview view
-        this.setInitialPageContent(webviewView.webview, this._extensionUri);
-
         this._setWebviewMessageListener(webviewView);
+        this.setInitialPageContent(webviewView.webview, this._extensionUri);
     }
 
     private setInitialPageContent(webview: Webview, extensionUri: Uri){
-        const toolkitUri = this.getUri(webview, extensionUri, [
+        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
+
+        const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
+        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.css"));
+
+        // Use a nonce to only allow a specific script to be run.
+        const nonce = getNonce();
+
+        const toolkitUri = this.getUri(webview, this._extensionUri, [
             "node_modules",
             "@vscode",
             "webview-ui-toolkit",
             "dist",
             "toolkit.js",
         ]);
-        const stylesUri = this.getUri(webview, extensionUri, ["src", "webview-ui", "styles.css"]);
-        const mainUri = this.getUri(webview, extensionUri, ["src", "webview-ui", "main.js"]);
 
         this.htmlStart = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script type="module" src="${toolkitUri}"></script>
-          <script type="module" src="${mainUri}"></script>
-          <link rel="stylesheet" href="${stylesUri}">
-          <title>SIMD Lanes</title>
+            <meta charset="UTF-8">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+            <link href="${styleVSCodeUri}" rel="stylesheet">
+            <link href="${styleMainUri}" rel="stylesheet
+
+            <script type="module" src="${toolkitUri}"></script>
+            <title>SIMD Lanes</title>
         </head>
         <body>`;
 
-        this.htmlEnd = "</body></html>";
+        this.htmlEnd = `
+            <button id='change-view-button'>Change view</button>
+            <script nonce="${nonce}" src="${scriptUri}"></script>
+        </body>
+        </html>`;
     }
 
     public cleanView(){
         this._view.webview.html = "";
     }
-
+    
     public setLoadingView(){
         if (this._view.webview.html){
             this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
@@ -85,25 +96,32 @@ export class SIMDViewProvider implements WebviewViewProvider {
         }
     }
 
+    getUri(webview: Webview, extensionUri: Uri, pathList: string[]) {
+        return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
+    }
+
     public setView(masks: Emask[]){
         const upd = this.getColorsView(masks);
 
         this._masks = masks;
-        this._view.webview.html = this.htmlStart + upd + "<vscode-button id='change-view-button'>Change view</vscode-button>" + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
     }
 
     private getColorsView(masks: Emask[]){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
 
-        const reg0 = /0/gm;
-        const reg1 = /1/gm;
-
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
-            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split('').reverse().join('');
-            const newSimdRow = reverseBinSimdRow.padStart(m.length, "0").replace(reg0,"<td class ='zero'></td>").replace(reg1,"<td class ='one'></td>");
+            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
+            const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
+            const tableString = newSimdRow.split("").map((value: any, index)=> {
+                const id = `${index}+${m.name}`;
+                const coloredCell = `<td id='${id}' class ='cell one'></td>`;
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${newSimdRow}</tr></table></td></tr>`;
+                return value === "0" ? `<td id='${id}' class ='cell zero'></td>`: coloredCell;
+            });
+
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${tableString.join("")}</tr></table></td></tr>`;
         }
         upd = upd + "</tbody></table>";
 
@@ -115,13 +133,13 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
-            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split('').reverse().join('');
+            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
+
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><code>${reverseBinSimdRow}</code></td></tr>`;
         }
         upd = upd + "</tbody></table>";
         return upd;
     }
-
 
     private _setWebviewMessageListener(webviewView: WebviewView) {
         webviewView.webview.onDidReceiveMessage((message) => {
@@ -143,4 +161,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
             }
         });
     }
+}
+
+function getNonce() {
+    let text = "";
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
 }
