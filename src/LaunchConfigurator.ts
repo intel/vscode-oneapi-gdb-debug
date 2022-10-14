@@ -220,7 +220,8 @@ export class LaunchConfigurator {
         return false;
     }
  
-    private async checkLaunchItem(listItems: { label: string }[], newItem: { label: string; name: string }): Promise<boolean> {
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+    private async checkLaunchItem(listItems: { label: string }[], newItem: any): Promise<boolean> {
         if (listItems.length === 0) {
             return true; // for tests
         }
