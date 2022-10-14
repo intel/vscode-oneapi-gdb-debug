@@ -7,6 +7,9 @@
 
 "use strict";
 import * as vscode from "vscode";
+
+// import {  InvalidatedEvent } from 'vscode-debugadapter';
+// import { EventEmitter } from 'events'
 import { DebugProtocol } from "vscode-debugprotocol";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
@@ -20,15 +23,15 @@ import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
 export class SimdProvider {
  
     private threadsInfoArray: ThreadInfo[] = [];
- 
+
     constructor(
           private context: vscode.ExtensionContext,
           private simdViewProvider: SIMDViewProvider,
           private deviceViewProvider: DeviceViewProvider
     ) {
- 
+
         context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this)));
- 
+
         context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
             this.fetchEMaskForAll();
             this.fetcDevicesForAll();
@@ -36,6 +39,16 @@ export class SimdProvider {
  
         }));
  
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.swithSIMDInfo", async() => {
+            const a = await this.getCurrentThread();
+
+            if (!a) {
+                return;
+            }
+            await this.swithSIMDLane(a[0]);
+            return;
+        }));
+
         //We need to test if multi debug sessions get effected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
@@ -46,6 +59,7 @@ export class SimdProvider {
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
             console.log(e);
         }));
+        
     }
     set threadsInfo(value: ThreadInfo[]){
         this.threadsInfoArray = value;
@@ -59,10 +73,7 @@ export class SimdProvider {
         const session = vscode.debug.activeDebugSession;
  
         if (session) {
-            const r = await session.customRequest("threads");
- 
-            const threads = r.threads as DebugProtocol.Thread[];
- 
+            await session.customRequest("threads");
             const evalresult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
 
             if (evalresult.result === "void") {
@@ -72,13 +83,13 @@ export class SimdProvider {
             const masks: Emask[] = []; // optimise?
             let simd_with = 0;
             let execution_mask  = 0;
-            let hit_lane_mask  = 0;
+            // let hit_lane_mask  = 0;
             let target_id  = "";
             let thread_id = 0;
             let i = 0;
 
             // If there are no GPU threads
-            if (false === evalresult.result.includes(("arch=intelgt"))) {
+            if (!evalresult.result.includes(("arch=intelgt"))) {
                 return;
             }
             
@@ -92,18 +103,18 @@ export class SimdProvider {
                 }
 
                 // Find thread with hit-lanes-mask
-                if (t.includes(("hit-lanes-mask"))) {
-                    const property = t.split(",");
+                // if (t.includes(("hit-lanes-mask"))) {
+                //     const property = t.split(",");
 
-                    for (const item of property)
-                    {
-                        const pair = item.split("=");
+                //     for (const item of property)
+                //     {
+                //         const pair = item.split("=");
 
-                        if(pair[0] === "hit-lanes-mask") {
-                            hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                        }
-                    }
-                }
+                //         if(pair[0] === "hit-lanes-mask") {
+                //             hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                //         }
+                //     }
+                // }
 
                 // Find thread with execution_mask
                 if (t.includes(("execution-mask"))) {
@@ -135,7 +146,7 @@ export class SimdProvider {
                 }
 
                 // Find thread name
-                if (true === t.includes(("target-id"))) {
+                if (t.includes(("target-id"))) {
                     const property = t.split(",");
 
                     for (const item of property)
@@ -183,13 +194,16 @@ export class SimdProvider {
         const devicesByGroups: SortedDevices = {};
 
         for (const device of devices){
-            devicesByGroups[device.thread_groups] ? devicesByGroups[device.thread_groups].push(device.device_name) 
-                : devicesByGroups[device.thread_groups] = [device.device_name];
+            if(devicesByGroups[device.thread_groups]){
+                devicesByGroups[device.thread_groups].push(device.device_name);
+            } else {
+                devicesByGroups[device.thread_groups] = [device.device_name];
+            }
         }
         return devicesByGroups;
     }
 
-    public parseDeviceInfo(evalresult : any ): any | undefined {
+    public parseDeviceInfo(evalresult : {result: string} ): {devices:Device[]} | undefined {
 
         if (evalresult.result === "void") {
             return undefined;
@@ -198,7 +212,7 @@ export class SimdProvider {
         const deviseList: string = evalresult.result;
         const parsedDeviseList = deviseList.split("\r\n");
 
-        if (parsedDeviseList === undefined || parsedDeviseList.length <= 2) {
+        if (!parsedDeviseList || parsedDeviseList.length <= 2) {
             return undefined;
         }
 
@@ -249,6 +263,48 @@ export class SimdProvider {
             }
         }
         return undefined;
+    }
+
+    public async getCurrentThread(): Promise<string[] | undefined> {
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
+            
+            if (evalresult.result === "void") {
+                return undefined;
+            }
+
+            const threadInfo = evalresult.result.replace(/[({})]/g, "").split(" ");
+
+            return [threadInfo[3],threadInfo[5]];
+        }
+        return undefined;
+    }
+
+    public async swithSIMDLane(oldSimdLane : string | undefined): Promise<void> {
+        if (!oldSimdLane) {
+            return;
+        }
+
+        const newSimdLane = await vscode.window.showInputBox({
+            placeHolder: oldSimdLane,
+            title: "Type new SIMD lane"
+        });
+
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread "+ newSimdLane, context: "repl" });
+            
+            if (evalresult.result === "void") {
+                return;
+            }
+            // this.sendEvent(new InvalidatedEvent( ['variables'] )); 
+        }
+        return;
     }
 } 
 
@@ -303,11 +359,4 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
             }}}
         return;
     }}
- 
-class SimdStatusData {
-    constructor(
-         public readonly activeLane: string,
-         public readonly otherLanes: string[],
-    ) { }
-}
  

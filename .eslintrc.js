@@ -47,6 +47,6 @@ module.exports = {
         "for-direction": "off",
         "newline-after-var": ["error", "always"],
         "object-curly-spacing": ["error", "always"],
-        "space-before-function-paren": ["error", "never"],
+        "space-before-function-paren": ["error", "never"]
     }
 };

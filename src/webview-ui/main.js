@@ -1,5 +1,4 @@
-(function () {
- // Get access to the VS Code API from within the webview context
+// Get access to the VS Code API from within the webview context
 const vscode = acquireVsCodeApi();
 
 // Just like a regular webpage we need to wait for the webview
@@ -63,13 +62,11 @@ function displayNewData(newLanes) {
 }
 
 function updateLane(id, previousLaneId, viewType) {
-    if (previousLaneId !== id) {
     const nextLane = document.getElementById(id);
 
     nextLane.innerHTML = '<span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span>';
     if (previousLaneId) {
         const previousLane = document.getElementById(previousLaneId);
         previousLane.innerHTML = viewType == ViewState.COLORS ? '' : '1';
-    }}
+    }
 }
-}());

@@ -1,5 +1,6 @@
 import {
     CancellationToken,
+    debug,
     Uri,
     Webview,
     WebviewView,
@@ -22,13 +23,12 @@ export class SIMDViewProvider implements WebviewViewProvider {
     private htmlEnd = "";
     private viewState = ViewState.COLORS;
 
+    private chosenLaneId?: string;
+
     constructor(private readonly _extensionUri: Uri) {}
 
-    public resolveWebviewView(
-        webviewView: WebviewView,
-        context: WebviewViewResolveContext,
-        _token: CancellationToken
-    ) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
         this._view = webviewView;
 
         // Allow scripts in the webview
@@ -40,11 +40,11 @@ export class SIMDViewProvider implements WebviewViewProvider {
             ]
         };
 
-        this._setWebviewMessageListener(webviewView);
-        this.setInitialPageContent(webviewView.webview, this._extensionUri);
+        await this._setWebviewMessageListener(webviewView);
+        this.setInitialPageContent(webviewView.webview);
     }
 
-    private setInitialPageContent(webview: Webview, extensionUri: Uri){
+    private setInitialPageContent(webview: Webview){
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
 
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
@@ -101,7 +101,9 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     public setView(masks: Emask[]){
-        const upd = this.getColorsView(masks);
+        this.chosenLaneId = undefined;
+        this.setLoadingView();
+        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks) : this.getColorsView(masks);
 
         this._masks = masks;
         this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
@@ -109,54 +111,89 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private getColorsView(masks: Emask[]){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
+        let i = 1;
 
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
-            const tableString = newSimdRow.split("").map((value: any, index)=> {
-                const id = `${index}+${m.name}`;
-                const coloredCell = `<td id='${id}' class ='cell one'></td>`;
+            const tableString = newSimdRow.split("").map((value: string, index)=> {
+                const id = `{"lane": ${index}, "threadId": ${i}}`;
+                let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
 
-                return value === "0" ? `<td id='${id}' class ='cell zero'></td>`: coloredCell;
+                if(this.chosenLaneId && this.chosenLaneId === id){
+                    coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span></td>`;
+                }
+
+                return +value === 0 ? `<td id='${id}' class ='cell'></td>`: coloredCell;
             });
 
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${tableString.join("")}</tr></table></td></tr>`;
+            i++;
         }
         upd = upd + "</tbody></table>";
-
         return upd;
     }
 
     private getNumbersView(masks: Emask[]){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
+        let i = 1;
 
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
-            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
+            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().map((value: string, index)=> {
+                const id = `{"lane": ${index}, "threadId": ${i}}`;
+                let oneCell = `<td id='${id}' class="cell lane one">1</td>`;
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><code>${reverseBinSimdRow}</code></td></tr>`;
+                if(this.chosenLaneId && this.chosenLaneId === id){
+                    oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span></td>`;
+                }
+                return +value === 0 ? "<td class=\"cell lane\">0</td>": oneCell;
+            }).join("");
+
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${reverseBinSimdRow}</tr></table></td></tr>`;
+            i++;
         }
         upd = upd + "</tbody></table>";
         return upd;
     }
 
-    private _setWebviewMessageListener(webviewView: WebviewView) {
-        webviewView.webview.onDidReceiveMessage((message) => {
+    public updateView(masks: Emask[]){
+        this.setLoadingView();
+        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks) : this.getColorsView(masks);
+
+        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
+    }
+
+    private async _setWebviewMessageListener(webviewView: WebviewView) {
+        webviewView.webview.onDidReceiveMessage(async(message : {command: string; payload: string}) => {
             const command = message.command;
 
             switch (command) {
             case "change":
                 {
-                    const upd = this.viewState === ViewState.COLORS ? this.getNumbersView(this._masks) : this.getColorsView(this._masks);
-
                     this.viewState = this.viewState === ViewState.COLORS ? ViewState.NUMBERS : ViewState.COLORS;
-                    webviewView.webview.postMessage({
-                        command: "change",
-                        payload: JSON.stringify({ newLanes: upd }),
-                    });
+                    this.updateView(this._masks);
                 }
+                break;
 
+            case "changeLane":
+                {
+                    // TODO: update real thread lane
+                    webviewView.webview.postMessage({
+                        command: "changeLane",
+                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this.viewState }),
+                    });
+                    this.chosenLaneId = message.payload;
+                    const parcedLane = JSON.parse(message.payload);
+                    
+                    const session = debug.activeDebugSession;
+                    const evalresult = await session?.customRequest("evaluate", { expression: `-exec thread ${parcedLane.threadId}:${parcedLane.lane}`, context: "repl" });
+
+                    if (evalresult?.result === "void") {
+                        return;
+                    }
+                }
                 break;
             }
         });

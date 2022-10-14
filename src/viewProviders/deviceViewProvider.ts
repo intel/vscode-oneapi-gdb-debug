@@ -21,11 +21,8 @@ export class DeviceViewProvider implements WebviewViewProvider {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
     }
 
-    public resolveWebviewView(
-        webviewView: WebviewView,
-        context: WebviewViewResolveContext,
-        _token: CancellationToken
-    ) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public async resolveWebviewView( webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
         this._view = webviewView;
 
         // Allow scripts in the webview

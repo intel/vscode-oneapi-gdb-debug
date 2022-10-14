@@ -220,14 +220,12 @@ export class LaunchConfigurator {
         return false;
     }
  
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private async checkLaunchItem(listItems: any, newItem: any): Promise<boolean> {
+    private async checkLaunchItem(listItems: { label: string }[], newItem: { label: string; name: string }): Promise<boolean> {
         if (listItems.length === 0) {
             return true; // for tests
         }
  
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const existItem = listItems.find((item: { label: any }) => item.label === newItem.label);
+        const existItem = listItems.find((item: { label: string }) => item.label === newItem.label);
         const dialogOptions: string[] = ["Cancel", "Rename configuration"];
  
         if (existItem) {

@@ -1,12 +1,13 @@
 body {
 	background-color: transparent;
+  text-align: center;
 }
 
 table {
-    text-align: center;
-    margin-left: auto;
-    margin-right: auto;
-  }
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
 
   @keyframes blink {
     0%, 100% { opacity: 0; }
@@ -17,26 +18,32 @@ table {
     animation: blink 2s infinite;
   }
 
-  .zero{
-    background-color:#F6F6F6;
-    min-width: 12px;
-    min-height: 12px;
-    width: 12px;
-    height: 12px;
+  .cell {
+    min-width: 16px;
+    min-height: 16px;
+    width: 16px;
+    height: 16px;
+    color: black;
+    background-color:#ffffff;
+    font-size: 12px;
   }
 
-  .one{
+  .cell:hover {
+      cursor: pointer;
+  }
+
+  .lane{
+    border: #757575;
+  }
+
+  .colored{
     background-color:#00ff0d;
-    min-width: 12px;
-    min-height: 12px;
-    width: 12px;
-    height: 12px;
   }
 
   #change-view-button{
     display: block;
     border: none;
-    margin: 0 auto;
-    margin-top: 10px;
+    margin: 10px auto;
+    padding: 5px 30px;
 }
   
