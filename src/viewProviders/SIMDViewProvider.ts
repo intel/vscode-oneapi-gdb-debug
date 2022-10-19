@@ -7,7 +7,7 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import { Emask } from "../SimdProvider";
+import { CurrentThread, Emask } from "../SimdProvider";
 
 enum ViewState{
     COLORS,
@@ -100,16 +100,16 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
     }
 
-    public setView(masks: Emask[]){
+    public setView(masks: Emask[], currentThread?: CurrentThread){
         this.chosenLaneId = undefined;
         this.setLoadingView();
-        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks) : this.getColorsView(masks);
+        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks, currentThread) : this.getColorsView(masks, currentThread);
 
         this._masks = masks;
         this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
     }
 
-    private getColorsView(masks: Emask[]){
+    private getColorsView(masks: Emask[], currentThread?: CurrentThread){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
         let i = 1;
 
@@ -117,6 +117,11 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const binSimdRow = m.value.toString(2);
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
+
+            if(currentThread?.name === m.name){
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}}`;
+            }
+
             const tableString = newSimdRow.split("").map((value: string, index)=> {
                 const id = `{"lane": ${index}, "threadId": ${i}}`;
                 let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
@@ -135,12 +140,17 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return upd;
     }
 
-    private getNumbersView(masks: Emask[]){
+    private getNumbersView(masks: Emask[], currentThread?: CurrentThread){
         let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
         let i = 1;
 
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
+            
+            if(currentThread?.name === m.name){
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}}`;
+            }
+
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().map((value: string, index)=> {
                 const id = `{"lane": ${index}, "threadId": ${i}}`;
                 let oneCell = `<td id='${id}' class="cell lane one">1</td>`;

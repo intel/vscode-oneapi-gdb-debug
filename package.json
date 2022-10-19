@@ -38,11 +38,6 @@
                 "icon": "$(zap)"
             },
             {
-                "command": "intelOneAPI.debug.swithSIMDInfo",
-                "title": "Intel oneAPI: Refresh SIMD Data",
-                "icon": "$(telescope)"
-            },
-            {
                 "command": "intelOneAPI.userHelp.displayDebuggerCommands",
                 "title": "Intel oneAPI: List gdb-oneapi debugger unique commands (help)"
             }
@@ -76,11 +71,6 @@
             "view/title": [
                 {
                     "command": "intelOneAPI.debug.fetchSIMDInfo",
-                    "when": "view == intelOneAPI.debug.simdview",
-                    "group": "navigation"
-                },
-                {
-                    "command": "intelOneAPI.debug.swithSIMDInfo",
                     "when": "view == intelOneAPI.debug.simdview",
                     "group": "navigation"
                 }

@@ -14,11 +14,16 @@ import { DebugProtocol } from "vscode-debugprotocol";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
  
- interface ThreadInfo {
-     index: number;
-     threadId: number;
-     name: string;
- }
+interface ThreadInfo {
+    index: number;
+    threadId: number;
+    name: string;
+}
+
+export interface CurrentThread {
+    name: string;
+    lane: number;
+}
  
 export class SimdProvider {
  
@@ -37,16 +42,6 @@ export class SimdProvider {
             this.fetcDevicesForAll();
             return;
  
-        }));
- 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.swithSIMDInfo", async() => {
-            const a = await this.getCurrentThread();
-
-            if (!a) {
-                return;
-            }
-            await this.swithSIMDLane(a[0]);
-            return;
         }));
 
         //We need to test if multi debug sessions get effected by this, we might need to initialize multiple instances of this object :/
@@ -167,8 +162,9 @@ export class SimdProvider {
             if (!masks.length) {
                 return; //exit, no simd detected
             }
- 
-            this.simdViewProvider.setView(masks);
+            const currentThread = await this.getCurrentThread();
+
+            this.simdViewProvider.setView(masks, currentThread);
         }
     }
 
@@ -265,7 +261,7 @@ export class SimdProvider {
         return undefined;
     }
 
-    public async getCurrentThread(): Promise<string[] | undefined> {
+    public async getCurrentThread(): Promise<CurrentThread | undefined> {
         const session = vscode.debug.activeDebugSession;
 
         if (session) {
@@ -278,7 +274,10 @@ export class SimdProvider {
 
             const threadInfo = evalresult.result.replace(/[({})]/g, "").split(" ");
 
-            return [threadInfo[3],threadInfo[5]];
+            return {
+                name: `${threadInfo[4]} ${threadInfo[5]}`,
+                lane: +threadInfo[7].replace(/[^0-9]/g, "")
+            };
         }
         return undefined;
     }
