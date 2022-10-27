@@ -1,12 +1,17 @@
 body {
 	background-color: transparent;
-  text-align: center;
+  text-align: left;
 }
 
 table {
-  text-align: center;
-  margin-left: auto;
-  margin-right: auto;
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  color: #1e1e1e;
+  background:#d3d3d3;
 }
 
   @keyframes blink {
@@ -24,7 +29,7 @@ table {
     width: 16px;
     height: 16px;
     color: black;
-    background-color:#ffffff;
+    background-color:#d3d3d3;
     font-size: 12px;
   }
 
@@ -37,11 +42,11 @@ table {
   }
 
   .colored{
-    background-color:#00ff0d;
+    background-color:#4682b4;
+    color: #ffff00;
   }
 
   #change-view-button{
-    display: block;
     border: none;
     margin: 10px auto;
     padding: 5px 30px;

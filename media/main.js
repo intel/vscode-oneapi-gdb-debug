@@ -66,7 +66,7 @@ function updateLane(id, previousLaneId, viewType) {
     if (previousLaneId !== id) {
     const nextLane = document.getElementById(id);
 
-    nextLane.innerHTML = '<span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span>';
+    nextLane.innerHTML = '<span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span>';
     if (previousLaneId) {
         const previousLane = document.getElementById(previousLaneId);
         previousLane.innerHTML = viewType == ViewState.COLORS ? '' : '1';

@@ -110,7 +110,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private getColorsView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
+        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>Name</th><th>SIMD Lanes</th></tr>";
         let i = 1;
 
         for (const m of masks) {
@@ -127,7 +127,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
 
                 if(this.chosenLaneId && this.chosenLaneId === id){
-                    coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span></td>`;
+                    coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
                 }
 
                 return +value === 0 ? `<td id='${id}' class ='cell'></td>`: coloredCell;
@@ -141,7 +141,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private getNumbersView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = "<table id='simd-view'><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
+        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>Name</th><th>SIMD Lanes</th></tr>";
         let i = 1;
 
         for (const m of masks) {
@@ -156,7 +156,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 let oneCell = `<td id='${id}' class="cell lane one">1</td>`;
 
                 if(this.chosenLaneId && this.chosenLaneId === id){
-                    oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color: black">➡</span></td>`;
+                    oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
                 }
                 return +value === 0 ? "<td class=\"cell lane\">0</td>": oneCell;
             }).join("");
