@@ -8,6 +8,7 @@ import {
     WebviewViewResolveContext,
 } from "vscode";
 import { CurrentThread, Emask } from "../SimdProvider";
+import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 
 enum ViewState{
     COLORS,
@@ -25,7 +26,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private chosenLaneId?: string;
 
-    constructor(private readonly _extensionUri: Uri) {}
+    constructor(private readonly _extensionUri: Uri,
+        private selectedLaneViewProvider: SelectedLaneViewProvider) {}
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
@@ -75,11 +77,10 @@ export class SIMDViewProvider implements WebviewViewProvider {
             <script type="module" src="${toolkitUri}"></script>
             <title>SIMD Lanes</title>
         </head>
-        <body>`;
+        <body>
+        <button id='change-view-button'>Change view</button>`;
 
-        this.htmlEnd = `
-            <button id='change-view-button'>Change view</button>
-            <script nonce="${nonce}" src="${scriptUri}"></script>
+        this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
         </html>`;
     }
@@ -103,15 +104,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
     public setView(masks: Emask[], currentThread?: CurrentThread){
         this.chosenLaneId = undefined;
         this.setLoadingView();
-        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks, currentThread) : this.getColorsView(masks, currentThread);
-
         this._masks = masks;
-        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + this.getThreadsView(masks, currentThread) + this.htmlEnd;
     }
 
-    private getColorsView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>Name</th><th>SIMD Lanes</th></tr>";
+    private getThreadsView(masks: Emask[], currentThread?: CurrentThread){
+        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th><th>Location</th><th>SIMD Lanes</th></tr>";
         let i = 1;
+        const currentLaneTable = "";
 
         for (const m of masks) {
             const binSimdRow = m.value.toString(2);
@@ -119,60 +119,52 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
 
             if(currentThread?.name === m.name){
-                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}}`;
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
+              
+                this.selectedLaneViewProvider.setView(currentThread.lane, m.value, m.length);
             }
 
-            const tableString = newSimdRow.split("").map((value: string, index)=> {
-                const id = `{"lane": ${index}, "threadId": ${i}}`;
-                let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
-
-                if(this.chosenLaneId && this.chosenLaneId === id){
-                    coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
-                }
-
-                return +value === 0 ? `<td id='${id}' class ='cell'></td>`: coloredCell;
-            });
-
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${tableString.join("")}</tr></table></td></tr>`;
+            const tableString = this.viewState === ViewState.NUMBERS ? this.getNumbersRow(newSimdRow, i, m) : this.getColorsRow(newSimdRow, i, m);
+            
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td title="${m.func}">${m.func.substring(0,20)}...</td><td><table><tr>${tableString}</tr></table></td></tr>`;
             i++;
         }
-        upd = upd + "</tbody></table>";
-        return upd;
+        upd = upd + "</tbody></table>" + currentLaneTable;
+        return upd;  
     }
 
-    private getNumbersView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>Name</th><th>SIMD Lanes</th></tr>";
-        let i = 1;
+    private getColorsRow(newSimdRow: string, i: number, m: Emask){
+        const tableString = newSimdRow.split("").map((value: string, index)=> {
+            const id = `{"lane": ${index}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
+            let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
 
-        for (const m of masks) {
-            const binSimdRow = m.value.toString(2);
-            
-            if(currentThread?.name === m.name){
-                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}}`;
+            if(this.chosenLaneId && this.chosenLaneId === id){
+                coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
             }
 
-            const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().map((value: string, index)=> {
-                const id = `{"lane": ${index}, "threadId": ${i}}`;
-                let oneCell = `<td id='${id}' class="cell lane one">1</td>`;
+            return +value === 0 ? `<td id='${id}' class ='cell'></td>`: coloredCell;
+        }).join("");
 
-                if(this.chosenLaneId && this.chosenLaneId === id){
-                    oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
-                }
-                return +value === 0 ? "<td class=\"cell lane\">0</td>": oneCell;
-            }).join("");
+        return tableString;
+    }
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><table><tr>${reverseBinSimdRow}</tr></table></td></tr>`;
-            i++;
-        }
-        upd = upd + "</tbody></table>";
-        return upd;
+    private getNumbersRow(newSimdRow: string, i: number, m: Emask){
+        const tableString = newSimdRow.split("").map((value: string, index)=> {
+            const id = `{"lane": ${index}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
+            let oneCell = `<td id='${id}' class="cell lane one">1</td>`;
+
+            if(this.chosenLaneId && this.chosenLaneId === id){
+                oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
+            }
+            return +value === 0 ? "<td class=\"cell lane\">0</td>": oneCell;
+        }).join("");
+
+        return tableString;
     }
 
     public updateView(masks: Emask[]){
         this.setLoadingView();
-        const upd = this.viewState === ViewState.NUMBERS ?  this.getNumbersView(masks) : this.getColorsView(masks);
-
-        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + this.getThreadsView(masks) + this.htmlEnd;
     }
 
     private async _setWebviewMessageListener(webviewView: WebviewView) {
@@ -196,6 +188,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     });
                     this.chosenLaneId = message.payload;
                     const parcedLane = JSON.parse(message.payload);
+
+                    this.selectedLaneViewProvider.setView(parcedLane.lane, parcedLane.value, parcedLane.length);
                     
                     const session = debug.activeDebugSession;
                     const evalresult = await session?.customRequest("evaluate", { expression: `-exec thread ${parcedLane.threadId}:${parcedLane.lane}`, context: "repl" });

@@ -35,7 +35,7 @@
             {
                 "command": "intelOneAPI.debug.fetchSIMDInfo",
                 "title": "Intel oneAPI: Refresh SIMD Data",
-                "icon": "$(zap)"
+                "icon": "$(debug-restart)"
             },
             {
                 "command": "intelOneAPI.userHelp.displayDebuggerCommands",
@@ -58,12 +58,18 @@
                 {
                     "id": "intelOneAPI.debug.simdview",
                     "type": "webview",
-                    "name": "SIMD Lanes"
+                    "name": "SIMD Lanes",
+                    "contextualTitle": "Explorer"
                 },
                 {
                     "id": "intelOneAPI.debug.deviceView",
                     "type": "webview",
                     "name": "Hardware Info"
+                },
+                {
+                    "id": "intelOneAPI.debug.selectedLane",
+                    "type": "webview",
+                    "name": "Selected Lane"
                 }
             ]
         },

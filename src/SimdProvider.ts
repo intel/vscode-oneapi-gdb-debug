@@ -48,7 +48,6 @@ export class SimdProvider {
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
             this.simdViewProvider.cleanView();
-            this.deviceViewProvider.cleanView();
         }));
         
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
@@ -79,6 +78,7 @@ export class SimdProvider {
             let simd_with = 0;
             let execution_mask  = 0;
             // let hit_lane_mask  = 0;
+            let func  = "";
             let target_id  = "";
             let thread_id = 0;
             let i = 0;
@@ -97,64 +97,31 @@ export class SimdProvider {
                     continue;
                 }
 
-                // Find thread with hit-lanes-mask
-                // if (t.includes(("hit-lanes-mask"))) {
-                //     const property = t.split(",");
+                const property = t.split(",");
 
-                //     for (const item of property)
-                //     {
-                //         const pair = item.split("=");
-
-                //         if(pair[0] === "hit-lanes-mask") {
-                //             hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                //         }
-                //     }
-                // }
-
-                // Find thread with execution_mask
-                if (t.includes(("execution-mask"))) {
-                    const property = t.split(",");
-
-                    for (const item of property)
-                    {
-                        const pair = item.split("=");
-
-                        if(pair[0] === "execution-mask") {
-                            execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                        }
-                    }
-                }
-
-                // Find thread with simd_with
-                if (t.includes(("simd-width"))) {
-                    const property = t.split(",");
-
+                for (const item of property)
+                {
                     thread_id = property[0];
-                    for (const item of property)
-                    {
-                        const pair = item.split("=");
+                    const pair = item.split("=");
 
-                        if(pair[0] === "simd-width") {
-                            simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                        }
+                    if(pair[0] === "func") {
+                        func = pair[1].replace(/[{}]/g, "");
+                    }
+                    // if(pair[0] === "hit-lanes-mask") {
+                    //    hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                    // }
+                    if(pair[0] === "execution-mask") {
+                        execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                    }
+                    if(pair[0] === "simd-width") {
+                        simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                    }
+                    if(pair[0] === "target-id") {
+                        target_id = pair[1];
                     }
                 }
 
-                // Find thread name
-                if (t.includes(("target-id"))) {
-                    const property = t.split(",");
-
-                    for (const item of property)
-                    {
-                        const pair = item.split("=");
-
-                        if(pair[0] === "target-id") {
-                            target_id = pair[1];
-                        }
-                    }
-                }
-
-                masks.push({ name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, value: execution_mask, length: simd_with });
+                masks.push({ func: func, name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, value: execution_mask, length: simd_with });
                 i++;
             }
  
@@ -191,9 +158,9 @@ export class SimdProvider {
 
         for (const device of devices){
             if(devicesByGroups[device.thread_groups]){
-                devicesByGroups[device.thread_groups].push(device.device_name);
+                devicesByGroups[device.thread_groups].push(device);
             } else {
-                devicesByGroups[device.thread_groups] = [device.device_name];
+                devicesByGroups[device.thread_groups] = [device];
             }
         }
         return devicesByGroups;
@@ -310,14 +277,20 @@ export class SimdProvider {
 export interface Device {
     device_name: string;
     thread_groups: string;
+    location: string;
+    number: number;
+    sub_device: number;
+    target_id: string;
+    vendor_id: string;
 }
 
 export interface SortedDevices {
-    [key: string]: string[];
+    [key: string]: Device[];
 }
  
 export interface Emask {
      name: string;
+     func: string;
      threadId: number;
      value: number;
      length: number;

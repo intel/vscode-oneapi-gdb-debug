@@ -6,10 +6,9 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import { SortedDevices } from "../SimdProvider";
 
-export class DeviceViewProvider implements WebviewViewProvider {
-    public static readonly viewType = "intelOneAPI.debug.deviceView";
+export class SelectedLaneViewProvider implements WebviewViewProvider {
+    public static readonly viewType = "intelOneAPI.debug.selectedLane";
     public _view!: WebviewView;
 
     private htmlStart = "";
@@ -73,30 +72,16 @@ export class DeviceViewProvider implements WebviewViewProvider {
         this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
     }
 
-    public setView(sortedDevices: SortedDevices){
-        let upd = "";
+    public setView(lane: number, value:number, length: number){
+        const table = `<table>
+            <tr><td>Lane Number</td>
+            <td id="selectedLane">${lane}</td></tr>
+            <tr><td>Execution Mask</td>
+            <td id="selectedMask">${value}</td></tr>
+            <tr><td>SIMD Width</td>
+            <td id="selectedWidth">${length}</td></tr>
+        </table>`;
 
-        for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
-            upd += threadGroups;
-            for (const device of devices){
-                const table = `<table>
-                    <tr><td>Number</td>
-                    <td>${device.number}</td></tr>
-                    <tr><td>Name</td>
-                    <td>${device.device_name}</td></tr>
-                    <tr><td>Location</td>
-                    <td>${device.location}</td></tr>
-                    <tr><td>Sub device</td>
-                    <td>${device.sub_device}</td></tr>
-                    <tr><td>Vendor ID</td>
-                    <td>${device.vendor_id}</td></tr>
-                    <tr><td>Target ID</td>
-                    <td>${device.target_id}</td></tr>
-                </table>`;
-
-                upd += "&emsp;" + table +"<br>";
-            }
-        }
-        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + table + this.htmlEnd;
     }
 }
