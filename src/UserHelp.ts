@@ -231,24 +231,21 @@ export class DebuggerCommandsPanel {
                  <title>Usefull GDB-oneAPI Commands</title>
              </head>
              <body>
-                <div class="body-wrapper ${activeColorTheme===1 ? "light-mode" : "dark-mode"}">
-                    <div class="left-menu">
-                        <div class="left-menu-positioning">
-                            <div class="documentation-resources title">
-                                <span class="center">Documentation resources:</span>
-                            </div>
-                            <div class="documentation-resources-list-wrapper">
-                                <ul class="documentation-resources" id="documentation-resources">
-                                    <li class="section-name">Intel® Distribution for GDB</li>
-                                    <li class="inner"><a class="header-link" href="${oneapiDocumentationLink}">Online Documentation</a></li>
-                                    <li class="inner"><a class="header-link" href="${oneapiUserManualLink}">User Manual (PDF)</a></li>
-                                    <li class="inner"><a class="header-link" href="${oneapiCheatsheetLink}">Cheatsheet (PDF)</a></li>
-                                    <li class="section-name}">GDB</a></li>
-                                    <li class="inner"><a class="header-link" href="${gdbDocumentationLink}">Online Documentation</a></li>
-                                </ul>
-                            </div>
-                        </div>
+                <div>
+                    <div class="topnav">
+                        <a class="text">Documentation resources:</a>
                     </div>
+                    <div class="topnav">
+                        <a class="text">Intel® Distribution for GDB:</a>
+                        <a class="active" href="${oneapiDocumentationLink}">Online Documentation</a>
+                        <a class="active" href="${oneapiUserManualLink}">User Manual (PDF)</a>
+                        <a class="active" href="${oneapiCheatsheetLink}">Cheatsheet (PDF)</a>
+                    </div>
+                    <div class="topnav">
+                        <a class="text">GDB:</a>
+                        <a class="active" href="${gdbDocumentationLink}">Online Documentation</a>
+                    </div>
+
                     <div class="right-content">
                         <div class="header">
                             <h1>Diferrences between GDB and Intel® Distribution for GDB:<h1>
@@ -261,7 +258,7 @@ export class DebuggerCommandsPanel {
                             <p class="intro">${this.userHelp.comparison.intro}</p>
                             ${this.getTable(this.userHelp.comparison.commands, "table")}
                             <p class="intro">${this.userHelp.oneapiNewCommands.intro}</p>
-                            <div class="oneapi-new-commands ${activeColorTheme===1 ? "light-mode" : "dark-mode"}">
+                            <div class="oneapi-new-commands ${activeColorTheme === 1 ? "light-mode" : "dark-mode"}">
                                 ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
                             </div>
                         </div>

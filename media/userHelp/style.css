@@ -6,17 +6,8 @@
  */
 
  body{
-
     font-size: 16px;
     margin-bottom:100px;
-}
-
-.dark-mode{
-    color:rgb(255,255,255,0.87);
-}
-
-.light-mode{
-    color:rgb(0,0,0,0.87);
 }
 
 .center{
@@ -34,11 +25,6 @@ div.body-wrapper{
     justify-content: start;
     width: 100%;
     margin: auto;
-}
-
-div.right-content{
-    min-width: 650px;
-    max-width: 1000px;
 }
 
 div.header{
@@ -74,11 +60,6 @@ p.intro{
     margin-top: 40px;
 }
 
-div.left-menu{
-    min-width: 300px;
-    width: 300px;
-}
-
 div.left-menu-positioning{
     position: fixed;
     top: 85px;
@@ -109,17 +90,6 @@ li.section-name{
 
 li.inner{
     margin-left: 20px;
-}
-
-a.header-link{
-    padding: 5px;
-    font-size: 14px;
-    text-decoration: none;
-}
-
-a:hover{
-    background-color: rgb(128,128,128,0.50);
-    border-radius: 5px;
 }
 
 .table {
@@ -176,3 +146,29 @@ table.small-table > tbody > tr >td:last-child{
     vertical-align: bottom;
     border-bottom: 2px solid rgb(128,128,128,0.50);
 }
+
+.topnav {
+    overflow: hidden;
+  }
+  
+  .topnav a {
+    float: left;
+    color: #747474;
+    text-align: center;
+    padding: 12px;
+    text-decoration: none;
+    font-size: 14px;
+  }
+  
+  .topnav a.active:hover {
+    background-color: #ddd;
+    color: black;
+  }
+  
+  .topnav a.active {
+    color: rgb(47, 148, 255);
+  }
+
+  .topnav a.text {
+    cursor: default;
+  }
