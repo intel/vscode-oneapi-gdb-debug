@@ -179,7 +179,7 @@ export class DebuggerCommandsPanel {
                 .replace("<oneapiExt>", `<span class='${oneapiExtCssClass}'>`)
                 .replace("</oneapiExt>", "</span>");
 
-            table += `<tr><td>${cssClass.includes("numeric") ? `${(parseInt(i) + 1)}.</td><td>` : ""}${name.trim()}</td><td>${content[i]["description"] ? content[i].description : ""}</td></tr>`;
+            table += `<tr><td>${cssClass.includes("numeric") ? `${(parseInt(i) + 1)}.</td><td>` : ""}${name.trim()}</td>${content[i]["description"] ? "<td>" + content[i].description + "</td>" : "<td> - </td>"}</tr>`;
         }
         table += "</tbody></table>";
         return table;
@@ -211,12 +211,6 @@ export class DebuggerCommandsPanel {
         // Use a nonce to only allow specific scripts to be run
         const nonce = getNonce();
 
-        // vscode.window.activeColorTheme.kind
-        // 1 - light mode
-        // 2 - dark mode
-        // 3 - high contrast mode
-        const activeColorTheme = vscode.window.activeColorTheme.kind;
-
         return `<!DOCTYPE html>
              <html lang="en">
              <head>
@@ -245,23 +239,14 @@ export class DebuggerCommandsPanel {
                         <a class="text">GDB:</a>
                         <a class="active" href="${gdbDocumentationLink}">Online Documentation</a>
                     </div>
-
-                    <div class="right-content">
-                        <div class="header">
-                            <h1>Diferrences between GDB and Intel® Distribution for GDB:<h1>
-                        </div>
-                        <div class="content" id="bodyContent">
-                            <p class="intro">${this.userHelp.features.intro}</p>
-                            <div class="list-wrapper">
-                                ${this.listPoints(this.userHelp.features.featurePointedList)}
-                            </div>
-                            <p class="intro">${this.userHelp.comparison.intro}</p>
+                    <div>
+                            <h1>Differences between GDB and Intel® Distribution for GDB:<h1>
+                            <h4>${this.userHelp.features.intro}</h4>
+                            ${this.listPoints(this.userHelp.features.featurePointedList)}
+                            <h4>${this.userHelp.comparison.intro}</h4>
                             ${this.getTable(this.userHelp.comparison.commands, "table")}
-                            <p class="intro">${this.userHelp.oneapiNewCommands.intro}</p>
-                            <div class="oneapi-new-commands ${activeColorTheme === 1 ? "light-mode" : "dark-mode"}">
-                                ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
-                            </div>
-                        </div>
+                            <h4>${this.userHelp.oneapiNewCommands.intro}</h4>
+                            ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
                     </div>
                 </div>
              </body>

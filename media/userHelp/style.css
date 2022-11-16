@@ -5,170 +5,45 @@
  * SPDX-License-Identifier: MIT
  */
 
- body{
-    font-size: 16px;
-    margin-bottom:100px;
-}
-
-.center{
-    margin: auto;
-}
-
-.oneapi-ext{
-    color: rgb(251, 100, 100, 0.87);
-    margin: 0px;
-}
-
-div.body-wrapper{
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: start;
-    width: 100%;
-    margin: auto;
-}
-
-div.header{
-    width: 100%;
-    margin: auto;
-}
-
-div.content{
-    width: fit-content;
-    margin: auto;
-}
-
-div.oneapi-new-commands{
-    border-left-width: 1px;
-    border-left-style: solid;
-    padding-left: 20px;
-}
-
-div.oneapi-new-commands.light-mode{
-    border-left-color: rgb(0,0,0,0.3);
-}
-
-div.oneapi-new-commands.dark-mode{
-    border-left-color: rgb(255,255,255,0.3);
-}
-
-p {
-    text-align: justify;
-}
-
-p.intro{
-    font-size: 18px;
-    margin-top: 40px;
-}
-
-div.left-menu-positioning{
-    position: fixed;
-    top: 85px;
-}
-
-div.documentation-resources.title{
-    font-size: 18px;
-    font-weight: bolder;
-    margin-left: 40px;
-}
-
-div.documentation-resources-list-wrapper{
-    padding-bottom: 20px;
-    text-align: left;
-}
-
-ul.documentation-resources{
-    list-style: none;
-}
-
-li{
-    margin-top: 3px;
-}
-
-li.section-name{
-    font-size: 16px;
-}
-
-li.inner{
-    margin-left: 20px;
-}
-
-.table {
-    border-color: rgb(128,128,128,0.50);
-    border-collapse: collapse;
-    border-spacing: 0;
+table {
     width: 100%;
 }
 
-.small-table{
-    margin-left: 20px;
-    text-align: left;
-}
-
-table.small-table.numeric > tbody > tr >td:first-child{
-    text-align: center;
-    width: min-content;
-    min-width: 23px;
-}
-
-table.small-table.numeric > tbody > tr >td:nth-child(2){
-    border-right: 1px solid rgb(128,128,128,0.50);
-    width: 400px;
-}
-
-table.small-table > tbody > tr >td:last-child{
-    padding-left: 20px;
-}
-
-.small-intro {
-    border-bottom: 1px solid rgb(128,128,128,0.50);
-}
-
-.table > thead > tr > th{
-    padding: 8px;
-    line-height: 1.42857143;
+table,
+th,
+td {
     vertical-align: top;
+    text-align: left;
+    border: 1px solid #747474;
+    border-collapse: collapse;
 }
 
-.table > tbody > tr > th,
-.table > thead > tr > td,
-.table > tbody > tr > td {
-  padding: 8px;
-  line-height: 1.42857143;
-  vertical-align: top;
-  border-top: 1px solid rgb(128,128,128,0.50);
-}
-
-.table > tbody > tr > td:first-child{
-    min-width: 440px;
-}
-
-.table > thead > tr > th {
-    vertical-align: bottom;
-    border-bottom: 2px solid rgb(128,128,128,0.50);
+th,
+td {
+    padding: 5px 10px;
 }
 
 .topnav {
     overflow: hidden;
-  }
-  
-  .topnav a {
+}
+
+.topnav a {
     float: left;
     color: #747474;
     text-align: center;
     padding: 12px;
     text-decoration: none;
-    font-size: 14px;
-  }
-  
-  .topnav a.active:hover {
+}
+
+.topnav a.active:hover {
     background-color: #ddd;
     color: black;
-  }
-  
-  .topnav a.active {
-    color: rgb(47, 148, 255);
-  }
+}
 
-  .topnav a.text {
+.topnav a.active {
+    color: rgb(47, 148, 255);
+}
+
+.topnav a.text {
     cursor: default;
-  }
+}
