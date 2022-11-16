@@ -1,4 +1,16 @@
 # Change Log
+##  0.2.1
+
+- New SIMD Lanes view is added. 
+
+- Added ability to change the type of UI view of SIMD Lanes.
+
+- You can see current device info in separate tab.
+
+- Added functionality to choose the lane.
+
+- You can see current choosen lane in separate tab.
+
 ##  0.1.4
 
 - Added help page for debugger commands
