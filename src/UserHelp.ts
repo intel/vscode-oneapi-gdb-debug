@@ -248,6 +248,7 @@ export class DebuggerCommandsPanel {
                             <h4>${this.userHelp.oneapiNewCommands.intro}</h4>
                             ${this.listTablesWithTitles(this.userHelp.oneapiNewCommands.chapters)}
                     </div>
+                    <br><br>
                 </div>
              </body>
              </html>`;
