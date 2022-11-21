@@ -32,6 +32,7 @@ th {
     color: black;
     background-color:#d3d3d3;
     font-size: 12px;
+    text-align: center;
   }
 
   .cell:hover {
@@ -46,10 +47,4 @@ th {
     background-color:#4682b4;
     color: #ffff00;
   }
-
-  #change-view-button{
-    border: none;
-    margin: 10px auto;
-    padding: 5px 30px;
-}
   

@@ -76,8 +76,8 @@ export class SimdProvider {
 
             const masks: Emask[] = []; // optimise?
             let simd_with = 0;
-            let execution_mask  = 0;
-            // let hit_lane_mask  = 0;
+            let execution_mask  = "0";
+            let hit_lane_mask  = "0";
             let func  = "";
             let target_id  = "";
             let thread_id = 0;
@@ -107,11 +107,11 @@ export class SimdProvider {
                     if(pair[0] === "func") {
                         func = pair[1].replace(/[{}]/g, "");
                     }
-                    // if(pair[0] === "hit-lanes-mask") {
-                    //    hit_lane_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                    // }
+                    if(pair[0] === "hit-lanes-mask") {
+                        hit_lane_mask =pair[1]?.replace(/[{}]/g, "");
+                    }
                     if(pair[0] === "execution-mask") {
-                        execution_mask = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                        execution_mask = pair[1].replace(/[{}]/g, "");
                     }
                     if(pair[0] === "simd-width") {
                         simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
@@ -121,7 +121,7 @@ export class SimdProvider {
                     }
                 }
 
-                masks.push({ func: func, name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, value: execution_mask, length: simd_with });
+                masks.push({ func: func, name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, executionMask: execution_mask, hitLanesMask: hit_lane_mask, length: simd_with });
                 i++;
             }
  
@@ -292,7 +292,8 @@ export interface Emask {
      name: string;
      func: string;
      threadId: number;
-     value: number;
+     executionMask: string;
+     hitLanesMask: string;
      length: number;
  }
  

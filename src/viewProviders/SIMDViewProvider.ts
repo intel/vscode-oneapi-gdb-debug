@@ -77,8 +77,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
             <script type="module" src="${toolkitUri}"></script>
             <title>SIMD Lanes</title>
         </head>
-        <body>
-        <button id='change-view-button'>Change view</button>`;
+        <body>`;
 
         this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
@@ -114,17 +113,17 @@ export class SIMDViewProvider implements WebviewViewProvider {
         const currentLaneTable = "";
 
         for (const m of masks) {
-            const binSimdRow = m.value.toString(2);
+            const binSimdRow = parseInt(m.executionMask,16).toString(2);
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
 
             if(currentThread?.name === m.name){
-                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
               
-                this.selectedLaneViewProvider.setView(currentThread.lane, m.value, m.length);
+                this.selectedLaneViewProvider.setView(currentThread.lane, m.executionMask, m.hitLanesMask, m.length);
             }
 
-            const tableString = this.viewState === ViewState.NUMBERS ? this.getNumbersRow(newSimdRow, i, m) : this.getColorsRow(newSimdRow, i, m);
+            const tableString = this.getColorsRow(newSimdRow, i, m);
             
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td title="${m.func}">${m.func.substring(0,20)}...</td><td><table><tr>${tableString}</tr></table></td></tr>`;
             i++;
@@ -135,28 +134,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private getColorsRow(newSimdRow: string, i: number, m: Emask){
         const tableString = newSimdRow.split("").map((value: string, index)=> {
-            const id = `{"lane": ${index}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
-            let coloredCell = `<td id='${id}' class ='cell colored one'></td>`;
+            const id = `{"lane": ${index}, "threadId": ${i}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
+            let coloredCell = `<td id='${id}' class ='cell colored one'>1</td>`;
 
             if(this.chosenLaneId && this.chosenLaneId === id){
                 coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
             }
 
-            return +value === 0 ? `<td id='${id}' class ='cell'></td>`: coloredCell;
-        }).join("");
-
-        return tableString;
-    }
-
-    private getNumbersRow(newSimdRow: string, i: number, m: Emask){
-        const tableString = newSimdRow.split("").map((value: string, index)=> {
-            const id = `{"lane": ${index}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
-            let oneCell = `<td id='${id}' class="cell lane one">1</td>`;
-
-            if(this.chosenLaneId && this.chosenLaneId === id){
-                oneCell = `<td id='${id}' class="cell lane one chosen"><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
-            }
-            return +value === 0 ? "<td class=\"cell lane\">0</td>": oneCell;
+            return +value === 0 ? `<td id='${id}' class ='cell'>0</td>`: coloredCell;
         }).join("");
 
         return tableString;
@@ -189,7 +174,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     this.chosenLaneId = message.payload;
                     const parcedLane = JSON.parse(message.payload);
 
-                    this.selectedLaneViewProvider.setView(parcedLane.lane, parcedLane.value, parcedLane.length);
+                    this.selectedLaneViewProvider.setView(parcedLane.lane, parcedLane.executionMask, parcedLane.hitLanesMask, parcedLane.length);
                     
                     const session = debug.activeDebugSession;
                     const evalresult = await session?.customRequest("evaluate", { expression: `-exec thread ${parcedLane.threadId}:${parcedLane.lane}`, context: "repl" });

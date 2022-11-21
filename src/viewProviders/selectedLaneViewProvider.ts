@@ -72,12 +72,14 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
         this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
     }
 
-    public setView(lane: number, value:number, length: number){
+    public setView(lane: number, executionMask: string, hitLanesMask: string, length: number){
         const table = `<table>
             <tr><td>Lane Number</td>
             <td id="selectedLane">${lane}</td></tr>
             <tr><td>Execution Mask</td>
-            <td id="selectedMask">${value}</td></tr>
+            <td id="selectedMask">${executionMask}</td></tr>
+            <tr><td>Hit Lanes Mask</td>
+            <td id="hitLanesMask">${hitLanesMask}</td></tr>
             <tr><td>SIMD Width</td>
             <td id="selectedWidth">${length}</td></tr>
         </table>`;
