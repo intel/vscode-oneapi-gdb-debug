@@ -18,5 +18,5 @@ build:
 
 # testing_testing:
 #       stage: test
-#       script: npm test
+#       script: yarn test
 

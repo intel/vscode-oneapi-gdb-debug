@@ -211,12 +211,6 @@ export class DebuggerCommandsPanel {
         // Use a nonce to only allow specific scripts to be run
         const nonce = getNonce();
 
-        // vscode.window.activeColorTheme.kind
-        // 1 - light mode
-        // 2 - dark mode
-        // 3 - high contrast mode
-        const activeColorTheme = vscode.window.activeColorTheme.kind;
-
         return `<!DOCTYPE html>
              <html lang="en">
              <head>
