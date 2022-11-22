@@ -5,245 +5,331 @@
  * SPDX-License-Identifier: MIT
  */
 
-'use strict';
-import * as vscode from 'vscode';
-import { DebugProtocol } from 'vscode-debugprotocol';
+"use strict";
+import * as vscode from "vscode";
 
+// import {  InvalidatedEvent } from 'vscode-debugadapter';
+// import { EventEmitter } from 'events'
+import { DebugProtocol } from "vscode-debugprotocol";
+import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
+import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
+ 
 interface ThreadInfo {
     index: number;
-    threadId: number; 
+    threadId: number;
     name: string;
 }
 
+export interface CurrentThread {
+    name: string;
+    lane: number;
+}
+ 
 export class SimdProvider {
-
-    private view: SimdViewProvider;
+ 
     private threadsInfoArray: ThreadInfo[] = [];
 
     constructor(
-        private context: vscode.ExtensionContext
+          private context: vscode.ExtensionContext,
+          private simdViewProvider: SIMDViewProvider,
+          private deviceViewProvider: DeviceViewProvider
     ) {
 
-        //Setup Webview
-        this.view = new SimdViewProvider(context.extensionUri);
-        context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider("intelOneAPI.debug.simdview", this.view));
+        context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this)));
 
-        context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory('cppdbg', new SimdDebugAdapterProviderFactory(this)));
-
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.debug.fetchSIMDInfo', async () => {
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
             this.fetchEMaskForAll();
+            this.fetcDevicesForAll();
             return;
-
+ 
         }));
 
         //We need to test if multi debug sessions get effected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
-            this.view.updateWith("");
+            this.simdViewProvider.cleanView();
         }));
-
+        
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
             console.log(e);
         }));
+        
     }
-
     set threadsInfo(value: ThreadInfo[]){
         this.threadsInfoArray = value;
-      }
-      
-      get threadsInfo():ThreadInfo[]{
-         return this.threadsInfoArray;
-      }
-
-    public updateWithSimdData(s: SimdStatusData): void {
-
-        let others = "";
-        s.otherLanes.forEach(i => {
-            others = others.concat(i + "<br>");
-        });
-        this.view.updateWith("<h3>Active: " + s.activeLane + "</h3><br>" + others);
     }
-
-    private matchIeMasktoSIMD(i: string): number {
-        switch(i.toLowerCase()) {
-            case "0xff": {
-                return 8;
-            }
-            case "0xffff": {
-                return 16;
-            }
-            case "0xffffffff": {
-                return 32;
-            }
-        }
-        //Did not match against known types
-        return 0;
-
+ 
+    get threadsInfo():ThreadInfo[]{
+        return this.threadsInfoArray;
     }
-
+ 
     public async fetchEMaskForAll(): Promise<void> {
         const session = vscode.debug.activeDebugSession;
+ 
         if (session) {
-            const r = await session.customRequest("threads");
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
 
-            const threads = r.threads as DebugProtocol.Thread[];
-          
-            await session.customRequest('evaluate', {expression: '-exec info threads', context: 'repl'});
-            
-            const masks: emask[] = []; //optimise?
+            if (evalresult.result === "void") {
+                return;
+            }
+
+            const masks: Emask[] = []; // optimise?
+            let simd_with = 0;
+            let execution_mask  = "0";
+            let hit_lane_mask  = "0";
+            let func  = "";
+            let target_id  = "";
+            let thread_id = 0;
             let i = 0;
 
-            for (const t of threads) {
-                const strarg: DebugProtocol.StackTraceArguments = { threadId: t.id };
-                const sTrace = await session.customRequest('stackTrace', strarg);
-                let evalargs: DebugProtocol.EvaluateArguments = { expression: "$emask", context: "repl", frameId: sTrace.stackFrames[0].id, format: {hex: true}};
-                let evalresult = await session.customRequest('evaluate', evalargs);
-                if (evalresult.result === 'void' ) {
-                    continue; //Filter Threads without EMASK
-                }
-                this.view.updateWith("waiting for data");
-                const maskvar = parseInt(evalresult.result, 16);
-
-                evalargs = { expression: "$iemask", context: "repl", frameId: sTrace.stackFrames[0].id,format: {hex: true} };
-                evalresult = await session.customRequest('evaluate', evalargs);
-                let maskLength = 0;
-                if (evalresult.result !== 'void' ) {
-                    maskLength = this.matchIeMasktoSIMD(evalresult.result as string);
+            // If there are no GPU threads
+            if (!evalresult.result.includes(("arch=intelgt"))) {
+                return;
+            }
+            
+            // Roughly divide the string by threads
+            const rougeThreads = evalresult.result.split("{id=");
+            
+            for (const t of rougeThreads) {
+                // Process only GPU threads
+                if (!t.includes(("arch=intelgt"))) {
+                    continue;
                 }
 
-                evalargs = { expression: "$_thread", context: "repl", frameId: sTrace.stackFrames[0].id};
-                evalresult = await session.customRequest('evaluate', evalargs);
-                let tid = 0;
-                if (evalresult.result !== 'void' ) {
-                    tid = parseInt(evalresult.result);
+                const property = t.split(",");
+
+                for (const item of property)
+                {
+                    thread_id = property[0];
+                    const pair = item.split("=");
+
+                    if(pair[0] === "func") {
+                        func = pair[1].replace(/[{}]/g, "");
+                    }
+                    if(pair[0] === "hit-lanes-mask") {
+                        hit_lane_mask =pair[1]?.replace(/[{}]/g, "");
+                    }
+                    if(pair[0] === "execution-mask") {
+                        execution_mask = pair[1].replace(/[{}]/g, "");
+                    }
+                    if(pair[0] === "simd-width") {
+                        simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
+                    }
+                    if(pair[0] === "target-id") {
+                        target_id = pair[1];
+                    }
                 }
 
-                masks.push({name: this.threadsInfoArray[i]?.name || t.name, threadId: tid, value: maskvar, length: maskLength});
-
+                masks.push({ func: func, name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, executionMask: execution_mask, hitLanesMask: hit_lane_mask, length: simd_with });
                 i++;
             }
+ 
+ 
             if (!masks.length) {
                 return; //exit, no simd detected
             }
-            let upd = "<table><tbody><tr><td>ThreadID</td><td>Name</td><td>SIMD Lanes</td></tr>";
-            for (const m of masks) {
-                upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td><code>${m.value.toString(2).padStart(m.length, "0")}</code></td></tr>`;
-            }
-            upd = upd + "</tbody></table>";
+            const currentThread = await this.getCurrentThread();
 
-            this.view.updateWith(upd);
-
+            this.simdViewProvider.setView(masks, currentThread);
         }
     }
+
+    public async fetcDevicesForAll(): Promise<void> {
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec -device-info", context: "repl" });
+
+            const devicesInfo = this.parseDeviceInfo(evalresult);
+
+            if ( devicesInfo === undefined) {
+                this.deviceViewProvider.setErrorView();
+                return;
+            }
+            
+            this.deviceViewProvider.setView(this.getDeviceNames(devicesInfo.devices));
+        }
+    }
+
+    private getDeviceNames(devices: Device[]): SortedDevices {
+        const devicesByGroups: SortedDevices = {};
+
+        for (const device of devices){
+            if(devicesByGroups[device.thread_groups]){
+                devicesByGroups[device.thread_groups].push(device);
+            } else {
+                devicesByGroups[device.thread_groups] = [device];
+            }
+        }
+        return devicesByGroups;
+    }
+
+    public parseDeviceInfo(evalresult : {result: string} ): {devices:Device[]} | undefined {
+
+        if (evalresult.result === "void") {
+            return undefined;
+        }
+
+        const deviseList: string = evalresult.result;
+        const parsedDeviseList = deviseList.split("\r\n");
+
+        if (!parsedDeviseList || parsedDeviseList.length <= 2) {
+            return undefined;
+        }
+
+        let devicesJSON = "";
+
+        for (const elem of parsedDeviseList) {
+            const elemJSON: string[] = elem.split(": ");
+
+            if (elemJSON[0] === "devices") {
+                devicesJSON = "{\"" + elemJSON[0] + "\"" + ":" + "[";
+
+                const devicesList = elemJSON[1].split(/{([^}]+)}/g).slice(1, -1);
+
+                for (const { deviseIndex, device } of devicesList.map((device, deviseIndex) => ({ deviseIndex, device }))) {
+                    devicesJSON += "{";
+
+                    const property = device.split(",");
+                    let jsonField;
+
+                    for (const { itemIndex, item } of property.map((item, itemIndex) => ({ itemIndex, item }))) {
+                        const field = item.split("=");
+
+                        jsonField = "\"" + field[0].replace("-","_") + "\"" + ":" + "\"" + field[1] + "\"";
+                        devicesJSON += jsonField;
+                        if (itemIndex !== property.length - 1) {
+                            devicesJSON += ", ";
+                        }
+                    }
+
+                    devicesJSON += "}";
+
+                    if (deviseIndex !== devicesList.length - 1) {
+                        devicesJSON += ", ";
+                    }
+                }
+
+                devicesJSON += "]}";
+            }
+        }
+        
+        if (devicesJSON !== "") {
+            try {
+                const jsonObj = JSON.parse(devicesJSON);
+
+                return jsonObj;
+            } catch(e) {
+                return undefined;
+            }
+        }
+        return undefined;
+    }
+
+    public async getCurrentThread(): Promise<CurrentThread | undefined> {
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
+            
+            if (evalresult.result === "void") {
+                return undefined;
+            }
+
+            const threadInfo = evalresult.result.replace(/[({})]/g, "").split(" ");
+
+            return {
+                name: `${threadInfo[4]} ${threadInfo[5]}`,
+                lane: +threadInfo[7].replace(/[^0-9]/g, "")
+            };
+        }
+        return undefined;
+    }
+
+    public async swithSIMDLane(oldSimdLane : string | undefined): Promise<void> {
+        if (!oldSimdLane) {
+            return;
+        }
+
+        const newSimdLane = await vscode.window.showInputBox({
+            placeHolder: oldSimdLane,
+            title: "Type new SIMD lane"
+        });
+
+        const session = vscode.debug.activeDebugSession;
+
+        if (session) {
+            await session.customRequest("threads");
+            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread "+ newSimdLane, context: "repl" });
+            
+            if (evalresult.result === "void") {
+                return;
+            }
+            // this.sendEvent(new InvalidatedEvent( ['variables'] )); 
+        }
+        return;
+    }
+} 
+
+export interface Device {
+    device_name: string;
+    thread_groups: string;
+    location: string;
+    number: number;
+    sub_device: number;
+    target_id: string;
+    vendor_id: string;
 }
 
-
-interface emask {
-    name: string;
-    threadId: number;
-    value: number;
-    length: number;
+export interface SortedDevices {
+    [key: string]: Device[];
 }
-
+ 
+export interface Emask {
+     name: string;
+     func: string;
+     threadId: number;
+     executionMask: string;
+     hitLanesMask: string;
+     length: number;
+ }
+ 
 class SimdDebugAdapterProviderFactory implements vscode.DebugAdapterTrackerFactory {
-
+ 
     constructor(
-        private readonly simdtracker: SimdProvider,
+         private readonly simdtracker: SimdProvider,
     ) { }
-
+ 
     public createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
         console.log("starting session" + session.id + session.type);
         return new SimdDebugAdapterProvider(this.simdtracker);
     }
-
+ 
 }
-
+ 
 class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
-
-
-    constructor(
-        private readonly simdtracker: SimdProvider,
-    ) {
-
-
-    }
-
-
+ 
+    constructor(private readonly simdtracker: SimdProvider) {}
+ 
     public onDidSendMessage(m: DebugProtocol.ProtocolMessage) {
-
         this.routeDebugMessage(m);
     }
-
+ 
     private routeDebugMessage(m: DebugProtocol.ProtocolMessage): void {
         if (m.type === "event") {
             const e = m as DebugProtocol.Event;
+ 
             switch (e.event) {
-                case "stopped": {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const stopped = e as DebugProtocol.StoppedEvent;
-                    this.simdtracker.fetchEMaskForAll();
-                }
+            case "stopped": {
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const stopped = e as DebugProtocol.StoppedEvent;
 
-            }
-
-        }
+                this.simdtracker.fetchEMaskForAll();
+                this.simdtracker.fetcDevicesForAll();
+            }}}
         return;
-    }
-
-}
-
-class SimdStatusData {
-    constructor(
-        public readonly activeLane: string,
-        public readonly otherLanes: string[],
-    ) { }
-}
-
-class SimdViewProvider implements vscode.WebviewViewProvider {
-
-
-    private _view?: vscode.WebviewView;
-
-    constructor(
-        private readonly _extensionUri: vscode.Uri,
-    ) { }
-
-    public updateWith(data: string) {
-
-        if (this._view) {
-            this._view.webview.html = data;
-        }
-    }
-
-    public resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        // context: vscode.WebviewViewResolveContext,
-        // _token: vscode.CancellationToken,
-    ) {
-        this._view = webviewView;
-
-        webviewView.webview.options = {
-            // Allow scripts in the webview
-            enableScripts: true,
-
-
-            localResourceRoots: [
-                this._extensionUri
-            ]
-        };
-
-        webviewView.webview.html = "";
-
-        webviewView.webview.onDidReceiveMessage(data => {
-            switch (data.type) {
-                case 'colorSelected':
-                    {
-                        vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(`#${data.value}`));
-                        break;
-                    }
-            }
-        });
-    }
-}
-
+    }}
+ 

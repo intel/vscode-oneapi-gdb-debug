@@ -61,9 +61,9 @@ To display the differences between these two distributions of GDB:
 5. For quick access to GDB-oneAPI Online Documentation choose `Intel oneAPI: Open gdb-oneapi debugger online documentation (help)`.
 
 ## Contributing
-Install Visual Studio Code (at least version 1.42) and open this project within it. You also need `node + npm`.
+Install Visual Studio Code (at least version 1.42) and open this project within it. You also need `node + yarn`.
 - Switch to project root folder.
-- `npm install`
+- `yarn install`
 - `code .`
 
 At this point you should be able to run the extension in the "Extension
