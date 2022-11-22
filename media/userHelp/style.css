@@ -5,174 +5,60 @@
  * SPDX-License-Identifier: MIT
  */
 
- body{
-
-    font-size: 16px;
-    margin-bottom:100px;
-}
-
-.dark-mode{
-    color:rgb(255,255,255,0.87);
-}
-
-.light-mode{
-    color:rgb(0,0,0,0.87);
-}
-
-.center{
-    margin: auto;
-}
-
-.oneapi-ext{
-    color: rgb(251, 100, 100, 0.87);
-    margin: 0px;
-}
-
-div.body-wrapper{
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: start;
+table {
     width: 100%;
-    margin: auto;
+    border-spacing: 0;
 }
 
-div.right-content{
-    min-width: 650px;
-    max-width: 1000px;
-}
-
-div.header{
-    width: 100%;
-    margin: auto;
-}
-
-div.content{
-    width: fit-content;
-    margin: auto;
-}
-
-div.oneapi-new-commands{
-    border-left-width: 1px;
-    border-left-style: solid;
-    padding-left: 20px;
-}
-
-div.oneapi-new-commands.light-mode{
-    border-left-color: rgb(0,0,0,0.3);
-}
-
-div.oneapi-new-commands.dark-mode{
-    border-left-color: rgb(255,255,255,0.3);
-}
-
-p {
-    text-align: justify;
-}
-
-p.intro{
-    font-size: 18px;
-    margin-top: 40px;
-}
-
-div.left-menu{
-    min-width: 300px;
-    width: 300px;
-}
-
-div.left-menu-positioning{
-    position: fixed;
-    top: 85px;
-}
-
-div.documentation-resources.title{
-    font-size: 18px;
-    font-weight: bolder;
-    margin-left: 40px;
-}
-
-div.documentation-resources-list-wrapper{
-    padding-bottom: 20px;
+table,
+th,
+td {
+    vertical-align: top;
     text-align: left;
+    border: 1px solid #747474;
 }
 
-ul.documentation-resources{
-    list-style: none;
+tbody {
+    white-space: nowrap;
 }
 
-li{
-    margin-top: 3px;
+th,
+td {
+    padding: 5px 10px;
+    border-top-width: 0;
+    border-left-width: 0;
 }
 
-li.section-name{
-    font-size: 16px;
+th:last-child,
+td:last-child {
+  border-right-width: 0;
 }
 
-li.inner{
-    margin-left: 20px;
+tr:last-child td {
+  border-bottom-width: 0;
 }
 
-a.header-link{
-    padding: 5px;
-    font-size: 14px;
+.topnav {
+    overflow: hidden;
+}
+
+.topnav a {
+    float: left;
+    color: #747474;
+    text-align: center;
+    padding: 12px;
     text-decoration: none;
 }
 
-a:hover{
-    background-color: rgb(128,128,128,0.50);
-    border-radius: 5px;
+.topnav a.active:hover {
+    background-color: #ddd;
+    color: black;
 }
 
-.table {
-    border-color: rgb(128,128,128,0.50);
-    border-collapse: collapse;
-    border-spacing: 0;
-    width: 100%;
+.topnav a.active {
+    color: rgb(47, 148, 255);
 }
 
-.small-table{
-    margin-left: 20px;
-    text-align: left;
-}
-
-table.small-table.numeric > tbody > tr >td:first-child{
-    text-align: center;
-    width: min-content;
-    min-width: 23px;
-}
-
-table.small-table.numeric > tbody > tr >td:nth-child(2){
-    border-right: 1px solid rgb(128,128,128,0.50);
-    width: 400px;
-}
-
-table.small-table > tbody > tr >td:last-child{
-    padding-left: 20px;
-}
-
-.small-intro {
-    border-bottom: 1px solid rgb(128,128,128,0.50);
-}
-
-.table > thead > tr > th{
-    padding: 8px;
-    line-height: 1.42857143;
-    vertical-align: top;
-}
-
-.table > tbody > tr > th,
-.table > thead > tr > td,
-.table > tbody > tr > td {
-  padding: 8px;
-  line-height: 1.42857143;
-  vertical-align: top;
-  border-top: 1px solid rgb(128,128,128,0.50);
-}
-
-.table > tbody > tr > td:first-child{
-    min-width: 440px;
-}
-
-.table > thead > tr > th {
-    vertical-align: bottom;
-    border-bottom: 2px solid rgb(128,128,128,0.50);
+.topnav a.text {
+    cursor: default;
 }

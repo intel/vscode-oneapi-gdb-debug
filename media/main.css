@@ -1,0 +1,50 @@
+body {
+	background-color: transparent;
+  text-align: left;
+}
+
+table {
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  color: #1e1e1e;
+  background:#d3d3d3;
+  max-width: 50%;
+}
+
+  @keyframes blink {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  .dot {
+    animation: blink 2s infinite;
+  }
+
+  .cell {
+    min-width: 16px;
+    min-height: 16px;
+    width: 16px;
+    height: 16px;
+    color: black;
+    background-color:#d3d3d3;
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .cell:hover {
+      cursor: pointer;
+  }
+
+  .lane{
+    border: #757575;
+  }
+
+  .colored{
+    background-color:#4682b4;
+    color: #ffff00;
+  }
+  
