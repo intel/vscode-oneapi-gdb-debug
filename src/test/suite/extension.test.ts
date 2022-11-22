@@ -1,16 +1,16 @@
-import * as assert from 'assert';
-import { after } from 'mocha';
+import * as assert from "assert";
+import { after } from "mocha";
 
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
 
-suite('Extension Test Suite', () => {
-    vscode.window.showInformationMessage('Extension test started!');
+suite("Extension Test Suite", () => {
+    vscode.window.showInformationMessage("Extension test started!");
 
     after(() => {
-        vscode.window.showInformationMessage('Extension tests done!');
+        vscode.window.showInformationMessage("Extension tests done!");
     });
 
-    test('Sample test', () => {
+    test("Sample test", () => {
 
         // TODO:
         // 1. Check if "Extension Pack For Intel oneapi" is installed and contains below extensions:
