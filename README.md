@@ -33,24 +33,34 @@ More information about all the `launch.json` features can be found on page [Conf
 
 ## SIMD View
 This extension provides a view in the debug view that displays the SIMD lane state of a Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
-You can edit thread name during debug process by following these steps:
+
+If you want you can edit thread name during debug process by following these steps:
 1. Make sure that you can see SIMD LANES while debugging
 2. Open Debug Console
 3. Choose needed thread using this command '-exec thread THREADID'
 4. Then run this command to rename needed thread '-exec thread name YOURNAME'
 5. Press Continue (F5) on your debug window to see renewed threads
 
-### ThreadID
-The thread ID as GDB sees it in the GPU inferior process. For example, `2.1` in the GDB console would be `1`.
+### Location
+To see the expanded location just hover over the needed cell.
 
-### Name
-The string name that VS Code uses to identify the GPU thread.
+![Location column](/media/location.gif)
 
 ### SIMD Lanes
 The status of the SIMD lanes in the thread. The bits indicate how many lanes are active (typically SIMD8, or 8 lanes) and 0 indicates an inactive lane.
 Ideally, all lanes should be active.
 
 ![View of SIMD view in VSCode debug session](/media/simd.png)
+
+### Choose SIMD Lane
+You can choose new SIMD Lane by simply clicking on it. You will see the updated information in SELECTED LANE tab. And also you can use the debug console to see extended thread information (*-exec -thread-info* command).
+
+![Hardware info](/media/lane.gif)
+
+### Hardware info
+You can see your devices info in separate tab while debugging.
+
+![Hardware info](/media/hwInfo.gif)
 
 ## Differences Between GDB and GDB-oneapi
 To display the differences between these two distributions of GDB:
