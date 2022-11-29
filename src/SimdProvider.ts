@@ -48,6 +48,7 @@ export class SimdProvider {
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
             this.simdViewProvider.cleanView();
+            this.deviceViewProvider.cleanView();
         }));
         
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
@@ -145,7 +146,7 @@ export class SimdProvider {
             const devicesInfo = this.parseDeviceInfo(evalresult);
 
             if ( devicesInfo === undefined) {
-                this.deviceViewProvider.setErrorView();
+                this.deviceViewProvider.cleanView();
                 return;
             }
             

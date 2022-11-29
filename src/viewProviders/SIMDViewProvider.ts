@@ -9,6 +9,7 @@ import {
 } from "vscode";
 import { CurrentThread, Emask } from "../SimdProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
+import { getNonce } from "./utils";
 
 enum ViewState{
     COLORS,
@@ -86,6 +87,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     public cleanView(){
         this._view.webview.html = "";
+        this.selectedLaneViewProvider.cleanView();
     }
     
     public setLoadingView(){
@@ -187,14 +189,4 @@ export class SIMDViewProvider implements WebviewViewProvider {
             }
         });
     }
-}
-
-function getNonce() {
-    let text = "";
-    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
 }
