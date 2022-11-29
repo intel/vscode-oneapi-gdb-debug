@@ -7,6 +7,7 @@ import {
     WebviewViewResolveContext,
 } from "vscode";
 import { SortedDevices } from "../SimdProvider";
+import { getNonce } from "./utils";
 
 export class DeviceViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.deviceView";
@@ -31,11 +32,19 @@ export class DeviceViewProvider implements WebviewViewProvider {
         };
 
         // Set the HTML content that will fill the webview view
-        this.setInitialPageContent(webviewView.webview, this._extensionUri);
+        this.setInitialPageContent(webviewView.webview);
     }
 
-    private setInitialPageContent(webview: Webview, extensionUri: Uri){
-        const toolkitUri = this.getUri(webview, extensionUri, [
+    private setInitialPageContent(webview: Webview){
+        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
+
+        const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
+        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.css"));
+
+        // Use a nonce to only allow a specific script to be run.
+        const nonce = getNonce();
+
+        const toolkitUri = this.getUri(webview, this._extensionUri, [
             "node_modules",
             "@vscode",
             "webview-ui-toolkit",
@@ -47,14 +56,21 @@ export class DeviceViewProvider implements WebviewViewProvider {
         <!DOCTYPE html>
         <html lang="en">
         <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <script type="module" src="${toolkitUri}"></script>
-          <title>Hardware Info</title>
+            <meta charset="UTF-8">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+            <link href="${styleVSCodeUri}" rel="stylesheet">
+            <link href="${styleMainUri}" rel="stylesheet
+
+            <script type="module" src="${toolkitUri}"></script>
+            <title>SIMD Lanes</title>
         </head>
         <body>`;
 
-        this.htmlEnd = "</body></html>";
+        this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
+        </body>
+        </html>`;
     }
 
     public cleanView(){
@@ -77,9 +93,9 @@ export class DeviceViewProvider implements WebviewViewProvider {
         let upd = "";
 
         for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
-            upd += threadGroups;
+            upd += `<div class="collapsible">▷ ${threadGroups}</div>`;
             for (const device of devices){
-                const table = `<table>
+                const table = `<table class="content">
                     <tr><td>Number</td>
                     <td>${device.number}</td></tr>
                     <tr><td>Name</td>
