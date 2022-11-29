@@ -191,6 +191,16 @@ This functionality appears in the Variables and Watch panels. Clicking on the ic
 
 ![Memory Viewing](/media/memView.png)
 
+### Choose SIMD Lane
+You can choose new SIMD Lane by simply clicking on it. You will see the updated information in SELECTED LANE tab. And also you can use the debug console to see extended thread information (*-exec -thread-info* command).
+
+![Hardware info](/media/lane.gif)
+
+### Hardware info
+You can see your devices info in separate tab while debugging.
+
+![Hardware info](/media/hwInfo.gif)
+
 ## Differences Between GDB and GDB-oneapi
 To display the differences between these two distributions of GDB:
 1. Press `Ctrl+Shift+P ( or View -> Command Palette... )` to open the Command Palette.

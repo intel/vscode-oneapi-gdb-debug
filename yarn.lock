@@ -1701,6 +1701,11 @@ mkdirp-classic@^0.5.2, mkdirp-classic@^0.5.3:
   dependencies:
     minimist "^1.2.6"
 
+mkdirp@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
+  integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
+
 mocha@^9.2.1:
   version "9.2.2"
   resolved "https://registry.yarnpkg.com/mocha/-/mocha-9.2.2.tgz#d70db46bdb93ca57402c809333e5a84977a88fb9"
@@ -2531,7 +2536,15 @@ vsce@^2.11.0, vsce@^2.6.7:
     yauzl "^2.3.1"
     yazl "^2.2.2"
 
-vscode-debugprotocol@^1.51.0:
+vscode-debugadapter@^1.51.0:
+  version "1.51.0"
+  resolved "https://registry.yarnpkg.com/vscode-debugadapter/-/vscode-debugadapter-1.51.0.tgz#ef600c3aa165523645887ec15df1443ba7d68aa6"
+  integrity sha512-mObaXD5/FH/z6aL2GDuyCLbnwLsYRCAJWgFid01vKW9Y5Si8OvINK+Tn+Yl/lRUbetjNuZW3j1euMEz6z8Yzqg==
+  dependencies:
+    mkdirp "^1.0.4"
+    vscode-debugprotocol "1.51.0"
+
+vscode-debugprotocol@1.51.0, vscode-debugprotocol@^1.51.0:
   version "1.51.0"
   resolved "https://registry.yarnpkg.com/vscode-debugprotocol/-/vscode-debugprotocol-1.51.0.tgz#c03168dac778b6c24ce17b3511cb61e89c11b2df"
   integrity sha512-dzKWTMMyebIMPF1VYMuuQj7gGFq7guR8AFya0mKacu+ayptJfaRuM0mdHCqiOth4FnRP8mPhEroFPx6Ift8wHA==

@@ -555,7 +555,7 @@ export class SimdProvider {
             const devicesInfo = this.parseDeviceInfo(evalresult);
 
             if ( devicesInfo === undefined) {
-                this.deviceViewProvider.setErrorView();
+                this.deviceViewProvider.cleanView();
                 return;
             }
             
