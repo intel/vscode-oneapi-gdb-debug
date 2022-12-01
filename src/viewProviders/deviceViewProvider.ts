@@ -96,17 +96,17 @@ export class DeviceViewProvider implements WebviewViewProvider {
             upd += `<div class="collapsible">▷ ${threadGroups}</div>`;
             for (const device of devices){
                 const table = `<table class="content">
-                    <tr><td>Number</td>
+                    <tr><td>Number: </td>
                     <td>${device.number}</td></tr>
-                    <tr><td>Name</td>
+                    <tr><td>Name: </td>
                     <td>${device.device_name}</td></tr>
-                    <tr><td>Location</td>
+                    <tr><td>Location: </td>
                     <td>${device.location}</td></tr>
-                    <tr><td>Sub device</td>
+                    <tr><td>Sub device: </td>
                     <td>${device.sub_device}</td></tr>
-                    <tr><td>Vendor ID</td>
+                    <tr><td>Vendor ID: </td>
                     <td>${device.vendor_id}</td></tr>
-                    <tr><td>Target ID</td>
+                    <tr><td>Target ID: </td>
                     <td>${device.target_id}</td></tr>
                 </table>`;
 

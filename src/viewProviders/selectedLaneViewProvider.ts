@@ -74,13 +74,13 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
 
     public setView(lane: number, executionMask: string, hitLanesMask: string, length: number){
         const table = `<table>
-            <tr><td>Lane Number</td>
+            <tr><td>Lane Number: </td>
             <td id="selectedLane">${lane}</td></tr>
-            <tr><td>Execution Mask</td>
+            <tr><td>Execution Mask: </td>
             <td id="selectedMask">${executionMask}</td></tr>
-            <tr><td>Hit Lanes Mask</td>
+            <tr><td>Hit Lanes Mask: </td>
             <td id="hitLanesMask">${hitLanesMask}</td></tr>
-            <tr><td>SIMD Width</td>
+            <tr><td>SIMD Width: </td>
             <td id="selectedWidth">${length}</td></tr>
         </table>`;
 
