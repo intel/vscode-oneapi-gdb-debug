@@ -41,6 +41,9 @@ If you want you can edit thread name during debug process by following these ste
 4. Then run this command to rename needed thread '-exec thread name YOURNAME'
 5. Press Continue (F5) on your debug window to see renewed threads
 
+
+*On some Linux machines there might be some troubles with SIMD Lanes view. This problem is already under optimization.*
+
 ### Location
 To see the expanded location just hover over the needed cell.
 
