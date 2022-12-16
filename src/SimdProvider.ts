@@ -191,6 +191,9 @@ export class SimdProvider {
                 const devicesList = elemJSON[1].split(/{([^}]+)}/g).slice(1, -1);
 
                 for (const { deviseIndex, device } of devicesList.map((device, deviseIndex) => ({ deviseIndex, device }))) {
+                    if(device.length < 3) {
+                        continue;
+                    }
                     devicesJSON += "{";
 
                     const property = device.split(",");
