@@ -93,7 +93,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
         let upd = "";
 
         for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
-            upd += `<div class="collapsible">▷ ${threadGroups}</div>`;
+            upd += `<div class="collapsible active">▷ ${threadGroups}</div>`;
             for (const device of devices){
                 const table = `<table class="content">
                     <tr><td>Number: </td>
