@@ -175,7 +175,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     });
                     this.chosenLaneId = message.payload;
                     const parcedLane = JSON.parse(message.payload);
-
+                    
                     this.selectedLaneViewProvider.setView(parcedLane.lane, parcedLane.executionMask, parcedLane.hitLanesMask, parcedLane.length);
                     
                     const session = debug.activeDebugSession;
