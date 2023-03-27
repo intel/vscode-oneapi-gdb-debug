@@ -66,7 +66,6 @@ export async function getThread(thread?: string, laneNum?: string): Promise<Curr
     }
     return undefined;
 }
-
 export class SimdProvider {
 
     private threadsInfoArray: ThreadInfo[] = [];
