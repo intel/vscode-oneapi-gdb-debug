@@ -178,6 +178,13 @@
                     "command": "intelOneAPI.debug.makeBreak",
                     "group": "navigation"
                 }
+            ],
+            "editor/context": [  
+                {
+                    "when": "resourceLangId == cpp || resourceLangId == c",
+                    "command": "intelOneAPI.debug.makeBreak",
+                    "group": "navigation"
+                }
             ]
         },
         "debuggers": [
