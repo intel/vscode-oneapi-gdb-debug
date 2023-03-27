@@ -459,6 +459,7 @@ export class SimdProvider {
             await session.customRequest("evaluate", { expression: cond, context: "repl" });
 
             this.simdViewProvider.setView(masks, currentThread);
+            this.findAndAddSimdBreakPoints();
         }
         return;
     }
@@ -659,26 +660,147 @@ export class SimdProvider {
         return undefined;
     }
 
-    public async swithSIMDLane(oldSimdLane : string | undefined): Promise<void> {
-        if (!oldSimdLane) {
-            return;
+    public async simdBreakpointsHandler(bpEventList: vscode.BreakpointsChangeEvent): Promise<void> {
+        if (bpEventList.added.length !== 0) {
+            bpEventList.added.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint);
+                }
+                return;
+            });
         }
 
-        const newSimdLane = await vscode.window.showInputBox({
-            placeHolder: oldSimdLane,
-            title: "Type new SIMD lane"
-        });
+        if (bpEventList.changed.length !== 0) {
+            bpEventList.changed.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+                }
+            });
+        }
+
+        if (bpEventList.removed.length !== 0) {
+            bpEventList.removed.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    const session = await this.checkGbdOneapiSession();
+
+                    this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session ? session : undefined);
+                }
+            });
+        }
+    }
+
+    public async checkGbdOneapiSession(): Promise<vscode.DebugSession | undefined> {
 
         const session = vscode.debug.activeDebugSession;
 
-        if (session) {
-            await session.customRequest("threads");
-            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread "+ newSimdLane, context: "repl" });
-            
-            if (evalresult.result === "void") {
+        if(!session) {
+            return undefined;
+        }
+        const evalresult = await session.customRequest("evaluate", { expression: "-exec thread" , context: "repl" });
+
+        if(!evalresult.result.includes("lane")) {
+            return undefined;
+        }
+
+        return session;
+    }
+
+    public addSimdBreakPoints(bp: vscode.SourceBreakpoint): void {
+
+        const bps: vscode.Breakpoint[] = [];
+
+        bps.push(bp);
+        vscode.debug.addBreakpoints(bps);
+        return;
+    }
+
+    public async removeSimdBreakPoint(rbp: vscode.SourceBreakpoint, session?: vscode.DebugSession): Promise<void> {
+
+        if(session) {
+            const fileAndLine = this.bpToSourceAndLine(rbp, true);
+            const cond = "-exec " + "clear " + fileAndLine;
+
+            await session.customRequest("evaluate", { expression: cond , context: "repl" });
+
+        }
+        return;
+    }
+
+    public async findAndAddSimdBreakPoints(): Promise<void> {
+
+        vscode.debug.breakpoints.forEach(async bpEvent => {
+            if(bpEvent.condition?.startsWith("-break-insert"))
+            {
+                await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+            }
+        });
+
+        return;
+    }
+
+    public bpToSourceAndLine(bp: vscode.SourceBreakpoint, isNoZeroBased?: boolean): string {
+
+        const filename = parse(bp.location.uri.path).base;
+        let line = bp.location.range.start.line;
+
+        if(isNoZeroBased) {
+            line++;
+        }
+
+        const cond = filename + ":" + line;
+
+        return cond;
+    }
+
+    public async createOrChangeBreakPoint(bpEvent: vscode.SourceBreakpoint, isChange?: boolean): Promise<void> {
+
+        const session = await this.checkGbdOneapiSession();
+
+        if(!session) {
+            return;
+        }
+
+        if(isChange) {
+            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session);
+        }
+
+        const bps = bpEvent as vscode.SourceBreakpoint;
+        const fileAndLine = this.bpToSourceAndLine(bps, true);
+        const cond = "-exec " + bpEvent.condition + " " + fileAndLine;
+        const evalresult = await session.customRequest("evaluate", { expression: cond , context: "repl" });
+ 
+        if (evalresult.result === "void") {
+            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint);
+            return;
+        }
+    }
+
+    public async addSimdBreakPointsFromEditor(): Promise<void> {
+
+        const editor = vscode.window.activeTextEditor;
+
+
+        if (editor) {
+            const document = editor.document;
+            const selections = editor.selections;
+            const inputBoxText: vscode.InputBoxOptions = {
+                placeHolder: "Please specify thread:line (Example: 2:3):"
+            };
+
+            const rawCondition = await vscode.window.showInputBox(inputBoxText);
+
+            if(! rawCondition) {
                 return;
             }
-            // this.sendEvent(new InvalidatedEvent( ['variables'] )); 
+            const condition = "-p " + rawCondition.split(":")[0] + " -l " + rawCondition.split(":")[1];
+            const bp = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(selections[0].start.line, 0)), true,"-break-insert " + condition);
+            
+            if(bp) {
+                this.addSimdBreakPoints(bp);
+            }
         }
         return;
     }
