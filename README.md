@@ -67,8 +67,26 @@ There are several ways to set a SIMD lane specific breakpoint:
 `THREADID:SIMDLANE`
 ![Functional conditional breakpoint](/media/func_cbp.gif)
 
+### SIMD lane specific breakpoints
+Note that SIMD lane specific breakpoints are saved between sessions, but will be applied only after hitting a regular breakpoint inside the kernel.
+
+There are several ways to set a SIMD lane specific breakpoint:
+* Add such a breakpoint by right-clicking on the desired line, selecting "Add Conditional Breakpoint" and "Expression". Then use the commands -break-insert and specify the thread number using the flag -p and SIMD lane using the flag -l:
+`-break-insert -p THREADID -l SIMDLANE`
+![Right-clicking conditional breakpoint](/media/right_click_cbp.gif)
+
+* Use the `Intel oneAPI: Add SIMD lane conditional breakpoint` function at the desired line from the drop-down menu and specify the THREADID and SIMDLANE in format:
+`THREADID:SIMDLANE`
+![Functional conditional breakpoint](/media/func_cbp.gif)
+
+
+### Symbolic indication of SIMD lanes
+In the settings, you can specify an additional designation for active and inactive lanes using any text character. This may be useful for clearer recognition of lane status.
+
+![Symbolic indication](/media/symbols.png)
 ### Choose SIMD Lane
 You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will show updated information in the SELECTED LANE tab, and extended thread information can be found using the debug console (command `-exec -thread-info`).
+Please note that at the moment the Variables view is not refreshed automatically after clicking on SIMD lane. To get around this and see the current state of the variables for the selected SIMD, you need to perform any manipulation with Watch view, for example, add or remove any value.
 
 ![Lane info](/media/lane.gif)
 
