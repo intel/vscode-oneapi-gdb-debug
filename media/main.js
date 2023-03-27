@@ -24,6 +24,10 @@
             const basic = document.getElementById(element.id);
     
             basic.addEventListener("click", function(){changeLane(element.id);});
+
+            if(basic.innerText === "⇨" ) {
+                basic.scrollIntoView({ behavior: "auto", block: "center", inline: "start" });
+            }
         }
 
         var coll = document.getElementsByClassName("collapsible");
@@ -33,10 +37,10 @@
             coll[i].addEventListener("click", function() {
                 var content = this.nextElementSibling;
                 
-                if (this.classList.contains('active')) {
-                  content.style.display = "none";
+                if (this.classList.contains("active")) {
+                    content.style.display = "none";
                 } else {
-                  content.style.display = "block";
+                    content.style.display = "block";
                 }
                 this.classList.toggle("active");
             });
@@ -64,6 +68,8 @@
             case "changeLane":
                 updateLane(data.id, data.previousLane, data.viewType);
                 break;
+            default:
+                break;
             }
         });
     }
@@ -73,15 +79,15 @@
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function updateLane(id, previousLaneId, viewType) {
+    function updateLane(id, previousLaneId, activeSymbol) {
         if (previousLaneId !== id) {
             const nextLane = document.getElementById(id);
 
-            nextLane.innerHTML = "<span style=\"display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00\">➡</span>";
+            nextLane.innerHTML = "<span style=\"display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00\">⇨</span>";
             if (previousLaneId) {
                 const previousLane = document.getElementById(previousLaneId);
 
-                previousLane.innerHTML = "1";
+                previousLane.innerHTML = activeSymbol;
             }}
     }
 }());

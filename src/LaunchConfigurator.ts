@@ -24,7 +24,16 @@ const debugConfig = {
     args: [] as string[],
     stopAtEntry: false,
     cwd: "${workspaceFolder}",
-    environment: [],
+    environment: [
+        {
+            name: "ZET_ENABLE_PROGRAM_DEBUGGING",
+            value: "1"
+        },
+        {
+            name: "IGC_EnableGTLocationDebugging",
+            value: "1"
+        }
+    ],
     externalConsole: false,
     // eslint-disable-next-line @typescript-eslint/naming-convention
     MIMode: "gdb",
