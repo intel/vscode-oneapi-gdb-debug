@@ -129,6 +129,8 @@ export class DebuggerCommandsPanel {
                 case "alert":
                     vscode.window.showErrorMessage(message.text);
                     return;
+                default:
+                    return;
                 }
             },
             null,

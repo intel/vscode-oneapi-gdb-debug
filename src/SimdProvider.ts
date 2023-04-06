@@ -7,9 +7,7 @@
 
 "use strict";
 import * as vscode from "vscode";
-
-// import {  InvalidatedEvent } from 'vscode-debugadapter';
-// import { EventEmitter } from 'events'
+import { parse } from "path";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
@@ -24,11 +22,9 @@ export interface CurrentThread {
     name: string;
     lane: number;
 }
- 
 export class SimdProvider {
  
     private threadsInfoArray: ThreadInfo[] = [];
-
     constructor(
           private context: vscode.ExtensionContext,
           private simdViewProvider: SIMDViewProvider,
@@ -41,7 +37,6 @@ export class SimdProvider {
             this.fetchEMaskForAll();
             this.fetcDevicesForAll();
             return;
- 
         }));
 
         //We need to test if multi debug sessions get effected by this, we might need to initialize multiple instances of this object :/
@@ -52,21 +47,22 @@ export class SimdProvider {
         }));
         
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
-            console.log(e);
+            this.simdBreakpointsHandler(e);
         }));
         
     }
+
     set threadsInfo(value: ThreadInfo[]){
         this.threadsInfoArray = value;
     }
- 
+
     get threadsInfo():ThreadInfo[]{
         return this.threadsInfoArray;
     }
- 
+
     public async fetchEMaskForAll(): Promise<void> {
         const session = vscode.debug.activeDebugSession;
- 
+
         if (session) {
             await session.customRequest("threads");
             const evalresult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
@@ -74,65 +70,50 @@ export class SimdProvider {
             if (evalresult.result === "void") {
                 return;
             }
+            const masks: Emask[] = [];
 
-            const masks: Emask[] = []; // optimise?
-            let simd_with = 0;
-            let execution_mask  = "0";
-            let hit_lane_mask  = "0";
-            let func  = "";
-            let target_id  = "";
-            let thread_id = 0;
-            let i = 0;
-
-            // If there are no GPU threads
-            if (!evalresult.result.includes(("arch=intelgt"))) {
+            if (!/arch=intelgt/.test(evalresult.result)) {
                 return;
             }
-            
-            // Roughly divide the string by threads
-            const rougeThreads = evalresult.result.split("{id=");
-            
-            for (const t of rougeThreads) {
-                // Process only GPU threads
-                if (!t.includes(("arch=intelgt"))) {
-                    continue;
+            const allThreads : string = evalresult.result.match(/\{id=\d+.*\}/g);
+            const threadsById = allThreads.toString().split("{id=");
+            const threadsArray = [];
+
+            if (threadsById) {
+                for (const match of threadsById) {
+                    if (!/arch=intelgt/.test(match)) {
+                        continue;
+                    }
+                    threadsArray.push(match);
                 }
-
-                const property = t.split(",");
-
-                for (const item of property)
-                {
-                    thread_id = property[0];
-                    const pair = item.split("=");
-
-                    if(pair[0] === "func") {
-                        func = pair[1].replace(/[{}]/g, "");
-                    }
-                    if(pair[0] === "hit-lanes-mask") {
-                        hit_lane_mask =pair[1]?.replace(/[{}]/g, "");
-                    }
-                    if(pair[0] === "execution-mask") {
-                        execution_mask = pair[1].replace(/[{}]/g, "");
-                    }
-                    if(pair[0] === "simd-width") {
-                        simd_with = parseInt(pair[1].replace(/[{}]/g, ""), 16);
-                    }
-                    if(pair[0] === "target-id") {
-                        target_id = pair[1];
-                    }
-                }
-
-                masks.push({ func: func, name: this.threadsInfoArray[i]?.name || target_id , threadId: thread_id, executionMask: execution_mask, hitLanesMask: hit_lane_mask, length: simd_with });
-                i++;
             }
- 
- 
+
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            threadsArray.forEach((t: string) => {
+                const threadProperties = t.split(",");
+                const propertiesObject = Object.fromEntries(threadProperties.map((property: string) => {
+                    const split = property.split("=");
+
+                    return [split[0], split[1]];
+                }));
+
+                masks.push({
+                    func: propertiesObject.func,
+                    name: this.threadsInfoArray[masks.length]?.name || propertiesObject["target-id"],
+                    threadId: parseInt(threadProperties[0], 10),
+                    executionMask: propertiesObject["execution-mask"],
+                    hitLanesMask: propertiesObject["hit-lanes-mask"],
+                    length: parseInt(propertiesObject["simd-width"], 10),
+                });
+            });
+            
             if (!masks.length) {
-                return; //exit, no simd detected
+                return;
             }
             const currentThread = await this.getCurrentThread();
 
             this.simdViewProvider.setView(masks, currentThread);
+            this.findAndAddSimdBreakPoints();
         }
     }
 
@@ -253,26 +234,147 @@ export class SimdProvider {
         return undefined;
     }
 
-    public async swithSIMDLane(oldSimdLane : string | undefined): Promise<void> {
-        if (!oldSimdLane) {
-            return;
+    public async simdBreakpointsHandler(bpEventList: vscode.BreakpointsChangeEvent): Promise<void> {
+        if (bpEventList.added.length !== 0) {
+            bpEventList.added.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint);
+                }
+                return;
+            });
         }
 
-        const newSimdLane = await vscode.window.showInputBox({
-            placeHolder: oldSimdLane,
-            title: "Type new SIMD lane"
-        });
+        if (bpEventList.changed.length !== 0) {
+            bpEventList.changed.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+                }
+            });
+        }
+
+        if (bpEventList.removed.length !== 0) {
+            bpEventList.removed.forEach(async bpEvent => {
+                if(bpEvent.condition?.startsWith("-break-insert"))
+                {
+                    const session = await this.checkGbdOneapiSession();
+
+                    this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session ? session : undefined);
+                }
+            });
+        }
+    }
+
+    public async checkGbdOneapiSession(): Promise<vscode.DebugSession | undefined> {
 
         const session = vscode.debug.activeDebugSession;
 
-        if (session) {
-            await session.customRequest("threads");
-            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread "+ newSimdLane, context: "repl" });
-            
-            if (evalresult.result === "void") {
+        if(!session) {
+            return undefined;
+        }
+        const evalresult = await session.customRequest("evaluate", { expression: "-exec thread" , context: "repl" });
+
+        if(!evalresult.result.includes("lane")) {
+            return undefined;
+        }
+
+        return session;
+    }
+
+    public addSimdBreakPoints(bp: vscode.SourceBreakpoint): void {
+
+        const bps: vscode.Breakpoint[] = [];
+
+        bps.push(bp);
+        vscode.debug.addBreakpoints(bps);
+        return;
+    }
+
+    public async removeSimdBreakPoint(rbp: vscode.SourceBreakpoint, session?: vscode.DebugSession): Promise<void> {
+
+        if(session) {
+            const fileAndLine = this.bpToSourceAndLine(rbp, true);
+            const cond = "-exec " + "clear " + fileAndLine;
+
+            await session.customRequest("evaluate", { expression: cond , context: "repl" });
+
+        }
+        return;
+    }
+
+    public async findAndAddSimdBreakPoints(): Promise<void> {
+
+        vscode.debug.breakpoints.forEach(async bpEvent => {
+            if(bpEvent.condition?.startsWith("-break-insert"))
+            {
+                await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+            }
+        });
+
+        return;
+    }
+
+    public bpToSourceAndLine(bp: vscode.SourceBreakpoint, isNoZeroBased?: boolean): string {
+
+        const filename = parse(bp.location.uri.path).base;
+        let line = bp.location.range.start.line;
+
+        if(isNoZeroBased) {
+            line++;
+        }
+
+        const cond = filename + ":" + line;
+
+        return cond;
+    }
+
+    public async createOrChangeBreakPoint(bpEvent: vscode.SourceBreakpoint, isChange?: boolean): Promise<void> {
+
+        const session = await this.checkGbdOneapiSession();
+
+        if(!session) {
+            return;
+        }
+
+        if(isChange) {
+            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session);
+        }
+
+        const bps = bpEvent as vscode.SourceBreakpoint;
+        const fileAndLine = this.bpToSourceAndLine(bps, true);
+        const cond = "-exec " + bpEvent.condition + " " + fileAndLine;
+        const evalresult = await session.customRequest("evaluate", { expression: cond , context: "repl" });
+ 
+        if (evalresult.result === "void") {
+            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint);
+            return;
+        }
+    }
+
+    public async addSimdBreakPointsFromEditor(): Promise<void> {
+
+        const editor = vscode.window.activeTextEditor;
+
+
+        if (editor) {
+            const document = editor.document;
+            const selections = editor.selections;
+            const inputBoxText: vscode.InputBoxOptions = {
+                placeHolder: "Please specify thread:line (Example: 2:3):"
+            };
+
+            const rawCondition = await vscode.window.showInputBox(inputBoxText);
+
+            if(! rawCondition) {
                 return;
             }
-            // this.sendEvent(new InvalidatedEvent( ['variables'] )); 
+            const condition = "-p " + rawCondition.split(":")[0] + " -l " + rawCondition.split(":")[1];
+            const bp = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(selections[0].start.line, 0)), true,"-break-insert " + condition);
+            
+            if(bp) {
+                this.addSimdBreakPoints(bp);
+            }
         }
         return;
     }
@@ -316,8 +418,7 @@ class SimdDebugAdapterProviderFactory implements vscode.DebugAdapterTrackerFacto
  
 class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
  
-    constructor(private readonly simdtracker: SimdProvider) {}
- 
+    constructor(private readonly simdtracker: SimdProvider) {} 
     public onDidSendMessage(m: DebugProtocol.ProtocolMessage) {
         this.routeDebugMessage(m);
     }
@@ -328,12 +429,13 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
  
             switch (e.event) {
             case "stopped": {
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const stopped = e as DebugProtocol.StoppedEvent;
-
                 this.simdtracker.fetchEMaskForAll();
                 this.simdtracker.fetcDevicesForAll();
-            }}}
+                break;
+            }
+            default:
+                break;
+            }}
         return;
     }}
  

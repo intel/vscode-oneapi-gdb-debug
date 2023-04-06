@@ -44,7 +44,12 @@ th {
   }
 
   .colored{
-    background-color:#4682b4;
+    background-color: #01ffff;
+    color: #ffff00;
+  }
+
+  .hitCell{
+    background-color: #4882b1;
     color: #ffff00;
   }
 
