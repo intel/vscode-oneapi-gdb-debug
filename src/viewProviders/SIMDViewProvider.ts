@@ -27,6 +27,23 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private chosenLaneId?: string;
 
+    private _activeLaneSymbol: string | undefined;
+    private _inactiveLaneSymbol: string | undefined;
+
+    public set activeLaneSymbol(symbol: string | undefined) {
+        this._activeLaneSymbol = "";
+        if (symbol !== undefined && symbol?.length === 1) {
+            this._activeLaneSymbol = symbol;
+        }
+    }
+
+    public set inactiveLaneSymbol(symbol: string | undefined) {
+        this._inactiveLaneSymbol = "";
+        if (symbol !== undefined && symbol?.length === 1) {
+            this._inactiveLaneSymbol = symbol;
+        }
+    }
+
     constructor(private readonly _extensionUri: Uri,
         private selectedLaneViewProvider: SelectedLaneViewProvider) {}
 
@@ -111,7 +128,6 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private getThreadsView(masks: Emask[], currentThread?: CurrentThread){
         let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th><th>Location</th><th>SIMD Lanes</th></tr>";
-        let i = 1;
         const currentLaneTable = "";
 
         for (const m of masks) {
@@ -120,30 +136,41 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
 
             if(currentThread?.name === m.name){
-                this.chosenLaneId = `{"lane": ${currentThread.lane}, "threadId": ${i}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
               
                 this.selectedLaneViewProvider.setView(currentThread.lane, m.executionMask, m.hitLanesMask, m.length);
             }
 
-            const tableString = this.getColorsRow(newSimdRow, i, m);
+            const tableString = this.getColorsRow(newSimdRow, m);
             
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td title="${m.func}">${m.func.substring(0,20)}...</td><td><table><tr>${tableString}</tr></table></td></tr>`;
-            i++;
         }
         upd = upd + "</tbody></table>" + currentLaneTable;
         return upd;  
     }
 
-    private getColorsRow(newSimdRow: string, i: number, m: Emask){
+    private getColorsRow(newSimdRow: string, m: Emask){
         const tableString = newSimdRow.split("").map((value: string, index)=> {
-            const id = `{"lane": ${index}, "threadId": ${i}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`; //`{"lane": ${currentThread.lane}, "threadId": ${i}, "value": ${m.value}, "length": ${m.length}}`;
-            let coloredCell = `<td id='${id}' class ='cell colored one'>1</td>`;
+            const id = `{"lane": ${index}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
+            
+            if(+value === 0){
+                return `<td id='${id}' class ='cell'>${this._inactiveLaneSymbol}</td>`;
+            }
+            let cellStyle = "colored";
 
-            if(this.chosenLaneId && this.chosenLaneId === id){
-                coloredCell = `<td id='${id}' class ='cell colored one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">➡</span></td>`;
+            if(m.hitLanesMask){
+                const hitLanesMaskBinary= parseInt(m.hitLanesMask,16).toString(2).split("").reverse().join("");
+                const hitNum = hitLanesMaskBinary.charAt(index);
+
+                cellStyle = hitNum === "1" ? "hitCell" : "colored";
             }
 
-            return +value === 0 ? `<td id='${id}' class ='cell'>0</td>`: coloredCell;
+            let coloredCell = `<td id='${id}' class ='cell ${cellStyle} one'>${this._activeLaneSymbol}</td>`;
+
+            if(this.chosenLaneId && this.chosenLaneId === id){
+                coloredCell = `<td id='${id}' class ='cell ${cellStyle} one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></td>`;
+            }
+            return coloredCell;
         }).join("");
 
         return tableString;
@@ -171,20 +198,22 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     // TODO: update real thread lane
                     webviewView.webview.postMessage({
                         command: "changeLane",
-                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this.viewState }),
+                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
                     });
                     this.chosenLaneId = message.payload;
-                    const parcedLane = JSON.parse(message.payload);
 
-                    this.selectedLaneViewProvider.setView(parcedLane.lane, parcedLane.executionMask, parcedLane.hitLanesMask, parcedLane.length);
-                    
+                    const parsedMessage = JSON.parse(message.payload);
+                    const parsedThread = parsedMessage.name.split(".")[1];
+                    const parsedLane = parsedMessage.lane;
                     const session = debug.activeDebugSession;
-                    const evalresult = await session?.customRequest("evaluate", { expression: `-exec thread ${parcedLane.threadId}:${parcedLane.lane}`, context: "repl" });
 
-                    if (evalresult?.result === "void") {
-                        return;
-                    }
+                    session?.customRequest("evaluate", { expression: `-exec thread ${parsedThread}:${parsedLane}`, context: "repl" });
+                    this.selectedLaneViewProvider.setView(parsedLane, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
                 }
+                
+                break;
+
+            default:
                 break;
             }
         });

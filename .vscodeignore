@@ -9,3 +9,5 @@ tsconfig.json
 vsc-extension-quickstart.md
 test-data/**
 test-resources/**
+.github
+.gitlab-ci.yml
