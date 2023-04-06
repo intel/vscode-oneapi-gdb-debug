@@ -1,0 +1,4 @@
+{
+    "capabilities.ACTIVE_LANE_SYMBOL.description" : "Symbol to indicate active lane.\n",
+    "capabilities.INACTIVE_LANE_SYMBOL.description": "Symbol to indicate inactive lane.\n"
+}

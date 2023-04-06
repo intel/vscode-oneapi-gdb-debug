@@ -3,7 +3,7 @@
     "displayName": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
     "description": "An extension to expose additional features of GPU debugging with GDB for Intel® oneAPI.",
     "publisher": "intel-corporation",
-    "version": "0.2.1",
+    "version": "0.3.1",
     "license": "MIT",
     "icon": "media/oneapi-logo.png",
     "keywords": [
@@ -13,7 +13,7 @@
         "gdb"
     ],
     "engines": {
-        "vscode": "^1.64.0"
+        "vscode": "^1.76.0"
     },
     "categories": [
         "Other"
@@ -23,6 +23,23 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "configuration": [
+            {
+                "title": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
+                "properties": {
+                    "intelOneAPI.debug.ACTIVE_LANE_SYMBOL": {
+                        "type": "string",
+                        "description": "%capabilities.ACTIVE_LANE_SYMBOL.description%",
+                        "maxLength": 1
+                    },
+                    "intelOneAPI.debug.INACTIVE_LANE_SYMBOL": {
+                        "type": "string",
+                        "description": "%capabilities.INACTIVE_LANE_SYMBOL.description%",
+                        "maxLength": 1
+                    }
+                }
+            }
+        ],
         "commands": [
             {
                 "command": "intelOneAPI.launchConfigurator.generateLaunchJson",
@@ -35,6 +52,11 @@
             {
                 "command": "intelOneAPI.debug.fetchSIMDInfo",
                 "title": "Intel oneAPI: Refresh SIMD Data",
+                "icon": "$(extensions-refresh)"
+            },
+            {
+                "command": "intelOneAPI.debug.makeBreak",
+                "title": "Intel oneAPI: Add SIMD lane conditional breakpoint",
                 "icon": "$(debug-restart)"
             },
             {
@@ -58,7 +80,7 @@
                 {
                     "id": "intelOneAPI.debug.simdview",
                     "type": "webview",
-                    "name": "SIMD Lanes",
+                    "name": "oneAPI GPU Threads",
                     "contextualTitle": "Explorer"
                 },
                 {
@@ -78,6 +100,13 @@
                 {
                     "command": "intelOneAPI.debug.fetchSIMDInfo",
                     "when": "view == intelOneAPI.debug.simdview",
+                    "group": "navigation"
+                }
+            ],
+            "editor/context": [  
+                {
+                    "when": "resourceLangId == cpp || resourceLangId == c",
+                    "command": "intelOneAPI.debug.makeBreak",
                     "group": "navigation"
                 }
             ]
@@ -114,7 +143,16 @@
                         "args": [],
                         "stopAtEntry": true,
                         "cwd": "${workspaceFolder}",
-                        "environment": [],
+                        "environment": [
+                            {
+                                "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                                "value": "1"
+                            },
+                            {
+                                "name": "IGC_EnableGTLocationDebugging",
+                                "value": "1"
+                            }
+                        ],
                         "externalConsole": false,
                         "MIMode": "gdb",
                         "miDebuggerPath": "gdb-oneapi",
@@ -145,7 +183,16 @@
                         "args": [],
                         "stopAtEntry": false,
                         "cwd": "${workspaceFolder}",
-                        "environment": [],
+                        "environment": [
+                            {
+                                "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                                "value": "1"
+                            },
+                            {
+                                "name": "IGC_EnableGTLocationDebugging",
+                                "value": "1"
+                            }
+                        ],
                         "externalConsole": false,
                         "MIMode": "gdb",
                         "miDebuggerPath": "gdb-oneapi",
@@ -181,7 +228,16 @@
                             "args": [],
                             "stopAtEntry": false,
                             "cwd": "${workspaceFolder}",
-                            "environment": [],
+                            "environment": [
+                                {
+                                    "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                                    "value": "1"
+                                },
+                                {
+                                    "name": "IGC_EnableGTLocationDebugging",
+                                    "value": "1"
+                                }
+                            ],
                             "externalConsole": false,
                             "MIMode": "gdb",
                             "miDebuggerPath": "gdb-oneapi",
@@ -216,7 +272,16 @@
                             "args": [],
                             "stopAtEntry": true,
                             "cwd": "${workspaceFolder}",
-                            "environment": [],
+                            "environment": [
+                                {
+                                    "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
+                                    "value": "1"
+                                },
+                                {
+                                    "name": "IGC_EnableGTLocationDebugging",
+                                    "value": "1"
+                                }
+                            ],
                             "externalConsole": false,
                             "MIMode": "gdb",
                             "miDebuggerPath": "gdb-oneapi",
@@ -250,20 +315,20 @@
         "ui-test": "extest setup-and-run out/test/ui/*.js -m ./src/test/ui/configs/settings.json"
     },
     "devDependencies": {
-        "@types/chai": "^4.3.0",
+        "@types/chai": "^4.3.4",
         "@types/mkdirp": "^1.0.2",
-        "@types/mocha": "^9.1.0",
-        "@types/node": "^17.0.21",
+        "@types/mocha": "^10.0.1",
+        "@types/node": "^18.15.5",
         "@types/rimraf": "^3.0.2",
-        "@types/vscode": "^1.64.0",
-        "@typescript-eslint/eslint-plugin": "^5.12.1",
-        "@typescript-eslint/parser": "^5.12.1",
-        "chai": "^4.3.6",
-        "eslint": "^8.10.0",
-        "mocha": "^9.2.1",
-        "typescript": "^4.5.5",
+        "@types/vscode": "^1.76.0",
+        "@typescript-eslint/eslint-plugin": "^5.56.0",
+        "@typescript-eslint/parser": "^5.56.0",
+        "chai": "^4.3.7",
+        "eslint": "^8.36.0",
+        "mocha": "^10.2.0",
+        "typescript": "^5.0.2",
         "vsce": "^2.6.7",
-        "vscode-extension-tester": "^5.0.0",
+        "vscode-extension-tester": "^5.5.1",
         "vscode-test": "^1.5.2"
     },
     "repository": {
@@ -271,7 +336,7 @@
         "url": "https://github.com/intel/vscode-oneapi-gdb-debug.git"
     },
     "dependencies": {
-        "@vscode/webview-ui-toolkit": "^1.0.0",
+        "@vscode/webview-ui-toolkit": "^1.2.2",
         "vscode-debugprotocol": "^1.51.0",
         "vscode-debugadapter": "^1.51.0"
     }
