@@ -639,27 +639,6 @@ export class SimdProvider {
         return undefined;
     }
 
-    public async getCurrentThread(): Promise<CurrentThread | undefined> {
-        const session = vscode.debug.activeDebugSession;
-
-        if (session) {
-            await session.customRequest("threads");
-            const evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
-            
-            if (evalresult.result === "void") {
-                return undefined;
-            }
-
-            const threadInfo = evalresult.result.replace(/[({})]/g, "").split(" ");
-
-            return {
-                name: `${threadInfo[4]} ${threadInfo[5]}`,
-                lane: +threadInfo[7].replace(/[^0-9]/g, "")
-            };
-        }
-        return undefined;
-    }
-
     public async simdBreakpointsHandler(bpEventList: vscode.BreakpointsChangeEvent): Promise<void> {
         if (bpEventList.added.length !== 0) {
             bpEventList.added.forEach(async bpEvent => {
