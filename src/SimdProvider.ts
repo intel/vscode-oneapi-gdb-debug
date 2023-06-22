@@ -63,6 +63,43 @@ export async function getThread(threadId: number, laneNum?: number): Promise<Cur
     }
     return undefined;
 }
+
+export async function getThread(threadAndLane?: string): Promise<CurrentThread | undefined> {
+    const session = vscode.debug.activeDebugSession;
+
+
+
+    if (session) {
+        await session.customRequest("threads");
+        let evalresult = await session.customRequest("evaluate", { expression: `-exec thread ${threadAndLane?threadAndLane:""}`, context: "repl" });
+            
+        if (evalresult.result === "void") {
+            return undefined;
+        }
+
+        const threadInfo = evalresult.result.split("\n")[0].replace(/[({})]/g, "").split(" ");
+            
+        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_thread_workgroup", context: "repl" });
+        const threadWorkgroup = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1];
+            
+        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_global_id", context: "repl" }) as string;
+        const workitemGlobalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1];
+            
+        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_local_id", context: "repl" }) as string;
+        const workitemLocalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1];
+
+
+        return {
+            name: `${threadInfo[4]} ${threadInfo[5]}`,
+            lane: +threadInfo[7].replace(/[^0-9]/g, ""),
+            threadWorkgroup,
+            workitemGlobalid,
+            workitemLocalid
+        };
+    }
+    return undefined;
+}
+
 export class SimdProvider {
 
     private threadsInfoArray: ThreadInfo[] = [];
