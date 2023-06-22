@@ -270,7 +270,7 @@
                     "group": "navigation"
                 }
             ],
-            "editor/context": [  
+            "editor/context": [
                 {
                     "when": "resourceLangId == cpp || resourceLangId == c",
                     "command": "intelOneAPI.debug.makeBreak",
