@@ -6,6 +6,7 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
+import { CurrentThread } from "../SimdProvider";
 
 export class SelectedLaneViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.selectedLane";
@@ -72,10 +73,16 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
         this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
     }
 
-    public setView(lane: number, executionMask: string, hitLanesMask: string, length: number){
+    public setView(currentThread: CurrentThread, executionMask: string, hitLanesMask: string, length: number){
         const table = `<table>
             <tr><td>Lane Number: </td>
-            <td id="selectedLane">${lane}</td></tr>
+            <td id="selectedLane">${currentThread.lane}</td></tr>
+            <tr><td>Thread Workgroup: </td>
+            <td id="threadWorkgroup">${currentThread.threadWorkgroup}</td></tr>
+            <tr><td>Work item Global Id: </td>
+            <td id="workitemGlobalid">${currentThread.workitemGlobalid.toString()}</td></tr>
+            <tr><td>Work item Local Id: </td>
+            <td id="workitemLocalid">${currentThread.workitemLocalid.toString()}</td></tr>
             <tr><td>Execution Mask: </td>
             <td id="selectedMask">${executionMask}</td></tr>
             <tr><td>Hit Lanes Mask: </td>

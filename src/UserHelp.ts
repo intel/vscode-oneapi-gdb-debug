@@ -21,7 +21,7 @@ export function getWebviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptio
 }
 
 export class UserHelp {
-    private gdbOneapiDocumentationLink = "https://software.intel.com/gdb-oneapi-documentation";
+    private gdbOneapiDocumentationLink = "https://www.intel.com/content/www/us/en/developer/tools/oneapi/documentation-library.html";
 
     openOnlineDocumentation(): void {
         vscode.window
@@ -199,9 +199,9 @@ export class DebuggerCommandsPanel {
 
     private _getHtmlForWebview(webview: vscode.Webview) {
         // Links to documentations
-        const oneapiCheatsheetLink = "https://software.intel.com/gdb-oneapi-cheatsheet ";
-        const oneapiUserManualLink = "https://software.intel.com/gdb-oneapi-manual ";
-        const oneapiDocumentationLink = "https://software.intel.com/gdb-oneapi-documentation";
+        const oneapiCheatsheetLink = "https://www.intel.com/content/www/us/en/content-details/671558/intel-distribution-for-gdb-reference-sheet.html";
+        const oneapiUserManualLink = "https://www.intel.com/content/www/us/en/content-details/776649/debugging-dpc-with-gdb-user-guide.html";
+        const oneapiDocumentationLink = "https://www.intel.com/content/www/us/en/developer/tools/oneapi/documentation-library.html";
         const gdbDocumentationLink = "https://www.gnu.org/software/gdb/documentation/";
 
         // Local path to css styles

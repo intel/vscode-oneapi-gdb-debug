@@ -7,7 +7,7 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import { CurrentThread, Emask } from "../SimdProvider";
+import { CurrentThread, Emask, getThread } from "../SimdProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
 
@@ -138,7 +138,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
             if(currentThread?.name === m.name){
                 this.chosenLaneId = `{"lane": ${currentThread.lane}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
               
-                this.selectedLaneViewProvider.setView(currentThread.lane, m.executionMask, m.hitLanesMask, m.length);
+                this.selectedLaneViewProvider.setView(currentThread, m.executionMask, m.hitLanesMask, m.length);
             }
 
             const tableString = this.getColorsRow(newSimdRow, m);
@@ -205,10 +205,12 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     const parsedMessage = JSON.parse(message.payload);
                     const parsedThread = parsedMessage.name.split(".")[1];
                     const parsedLane = parsedMessage.lane;
-                    const session = debug.activeDebugSession;
+                    const currentThread = await getThread(parsedThread.toString() + ":" + parsedLane);
 
-                    session?.customRequest("evaluate", { expression: `-exec thread ${parsedThread}:${parsedLane}`, context: "repl" });
-                    this.selectedLaneViewProvider.setView(parsedLane, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
+                    if (!currentThread) {
+                        return;
+                    }
+                    this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
                 }
                 
                 break;
