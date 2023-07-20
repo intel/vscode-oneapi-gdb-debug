@@ -33,15 +33,15 @@
 			"preLaunchTask": "npm: watch"
 		},
 		{
-			"name": "Debug UI Tests",
+			"name": "DebugVsCodeUiTests",
 			"type": "node",
 			"request": "launch",
 			"program": "${workspaceFolder}/node_modules/.bin/extest",
 			"args": [
 				"setup-and-run",
-				"${workspaceFolder}/out/test/ui/*.js",
+				"${workspaceFolder}/out/uiTests/basic_ui_tests.js",
 				"--mocha_config",
-				"${workspaceFolder}/src/test/ui/configs/.mocharc-debug.js"
+				"${workspaceFolder}/src/uiTests/configs/.mocharc-debug.js"
 			],
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen"
