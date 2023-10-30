@@ -16,7 +16,7 @@ import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
 import { DebugProtocol } from "vscode-debugprotocol";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
- 
+
 interface ThreadInfo {
     index: number;
     threadId: number;
@@ -59,6 +59,14 @@ export async function getThread(threadId: number, laneNum?: number): Promise<Cur
         evalResult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_local_id", context: "repl" });
         const workitemLocalid = evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:|/g, "");
 
+        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_global_id", context: "repl" });
+        const workitemGlobalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, "");
+
+        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_local_id", context: "repl" });
+        const workitemLocalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:|/g, "");
+
+        const name = threadInfo.length < 7 ? `${threadInfo[2]} ${threadInfo[3]}` : `${threadInfo[4]} ${threadInfo[5]}`;
+        const lane = threadInfo.length < 7 ? laneNum : +threadInfo[7].replace(/[^0-9]/g, "");
 
         return {
             threadId,
@@ -154,7 +162,7 @@ export class SimdProvider {
             simdWatchProvider.fetchSimdWatchPanel(this._globalCurrentThread);
 
         }));
-        
+
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
             this.simdBreakpointsHandler(e);
         }));
@@ -458,7 +466,8 @@ export class SimdProvider {
 
             await session.customRequest("evaluate", { expression: cond, context: "repl" });
 
-            this.simdViewProvider.setView(masks, currentThread);
+            await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
+            await this.simdViewProvider.setView(masks, currentThread);
             this.findAndAddSimdBreakPoints();
         }
         return;
@@ -555,20 +564,21 @@ export class SimdProvider {
 
             const devicesInfo = this.parseDeviceInfo(evalresult);
 
-            if ( devicesInfo === undefined) {
-                this.deviceViewProvider.cleanView();
+            if (devicesInfo === undefined) {
+                await vscode.commands.executeCommand("setContext", "oneapi:havedevice", false);
                 return;
             }
-            
-            this.deviceViewProvider.setView(this.getDeviceNames(devicesInfo.devices));
+            await vscode.commands.executeCommand("setContext", "oneapi:havedevice", true);
+            await this.deviceViewProvider.setView(this.getDeviceNames(devicesInfo.devices));
+
         }
     }
 
     private getDeviceNames(devices: Device[]): SortedDevices {
         const devicesByGroups: SortedDevices = {};
 
-        for (const device of devices){
-            if(devicesByGroups[device.thread_groups]){
+        for (const device of devices) {
+            if (devicesByGroups[device.thread_groups]) {
                 devicesByGroups[device.thread_groups].push(device);
             } else {
                 devicesByGroups[device.thread_groups] = [device];
@@ -577,7 +587,7 @@ export class SimdProvider {
         return devicesByGroups;
     }
 
-    public parseDeviceInfo(evalresult : {result: string} ): {devices:Device[]} | undefined {
+    public parseDeviceInfo(evalresult: { result: string }): { devices: Device[] } | undefined {
 
         if (evalresult.result === "void") {
             return undefined;
@@ -609,7 +619,7 @@ export class SimdProvider {
                     for (const { itemIndex, item } of property.map((item, itemIndex) => ({ itemIndex, item }))) {
                         const field = item.split("=");
 
-                        jsonField = "\"" + field[0].replace("-","_") + "\"" + ":" + "\"" + field[1] + "\"";
+                        jsonField = "\"" + field[0].replace("-", "_") + "\"" + ":" + "\"" + field[1] + "\"";
                         devicesJSON += jsonField;
                         if (itemIndex !== property.length - 1) {
                             devicesJSON += ", ";
@@ -626,13 +636,13 @@ export class SimdProvider {
                 devicesJSON += "]}";
             }
         }
-        
+
         if (devicesJSON !== "") {
             try {
                 const jsonObj = JSON.parse(devicesJSON);
 
                 return jsonObj;
-            } catch(e) {
+            } catch (e) {
                 return undefined;
             }
         }
@@ -642,8 +652,7 @@ export class SimdProvider {
     public async simdBreakpointsHandler(bpEventList: vscode.BreakpointsChangeEvent): Promise<void> {
         if (bpEventList.added.length !== 0) {
             bpEventList.added.forEach(async bpEvent => {
-                if(bpEvent.condition?.startsWith("-break-insert"))
-                {
+                if (bpEvent.condition?.startsWith("-break-insert")) {
                     await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint);
                 }
                 return;
@@ -652,17 +661,15 @@ export class SimdProvider {
 
         if (bpEventList.changed.length !== 0) {
             bpEventList.changed.forEach(async bpEvent => {
-                if(bpEvent.condition?.startsWith("-break-insert"))
-                {
-                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+                if (bpEvent.condition?.startsWith("-break-insert")) {
+                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint, true);
                 }
             });
         }
 
         if (bpEventList.removed.length !== 0) {
             bpEventList.removed.forEach(async bpEvent => {
-                if(bpEvent.condition?.startsWith("-break-insert"))
-                {
+                if (bpEvent.condition?.startsWith("-break-insert")) {
                     const session = await this.checkGbdOneapiSession();
 
                     this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session ? session : undefined);
@@ -675,12 +682,12 @@ export class SimdProvider {
 
         const session = vscode.debug.activeDebugSession;
 
-        if(!session) {
+        if (!session) {
             return undefined;
         }
-        const evalresult = await session.customRequest("evaluate", { expression: "-exec thread" , context: "repl" });
+        const evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
 
-        if(!evalresult.result.includes("lane")) {
+        if (!evalresult.result.includes("lane")) {
             return undefined;
         }
 
@@ -698,11 +705,11 @@ export class SimdProvider {
 
     public async removeSimdBreakPoint(rbp: vscode.SourceBreakpoint, session?: vscode.DebugSession): Promise<void> {
 
-        if(session) {
+        if (session) {
             const fileAndLine = this.bpToSourceAndLine(rbp, true);
             const cond = "-exec " + "clear " + fileAndLine;
 
-            await session.customRequest("evaluate", { expression: cond , context: "repl" });
+            await session.customRequest("evaluate", { expression: cond, context: "repl" });
 
         }
         return;
@@ -711,9 +718,8 @@ export class SimdProvider {
     public async findAndAddSimdBreakPoints(): Promise<void> {
 
         vscode.debug.breakpoints.forEach(async bpEvent => {
-            if(bpEvent.condition?.startsWith("-break-insert"))
-            {
-                await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint , true);
+            if (bpEvent.condition?.startsWith("-break-insert")) {
+                await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint, true);
             }
         });
 
@@ -725,7 +731,7 @@ export class SimdProvider {
         const filename = parse(bp.location.uri.path).base;
         let line = bp.location.range.start.line;
 
-        if(isNoZeroBased) {
+        if (isNoZeroBased) {
             line++;
         }
 
@@ -738,19 +744,19 @@ export class SimdProvider {
 
         const session = await this.checkGbdOneapiSession();
 
-        if(!session) {
+        if (!session) {
             return;
         }
 
-        if(isChange) {
+        if (isChange) {
             await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session);
         }
 
         const bps = bpEvent as vscode.SourceBreakpoint;
         const fileAndLine = this.bpToSourceAndLine(bps, true);
         const cond = "-exec " + bpEvent.condition + " " + fileAndLine;
-        const evalresult = await session.customRequest("evaluate", { expression: cond , context: "repl" });
- 
+        const evalresult = await session.customRequest("evaluate", { expression: cond, context: "repl" });
+
         if (evalresult.result === "void") {
             await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint);
             return;
@@ -761,29 +767,36 @@ export class SimdProvider {
 
         const editor = vscode.window.activeTextEditor;
 
-
         if (editor) {
             const document = editor.document;
             const selections = editor.selections;
-            const inputBoxText: vscode.InputBoxOptions = {
-                placeHolder: "Please specify thread:line (Example: 2:3):"
+            const inputBoxText = {
+                placeHolder: "Please specify <Thread ID>:<SIMD Lane> (Example: 2:3):"
             };
 
             const rawCondition = await vscode.window.showInputBox(inputBoxText);
 
-            if(! rawCondition) {
+            if (!rawCondition) {
                 return;
             }
+
+            const regex = /^\d+:(\d+(-\d+)?(,\d+(-\d+)?)*|\d+(,\d+(-\d+)?)+)$/;
+
+            if (!regex.test(rawCondition)) {
+                vscode.window.showErrorMessage("Invalid input format. Please use the '<Thread ID>:<SIMD Lane>' format, where lane can be specified as a range (e.g., 1-5), comma-separated values (e.g., 2,3,4,7) or combination.");
+                return;
+            }
+
             const condition = "-p " + rawCondition.split(":")[0] + " -l " + rawCondition.split(":")[1];
-            const bp = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(selections[0].start.line, 0)), true,"-break-insert " + condition);
-            
-            if(bp) {
+            const bp = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(selections[0].start.line, 0)), true, "-break-insert " + condition);
+
+            if (bp) {
                 this.addSimdBreakPoints(bp);
             }
         }
         return;
     }
-} 
+}
 
 export interface Device {
     device_name: string;
@@ -818,30 +831,33 @@ export interface Emask {
     length: number;
     threadWorkgroup: string;
 }
- 
+
 export interface Emask {
-     name: string;
-     func: string;
-     threadId: number;
-     executionMask: string;
-     hitLanesMask: string;
-     length: number;
- }
- 
+    name: string;
+    fullname: string;
+    file: string;
+    line: string;
+    threadId: number;
+    executionMask: string;
+    hitLanesMask: string;
+    length: number;
+    threadWorkgroup: string;
+}
+
 class SimdDebugAdapterProviderFactory implements vscode.DebugAdapterTrackerFactory {
- 
+
     constructor(
         private readonly simdtracker: SimdProvider,
         private readonly simdWatchProvider: SIMDWatchProvider
     ) { }
- 
+
     public createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
         console.log("starting session" + session.id + session.type);
         return new SimdDebugAdapterProvider(this.simdtracker, this.simdWatchProvider);
     }
- 
+
 }
- 
+
 class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
 
     constructor(
@@ -851,7 +867,7 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
     public onDidSendMessage(m: DebugProtocol.ProtocolMessage) {
         this.routeDebugMessage(m);
     }
- 
+
     private routeDebugMessage(m: DebugProtocol.ProtocolMessage): void {
         if (m.type === "event") {
             const e = m as DebugProtocol.Event;

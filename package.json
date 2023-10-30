@@ -348,6 +348,11 @@
                                 "description": "Do not display function arguments when printing a stack frame",
                                 "text": "set print frame-arguments none",
                                 "ignoreFailures": true
+                            },
+                            {
+                                "description": "Do not display function arguments when printing a stack frame",
+                                "text": "set print frame-arguments none",
+                                "ignoreFailures": true
                             }
                         ]
                     },
@@ -397,6 +402,11 @@
                             {
                                 "description": "Set Disassembly Flavor to Intel",
                                 "text": "set disassembly intel",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Do not display function arguments when printing a stack frame",
+                                "text": "set print frame-arguments none",
                                 "ignoreFailures": true
                             },
                             {
@@ -463,6 +473,11 @@
                                     "description": "Do not display function arguments when printing a stack frame",
                                     "text": "set print frame-arguments none",
                                     "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Do not display function arguments when printing a stack frame",
+                                    "text": "set print frame-arguments none",
+                                    "ignoreFailures": true
                                 }
                             ]
                         }
@@ -516,6 +531,11 @@
                                 {
                                     "description": "Set Disassembly Flavor to Intel",
                                     "text": "set disassembly intel",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Do not display function arguments when printing a stack frame",
+                                    "text": "set print frame-arguments none",
                                     "ignoreFailures": true
                                 },
                                 {

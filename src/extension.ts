@@ -232,6 +232,15 @@ export function activate(context: vscode.ExtensionContext): void {
  
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider);
+
+    simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
+
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+        if (e.affectsConfiguration("intelOneAPI.debug.SHOW_ALL")) {
+            simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
+        }
+    }));
+
     // Register the commands that will interact with the user and write the launcher scripts.
  
     const launchConfigurator = new LaunchConfigurator();
