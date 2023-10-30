@@ -72,7 +72,6 @@ There are several ways to set a SIMD lane specific breakpoint:
 
 ### Choose SIMD Lane
 You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will show updated information in the SELECTED LANE tab, and extended thread information can be found using the debug console (command `-exec -thread-info`).
-Please note that at the moment the Variables view is not refreshed automatically after clicking on SIMD lane. To get around this and see the current state of the variables for the selected SIMD, you need to perform any manipulation with Watch view, for example, add or remove any value.
 
 ![Lane info](/media/lane.gif)
 
