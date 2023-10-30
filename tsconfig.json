@@ -12,7 +12,7 @@
 	},
 	"exclude": [
 		"node_modules",
-		".vscode-test",
+		".@vscode/test-electron",
 		"test-resources",
 		".github"
 	]

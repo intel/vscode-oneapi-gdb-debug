@@ -1,8 +1,13 @@
 # Change Log
 
+##  0.4.0
+
+  - Added the option in settings to enable the display of inactive threads
+
 ##  0.3.2
 
  - Added content to the Selected lane view
+
 ##  0.3.1
 
  - SIMD lanes view renamed to oneAPI GPU Threads

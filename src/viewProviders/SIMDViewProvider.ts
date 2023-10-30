@@ -1,6 +1,6 @@
 import {
+    commands,
     CancellationToken,
-    debug,
     Uri,
     Webview,
     WebviewView,
@@ -11,9 +11,9 @@ import { CurrentThread, Emask, getThread } from "../SimdProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
 
-enum ViewState{
-    COLORS,
-    NUMBERS
+enum ViewState {
+        COLORS,
+        NUMBERS
 }
 
 export class SIMDViewProvider implements WebviewViewProvider {
@@ -23,6 +23,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private htmlStart = "";
     private htmlEnd = "";
+    private simdView = "";
     private viewState = ViewState.COLORS;
 
     private chosenLaneId?: string;
@@ -45,7 +46,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     constructor(private readonly _extensionUri: Uri,
-        private selectedLaneViewProvider: SelectedLaneViewProvider) {}
+                private selectedLaneViewProvider: SelectedLaneViewProvider) { }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
@@ -64,7 +65,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.setInitialPageContent(webviewView.webview);
     }
 
-    private setInitialPageContent(webview: Webview){
+    private setInitialPageContent(webview: Webview) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
 
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
@@ -100,11 +101,34 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
         </html>`;
-    }
 
-    public cleanView(){
-        this._view.webview.html = "";
-        this.selectedLaneViewProvider.cleanView();
+        this.simdView = `
+        <table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th> <th>Location</th><th>Work-group<br>(x,y,z)</th>
+        <th class="tooltip">SIMD Lanes 🛈
+            <div class="tooltiptext">
+                <table>
+                    <tr>
+                        <th>SIMD lane color</th>
+                        <th>Thread State</th>
+                    </tr>
+                    <tr>
+                        <td class ='hittedlane'>■</td>
+                        <td>Active - have met breakpoint conditions</td>
+                    </tr>
+                    <tr>
+                    <td class =' activelane'>■</td>
+                    <td>Active</td>
+                    </tr>
+                    <tr>
+                        <td class ='inactivelane'>■</td>
+                        <td>Inactive</td>
+                    </tr>
+                </table>
+            </div>
+        </th>
+        </tr>
+    `;
+
     }
     
     public setLoadingView(){
@@ -119,47 +143,68 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
     }
 
-    public setView(masks: Emask[], currentThread?: CurrentThread){
+    public async setView(masks: Emask[], currentThread?: CurrentThread){
         this.chosenLaneId = undefined;
+        await this.ensureViewExists();
         this.setLoadingView();
         this._masks = masks;
-        this._view.webview.html = this.htmlStart + this.getThreadsView(masks, currentThread) + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + await this.getThreadsView(masks, currentThread) + this.htmlEnd;
     }
 
-    private getThreadsView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = "<table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th><th>Location</th><th>SIMD Lanes</th></tr>";
+    // After setting "setContext", "oneapi:haveSIMD" to true, some time passes before initializing this._view,
+    // so we check its presence every 50 ms
+    private async ensureViewExists() {
+        return new Promise<void>((resolve) => {
+            const intervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 50);
+        });
+    }
+
+    private async getThreadsView(masks: Emask[], currentThread?: CurrentThread){
+        let upd = this.simdView;
         const currentLaneTable = "";
 
         for (const m of masks) {
-            const binSimdRow = parseInt(m.executionMask,16).toString(2);
+            const binSimdRow = parseInt(m.executionMask, 16).toString(2);
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
 
-            if(currentThread?.name === m.name){
+            if (currentThread?.name === m.name) {
                 this.chosenLaneId = `{"lane": ${currentThread.lane}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
-              
+                await commands.executeCommand("setContext", "oneapi:haveselected", true);
                 this.selectedLaneViewProvider.setView(currentThread, m.executionMask, m.hitLanesMask, m.length);
             }
 
             const tableString = this.getColorsRow(newSimdRow, m);
-            
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td><td title="${m.func}">${m.func.substring(0,20)}...</td><td><table><tr>${tableString}</tr></table></td></tr>`;
+            const x = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
+            const y = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
+            const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
+
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td> <td title="${m.fullname}"> ${m.file}:${m.line} </td><td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
         }
         upd = upd + "</tbody></table>" + currentLaneTable;
-        return upd;  
+        return upd;
     }
 
-    private getColorsRow(newSimdRow: string, m: Emask){
-        const tableString = newSimdRow.split("").map((value: string, index)=> {
+    private getColorsRow(newSimdRow: string, m: Emask) {
+        if (newSimdRow === "NaN") {
+            return "<td></td>";
+        }
+
+        const tableString = newSimdRow.split("").map((value: string, index) => {
             const id = `{"lane": ${index}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
-            
-            if(+value === 0){
+        
+            if (+value === 0) {
                 return `<td id='${id}' class ='cell'>${this._inactiveLaneSymbol}</td>`;
             }
             let cellStyle = "colored";
 
-            if(m.hitLanesMask){
-                const hitLanesMaskBinary= parseInt(m.hitLanesMask,16).toString(2).split("").reverse().join("");
+            if (m.hitLanesMask) {
+                const hitLanesMaskBinary = parseInt(m.hitLanesMask, 16).toString(2).split("").reverse().join("");
                 const hitNum = hitLanesMaskBinary.charAt(index);
 
                 cellStyle = hitNum === "1" ? "hitCell" : "colored";
@@ -167,8 +212,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
             let coloredCell = `<td id='${id}' class ='cell ${cellStyle} one'>${this._activeLaneSymbol}</td>`;
 
-            if(this.chosenLaneId && this.chosenLaneId === id){
-                coloredCell = `<td id='${id}' class ='cell ${cellStyle} one'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></td>`;
+            if (this.chosenLaneId && this.chosenLaneId === id) {
+                coloredCell = `<td id='${id}' class ='cell ${cellStyle} one current'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></td>`;
             }
             return coloredCell;
         }).join("");
@@ -176,13 +221,13 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return tableString;
     }
 
-    public updateView(masks: Emask[]){
+    public async updateView(masks: Emask[]){
         this.setLoadingView();
-        this._view.webview.html = this.htmlStart + this.getThreadsView(masks) + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + await this.getThreadsView(masks) + this.htmlEnd;
     }
 
     private async _setWebviewMessageListener(webviewView: WebviewView) {
-        webviewView.webview.onDidReceiveMessage(async(message : {command: string; payload: string}) => {
+        webviewView.webview.onDidReceiveMessage(async(message: { command: string; payload: string }) => {
             const command = message.command;
 
             switch (command) {
@@ -201,18 +246,17 @@ export class SIMDViewProvider implements WebviewViewProvider {
                         payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
                     });
                     this.chosenLaneId = message.payload;
-
                     const parsedMessage = JSON.parse(message.payload);
-                    const parsedThread = parsedMessage.name.split(".")[1];
-                    const parsedLane = parsedMessage.lane;
-                    const currentThread = await getThread(parsedThread.toString() + ":" + parsedLane);
+                    const currentThread = await getThread(parsedMessage.threadId, parsedMessage.lane);
 
                     if (!currentThread) {
+                        await commands.executeCommand("setContext", "oneapi:haveselected", false);
                         return;
                     }
-                    this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
+                    await commands.executeCommand("setContext", "oneapi:haveselected", true);
+                    await this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
                 }
-                
+
                 break;
 
             default:

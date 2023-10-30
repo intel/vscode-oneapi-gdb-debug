@@ -57,10 +57,6 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
         this.htmlEnd = "</body></html>";
     }
 
-    public cleanView(){
-        this._view.webview.html = "";
-    }
-
     public setLoadingView(){
         if (this._view.webview.html){
             this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
@@ -73,15 +69,14 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
         this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
     }
 
-    public setView(currentThread: CurrentThread, executionMask: string, hitLanesMask: string, length: number){
+    public async setView(currentThread: CurrentThread, executionMask: string, hitLanesMask: string, length: number){
+        await this.ensureViewExists();
         const table = `<table>
             <tr><td>Lane Number: </td>
             <td id="selectedLane">${currentThread.lane}</td></tr>
-            <tr><td>Thread Workgroup: </td>
-            <td id="threadWorkgroup">${currentThread.threadWorkgroup}</td></tr>
-            <tr><td>Work item Global Id: </td>
+            <tr><td>Work item Global ID (x,y,z): </td>
             <td id="workitemGlobalid">${currentThread.workitemGlobalid.toString()}</td></tr>
-            <tr><td>Work item Local Id: </td>
+            <tr><td>Work item Local ID (x,y,z): </td>
             <td id="workitemLocalid">${currentThread.workitemLocalid.toString()}</td></tr>
             <tr><td>Execution Mask: </td>
             <td id="selectedMask">${executionMask}</td></tr>
@@ -92,5 +87,18 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
         </table>`;
 
         this._view.webview.html = this.htmlStart + table + this.htmlEnd;
+    }
+
+    // After setting "setContext", "oneapi:haveSIMD" to true, some time passes before initializing this._view,
+    // so we check its presence every 50 ms
+    private async ensureViewExists() {
+        return new Promise<void>((resolve) => {
+            const intervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 50);
+        });
     }
 }

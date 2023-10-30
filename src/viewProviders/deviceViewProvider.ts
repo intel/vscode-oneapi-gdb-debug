@@ -16,26 +16,26 @@ export class DeviceViewProvider implements WebviewViewProvider {
     private htmlStart = "";
     private htmlEnd = "";
 
-    constructor(private readonly _extensionUri: Uri) {}
+    constructor(private readonly _extensionUri: Uri) { }
 
     getUri(webview: Webview, extensionUri: Uri, pathList: string[]) {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public async resolveWebviewView( webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
+    public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
         this._view = webviewView;
 
         // Allow scripts in the webview
         webviewView.webview.options = {
-            enableScripts: true,
+            enableScripts: true
         };
 
         // Set the HTML content that will fill the webview view
         this.setInitialPageContent(webviewView.webview);
     }
 
-    private setInitialPageContent(webview: Webview){
+    private setInitialPageContent(webview: Webview) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
 
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
@@ -73,28 +73,24 @@ export class DeviceViewProvider implements WebviewViewProvider {
         </html>`;
     }
 
-    public cleanView(){
-        this._view.webview.html = "";
-    }
-
-    public setLoadingView(){
-        if (this._view.webview.html){
+    public setLoadingView() {
+        if (this._view.webview.html) {
             this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
         } else {
             this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>...</h4>" + this.htmlEnd;
         }
     }
 
-    public setErrorView(){
+    public setErrorView() {
         this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
     }
 
-    public setView(sortedDevices: SortedDevices){
+    public async setView(sortedDevices: SortedDevices) {
         let upd = "";
 
         for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
             upd += `<div class="collapsible active">▷ ${threadGroups}</div>`;
-            for (const device of devices){
+            for (const device of devices) {
                 const table = `<table class="content">
                     <tr><td>Number: </td>
                     <td>${device.number}</td></tr>
@@ -110,9 +106,24 @@ export class DeviceViewProvider implements WebviewViewProvider {
                     <td>${device.target_id}</td></tr>
                 </table>`;
 
-                upd += "&emsp;" + table +"<br>";
+                upd += "&emsp;" + table + "<br>";
             }
         }
+        await this.ensureViewExists();
         this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
     }
+
+    // After setting "setContext", "oneapi:havedevice" to true, some time passes before initializing this._view,
+    // so we check its presence every 50 ms
+    private async ensureViewExists() {
+        return new Promise<void>((resolve) => {
+            const intervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 50);
+        });
+    }
+
 }
