@@ -140,4 +140,17 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
             }, 50);
         });
     }
+
+    // After setting "setContext", "oneapi:haveSIMD" to true, some time passes before initializing this._view,
+    // so we check its presence every 50 ms
+    private async ensureViewExists() {
+        return new Promise<void>((resolve) => {
+            const intervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 50);
+        });
+    }
 }
