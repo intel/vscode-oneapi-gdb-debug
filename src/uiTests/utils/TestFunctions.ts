@@ -1,9 +1,10 @@
 import * as fs from "fs";
 import * as util from "util";
 import { assert } from "chai";
-import { ActivityBar, BottomBarPanel, By, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TextEditor, VSBrowser, Workbench } from "vscode-extension-tester";
+import { ActivityBar, BottomBarPanel, By, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TextEditor, VSBrowser, WebView, Workbench } from "vscode-extension-tester";
 import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
 import { exec } from "child_process";
+import axios from "axios";
 
 const execAsync = util.promisify(exec);
 const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]); 
@@ -203,6 +204,170 @@ export async function InstallExtensionFromNotificationTest(expectedNotification:
     }
 }
 
+/** 
+ * Checks if online documentation has been opened on notification button click.
+ */
+export async function CheckOnlineHelpTest() : Promise<void> {
+    const onlineHelpNotification: INotification = {
+        name: "Online help notification",
+        message: "Open online documentation",
+        installButton: "Open"
+    };
+
+    logger.Info("Check online help page");
+    const workbench = new Workbench();
+    let input = await workbench.openCommandPrompt();
+
+    input = await ClearInputText(input);
+    await SetInputText(input, "> Intel oneAPI: Open gdb-oneapi debugger online documentation (help)");
+    const center = await workbench.openNotificationsCenter();
+
+    logger.Info("Get all notifications");
+    const notifications = await center.getNotifications(NotificationType.Any);
+
+    for (const notification of notifications) {
+        const message = await notification.getMessage();
+
+        logger.Info(`Message: ${message}`);
+        if (message === onlineHelpNotification.message) {
+            const actions = await notification.getActions();
+
+            logger.Info("Count firefox processes");
+            const initCount = await ProcessStart("ps aux | grep firefox | wc -l");
+            const title = await actions[0].getTitle();
+
+            logger.Info("Check if open button exists");
+            assert.equal(title, onlineHelpNotification.installButton, "Open button doesn't exists");
+            logger.Pass("Open button exists");
+            logger.Info("Open online help by clicking notification button");
+            await notification.takeAction(onlineHelpNotification.installButton);
+            await Wait(2 * 1000);
+
+            logger.Info("Get 'Trusted domains' popup");
+            const popupOpenButton = await workbench.getDriver().switchTo().activeElement();
+            const popup = await popupOpenButton.findElement(By.xpath("./../../.."));
+
+            logger.Info("Get documentation url");
+            const linkWebElement = await popup.findElement(By.id("monaco-dialog-message-detail"));
+            const link = await linkWebElement.getText();
+
+            assert.isTrue(link && link.startsWith("https:"), "Documentation url has not been found");
+            logger.Pass(`Documentation url has been found. Url: ${link}`);
+            await popupOpenButton.click();
+            await Wait(2 * 1000);
+            logger.Info("Count firefox processes");
+            const currentCount = await ProcessStart("ps aux | grep firefox | wc -l");
+            const { status } = await axios.get(link, {
+                proxy: {
+                    protocol: "http",
+                    host: "proxy-chain.intel.com",
+                    port: 911
+                }
+            });
+
+            await ProcessStart("pkill -f firefox");
+            assert.isAbove(Number(currentCount), Number(initCount), "Online documentation hasn't been opened");
+            logger.Pass("Online documentation has been opened");
+            assert.equal(status, 200, `Online documentation responded with '${status}' status code. Actual: ${status} | Expected: 200 | Url: ${link}`);
+            logger.Pass(`Online documentation responded with 200. Url: ${link}`);
+            break;
+        }
+    }
+}
+
+/**
+ * Checks if offline documentation displays desired contnent.
+ */
+export async function CheckOfflineHelpPageTest() : Promise<void> {
+    logger.Info("Check offline help page");
+    const workbench = new Workbench();
+    let input = await workbench.openCommandPrompt();
+
+    input = await ClearInputText(input);
+    await SetInputText(input, "> Intel oneAPI: List gdb-oneapi debugger unique commands (help)");
+    await Wait(2 * 1000);
+    logger.Pass("Tab 'Debugger Commands' has been found");
+    await Wait(1 * 1000);
+    const offlineHelpReference = JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
+
+    logger.Info("Get all nested values");
+    const values = GetAllNestedValues(offlineHelpReference);
+    const webView = new WebView();
+
+    logger.Info("Switch to frame");
+    await webView.switchToFrame();
+    logger.Info("Get current frame page source");
+    const offlineHelpBody = await webView.getDriver().getPageSource();
+
+    for (const value of values) {
+        const parsed = value.replace(/\s>\s+/g, " &gt; ").replace("<oneapiExt>", "<span class=\"oneapi-ext\">").replace("</oneapiExt>", "</span>").replace("</br>", "<br>");
+
+        assert.isTrue(offlineHelpBody.includes(parsed), `Can't find desired line.\nExpected original: '${value}'\nExpected parsed: '${parsed}'\n`);
+    }
+    logger.Info("Switch back from frame");
+    await webView.switchBack();
+}
+
+/**
+ * Uninstalls all extensions installed during testing.
+ */
+export async function UninstallAllExtensions(): Promise<void> {
+    const extensionsToUninstall = [
+        "Analysis Configurator for Intel® oneAPI Toolkits",
+        "Code Sample Browser for Intel® oneAPI Toolkits",
+        "Environment Configurator for Intel® oneAPI Toolkits",
+        "C/C++",
+        "CMake Tools",
+    ];
+
+    for await (const extension of extensionsToUninstall) {
+        await UninstallExtension(extension);
+    }
+}
+
+function GetAllNestedValues(jsonObject: unknown): string[] {
+    if (typeof jsonObject !== "object") {
+        return jsonObject as never;
+    }
+    let values: string[] = [];
+
+    for (const key in jsonObject) {
+        const value: unknown = jsonObject[key as keyof object];
+
+        if (Array.isArray(value)) {
+            for (const arrValue of value) {
+                values = values.concat(GetAllNestedValues(arrValue));
+            }
+            continue;
+        }
+        values = values.concat(GetAllNestedValues(value));
+    }
+    return values;
+}
+
+async function UninstallExtension(extensionName: string): Promise<void> {
+    let extensionsView: ExtensionsViewSection | undefined;
+
+    logger.Info(`Uninstall '${extensionName}' extension`);
+    try {
+        extensionsView = await GetExtensionsSection("Installed");
+
+        await extensionsView.clearSearch();
+        const extension = await extensionsView.findItem(extensionName);
+        const menu = await extension?.manage();
+    
+        await Wait(1000);
+        await menu?.select("Uninstall");
+        await Wait(2 * 1000);
+        await extensionsView.clearSearch();
+    } catch (e) {
+        logger.Info(`Extension '${extensionName}' is not installed. SKIP`);
+        logger.Exception(e);
+        await Wait(2 * 1000);
+        return;
+    }
+}
+
 async function ProcessStart(command: string): Promise<string | undefined | unknown> {
     let result: string | undefined | unknown;
 
@@ -225,10 +390,8 @@ async function RunTask(taskName: string, expectedOutput: string): Promise<void> 
     let input = await workbench.openCommandPrompt();
 
     input = await ClearInputText(input);
-    // input = await SetInputText(input, "> Tasks: Run Task");
     logger.Info("Set command palette text to '> Tasks: Run Task'");
     await input.setText("> Tasks: Run Task");
-    // await Wait(2 * 1000);
     logger.Info("Select Quick pick: 'Tasks: Run Task'");
     await input.selectQuickPick("Tasks: Run Task");
     logger.Info(`Select Quick pick: '${taskName}'`);
@@ -293,7 +456,6 @@ function CreateCCppPropertiesFile(): void {
     };
 
     fs.writeFileSync(ccppPropertiesFilePath, JSON.stringify(ccppProperties));
-    // fs.writeFileSync()
 }
 
 async function CloseAllNotifications(): Promise<void> {
@@ -388,7 +550,7 @@ async function ClearInputText(input: QuickOpenBox | InputBox): Promise<QuickOpen
     return input;
 }
 
-async function SetBreakpoint(fileName: string, lineNumber: number): Promise<void> {
+async function SetBreakpoint(fileName: string, lineNumber: number): Promise<boolean> {
     const workbench = new Workbench();
     let input = await workbench.openCommandPrompt();
 
@@ -410,9 +572,16 @@ async function SetBreakpoint(fileName: string, lineNumber: number): Promise<void
     await textEditor.moveCursor(lineNumber, 1);
     await Wait(1 * 1000);
     logger.Info(`Toggle breakpoint at line ${lineNumber}`);
-    const bpSetOrRemoved = await textEditor.toggleBreakpoint(lineNumber) ? "set" : "removed";
+    input = await workbench.openCommandPrompt();
+    input = await ClearInputText(input);
+    input = await SetInputText(input,"> Debug: Toggle Breakpoint");
+    await Wait(1 * 1000);
+    const bpIcons = await textEditor.getDriver().findElements(By.className("codicon-debug-breakpoint"));
+    const bpset = bpIcons.find(async x => await x.findElement(By.xpath("./..")).findElement(By.className("line-numbers")).getText() === lineNumber.toString());
+    const bpSetOrRemoved = bpset ? "set" : "removed";
 
     logger.Info(`Breakpoint at line ${lineNumber} has been ${bpSetOrRemoved}`);
+    return bpset ? true : false;
 }
 
 async function GetDebugView(): Promise<DebugView> {
@@ -432,11 +601,23 @@ async function GetExtensionsSection(sectionName: string): Promise<ExtensionsView
     const extensionsSideBarView = await extensionsViewControl?.openView() as SideBarView;
     const extensionsViewContent = await extensionsSideBarView.getContent();
     const availableSections = await extensionsViewContent.getSections();
+    let sectionToReturn;
 
-    for (const section of availableSections) {
-        logger.Info(await section.getTitle());
+    for await (const section of availableSections) {
+        const title = await section.getTitle();
+
+        try {
+            await (section as ExtensionsViewSection).clearSearch();
+        } catch (e) {
+            logger.Exception(e);
+        }
+
+        logger.Info(title);
+        if (title === sectionName) {
+            sectionToReturn = section;
+        }
     }
-    return await extensionsViewContent.getSection(sectionName) as ExtensionsViewSection;
+    return sectionToReturn as ExtensionsViewSection;
 }
 
 async function InstallExtension(extensionToInstall: string): Promise<void> {
@@ -457,6 +638,8 @@ async function InstallExtension(extensionToInstall: string): Promise<void> {
 
 async function IsExtensionsInstalled(extensionName: string) : Promise<boolean | undefined> {
     const extensionsView = await GetExtensionsSection("Installed");
+
+    await extensionsView.clearSearch();
     const extensionsList = await extensionsView.getText();
     const isInstalled = extensionsList.includes(extensionName);
 
