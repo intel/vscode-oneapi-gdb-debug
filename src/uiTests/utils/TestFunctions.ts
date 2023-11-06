@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as util from "util";
 import { assert } from "chai";
-import { ActivityBar, BottomBarPanel, By, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TextEditor, VSBrowser, WebView, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebView, Workbench } from "vscode-extension-tester";
 import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
 import { exec } from "child_process";
 import axios from "axios";
@@ -490,16 +490,31 @@ async function Retry<TResult>(fn: () => TResult, timeout: number): Promise<TResu
 
 async function CheckIfTaskWasExecuted(taskName: string, expectedOutput: string): Promise<boolean> {
     logger.Info(`Get '${taskName}' task terminal`);
-    const bp = new BottomBarPanel();
-
-    await bp.openTerminalView();
     await CloseAllNotifications();
+    const workbench = new Workbench();
+    let input: InputBox | QuickOpenBox | undefined = new InputBox();
+
+    await Wait(3 * 1000);
+    input = await Retry(async() => {
+        let input = await workbench.openCommandPrompt();
+
+        input = await ClearInputText(input);
+        return input;
+    }, 10 * 1000);
+
+    logger.Info("Set command palette text to '> Terminal: Create New Terminal'");
+
+    await SetInputText(input, "> Terminal: Create New Terminal");
+    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
+    const terminalButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[4]"));
+
+    await terminalButton.click();
     const terminals = await bp.findElements(By.className("monaco-list-row"));
     const preTask = terminals.find(async x => (await x.getAttribute("aria-label")).includes(taskName));
     const taskLabel = preTask?.findElement(By.className("label-name"));
 
     await taskLabel?.click();
-    const terminal = await bp.openTerminalView();
+    const terminal = new TerminalView();
 
     logger.Info(`Get '${taskName}' task terminal text`);
     const innerText = await Retry(async() => await terminal.getText(), 5 * 1000);
@@ -512,9 +527,20 @@ async function CheckIfTaskWasExecuted(taskName: string, expectedOutput: string):
 
 async function CheckIfBreakpointHasBeenHit(fileName: string, lineNumber: number): Promise<boolean> {
     const breakpoint = `${fileName}:${lineNumber}`;
-    const bp = new BottomBarPanel();
-    const debugOutputWindow = await bp.openDebugConsoleView();
+    
+    await CloseAllNotifications();
+    const workbench = new Workbench();
+    let input = await workbench.openCommandPrompt();
 
+    input = await ClearInputText(input);
+    logger.Info("Set command palette text to '> Terminal: Create New Terminal'");
+
+    await SetInputText(input, "> Terminal: Create New Terminal");
+    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
+    const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
+
+    await outputButton.click();
+    const debugOutputWindow = new DebugConsoleView();
     let retries = 1;
     let line;
 
@@ -531,7 +557,12 @@ async function CheckIfBreakpointHasBeenHit(fileName: string, lineNumber: number)
     return line !== undefined && line !== null;
 }
 
-async function SetInputText(input: QuickOpenBox | InputBox, command: string): Promise<QuickOpenBox | InputBox> {
+async function SetInputText(input: QuickOpenBox | InputBox | undefined, command: string): Promise<QuickOpenBox | InputBox> {
+    if (input === undefined){
+        const workbench = new Workbench();
+
+        input = await workbench.openCommandPrompt();
+    }
     logger.Info(`Set command palette text to '${command}'`);
     await input.setText(command);
     logger.Info("Confirm");
@@ -574,7 +605,7 @@ async function SetBreakpoint(fileName: string, lineNumber: number): Promise<bool
     logger.Info(`Toggle breakpoint at line ${lineNumber}`);
     input = await workbench.openCommandPrompt();
     input = await ClearInputText(input);
-    input = await SetInputText(input,"> Debug: Toggle Breakpoint");
+    input = await SetInputText(input,"> Debug: Inline Breakpoint");
     await Wait(1 * 1000);
     const bpIcons = await textEditor.getDriver().findElements(By.className("codicon-debug-breakpoint"));
     const bpset = bpIcons.find(async x => await x.findElement(By.xpath("./..")).findElement(By.className("line-numbers")).getText() === lineNumber.toString());
