@@ -1,23 +1,14 @@
 import { VSBrowser } from "vscode-extension-tester";
 import { TestFunctions } from "./utils/TestFunctions";
+import { ThreadProperties, expectedNotifications } from "./utils/Consts";
+
 describe("Basic UI tests", () => {
     let browser: VSBrowser;
-    const expectedNotifications: Record<string, INotification> = {
-        c_cppExt: {
-            name: "C/C++",
-            message : "No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.",
-            installButton : "Install C/C++ Extension"
-        },
-        env_config: {
-            name: "Environment Configurator for Intel® oneAPI Toolkits",
-            message : "Please install the \"Environment Configurator for Intel oneAPI Toolkits\" to configure your development environment.",
-            installButton : "Environment Configurator for Intel oneAPI Toolkits"
-        },
-    };
-    
+
     before(async function() {
         browser = VSBrowser.instance;
         await browser.openResources("../array-transform", "../array-transform/src/array-transform.cpp");
+        await TestFunctions.InstallRequiredExtensions();
     });
     after(async function() {
         await TestFunctions.UninstallAllExtensions();
@@ -58,6 +49,18 @@ describe("Basic UI tests", () => {
         it("Check offline help page", async function() {
             this.timeout(60 * 1000);
             await TestFunctions.CheckOfflineHelpPageTest(); 
+        });
+        it("Refresh SIMD data", async function() {
+            this.timeout(5 * 60 * 1000);
+            await TestFunctions.RefreshSimdDataTest(); 
+        });
+        it("Check threads id", async function() {
+            this.timeout(5 * 60 * 1000);
+            await TestFunctions.ValidateOneApiGpuThreadsTest(ThreadProperties.Id); 
+        });
+        it("Check threads location", async function() {
+            this.timeout(5 * 60 * 1000);
+            await TestFunctions.ValidateOneApiGpuThreadsTest(ThreadProperties.Location); 
         });
     });
 });
