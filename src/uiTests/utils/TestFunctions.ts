@@ -1,13 +1,19 @@
 import * as fs from "fs";
 import * as util from "util";
 import { assert } from "chai";
-import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebView, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebDriver, WebElement, WebView, Workbench } from "vscode-extension-tester";
 import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
 import { exec } from "child_process";
 import axios from "axios";
+import { IVsCodeTask, ICcppConfiguration, INotification } from "./Interfaces";
+import { ThreadProperties } from "./Consts";
 
 const execAsync = util.promisify(exec);
-const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]); 
+const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]);
+const dotVscodePath = "../array-transform/.vscode";
+const ccppPropertiesFilePath = `${dotVscodePath}/c_cpp_properties.json`;
+const tasksJsonFilePath = `${dotVscodePath}/tasks.json`;
+const launchJsonPath = `${dotVscodePath}/launch.json`;
 
 /**
  * Generates launch task by given @param taskName
@@ -15,23 +21,6 @@ const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]);
  */
 export async function GenerateTaskTest(taskName: string) : Promise<void> {
     logger.Info(`Generate '${taskName}' task`);
-    logger.Info("Check if required extensions are installed");
-    const requiredExtensions = [
-        "Analysis Configurator for Intel® oneAPI Toolkits",
-        "Code Sample Browser for Intel® oneAPI Toolkits",
-        "Environment Configurator for Intel® oneAPI Toolkits",
-        "C/C++",
-        "CMake Tools",
-    ];
-
-    for await (const requiredExtension of requiredExtensions) {
-        const isExtensionInstalled = await IsExtensionsInstalled(requiredExtension);
-
-        if (!isExtensionInstalled) {
-            await InstallExtension(requiredExtension);
-        }
-    }
-    await Wait(3 * 1000);
     const workbench = new Workbench();
     let input = await workbench.openCommandPrompt();
 
@@ -70,88 +59,26 @@ export async function GenerateTaskTest(taskName: string) : Promise<void> {
  * Generates debug launch task by given
  */
 export async function GenerateDebugLaunchConfigurationTest() : Promise<void> {
-    const launchJsonPath = "../array-transform/.vscode/launch.json";
+    logger.Info("Generate debug launch configuration");
     const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
 
-    logger.Info("Generate debug launch configuration");
-    const workbench = new Workbench();
-    let input = await workbench.openCommandPrompt();
-
-    AddTask({
-        "label": "preTask",
-        "command": "source /opt/intel/oneapi/setvars.sh --force && mkdir -p build && cd build && cmake .. && make && echo simple preTask",
-        "type": "shell",
-        "problemMatcher": []
-    });
-    AddTask({
-        "label": "postTask",
-        "command": "echo simple postTask",
-        "type": "shell"
-    });
-    CreateCCppPropertiesFile();
-    await input.cancel();
-    input = await workbench.openCommandPrompt();
-    input = await ClearInputText(input);
-    input = await SetInputText(input, "> Intel oneAPI: Initialize default environment variables");
-    await Wait(3 * 1000);
-    await RunTask("preTask", "[100%] Built target array-transform");
-    await Wait(3 * 1000);
-    await RemoveAllBreakpoints();
-    input = await workbench.openCommandPrompt();
-    input = await ClearInputText(input);
-    input = await SetInputText(input, "> Intel oneAPI: Generate launch configurations");
-    await Wait(5 * 1000);
-    logger.Info("Get quick picks");
-    const picks = await input.getQuickPicks();
-    const pick = picks.find(async x => (await x.getText()).includes("array-transform"));
-
-    logger.Info(`Select Quick pick: ${await pick?.getText()}`);
-    await pick?.select();
-    logger.Info("Select Quick pick: 'no'");
-    await input.selectQuickPick("no");
-    await Wait(3 * 1000);
-    logger.Info("Confirm");
-    await input.confirm();
-    logger.Info("Select Quick pick: 'preTask'");
-    await input.selectQuickPick("preTask");
-    logger.Info("Select Quick pick: 'postTask'");
-    await input.selectQuickPick("postTask");
-    logger.Info("Cancel");
-    await input.cancel();
-    logger.Info(`Load '${launchJsonPath}' file`);
-    const launchJson = JSON.parse(fs.readFileSync(launchJsonPath, "utf-8"));
-
-    logger.Info("Check if debug launch configuration has been created and exists in 'launch.json'");
-    assert.exists(launchJson.configurations[0], "[ERROR] Debug launch configuration hasn't been created!");
-    logger.Pass("Debug launch configuration has been created and exists in 'launch.json'");
-    launchJson.configurations[0].miDebuggerPath = "/opt/intel/oneapi/debugger/2023.1.0/gdb/intel64/bin/gdb-oneapi";
-    const configurationName: string = launchJson.configurations[0].name;
-
-    logger.Info(`Write '${launchJsonPath}' file`);
-    fs.writeFileSync(launchJsonPath, JSON.stringify(launchJson));
+    await LaunchSequence();
     await SetBreakpoint("array-transform.cpp", 54);
-    await Wait(5 * 1000);
-    const debugView = await GetDebugView();
-
-    logger.Info(`Select '${configurationName}' launch configuration`);
-    await debugView.selectLaunchConfiguration(configurationName);
-    logger.Info("Start debugging");
-    await debugView.start();
-    await Wait(5 * 1000);
-    await CloseAllNotifications();
-    const isBreakpointHit = await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber);
-
-    assert.isTrue(isBreakpointHit, `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
-    const wasPreTaskExecuted = await CheckIfTaskWasExecuted("preTask", "simple preTask");
-
-    assert.isTrue(wasPreTaskExecuted, "Task 'preTask' was not executed");
+    await StartDebugging();
+    assert.isTrue(
+        await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+        `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
+    logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
+    assert.isTrue(
+        await CheckIfTaskWasExecuted("preTask", "simple preTask"),
+        "Task 'preTask' was not executed");
     logger.Pass("Task 'preTask' was executed");
     const bar = await DebugToolbar.create();
 
     await bar.stop();
-    const wasPostTaskExecuted = await CheckIfTaskWasExecuted("postTask", "simple postTask");
-
-    assert.isTrue(wasPostTaskExecuted, "Task 'postTask' was not executed");
+    assert.isTrue(
+        await CheckIfTaskWasExecuted("postTask", "simple postTask"),
+        "Task 'postTask' was not executed");
     logger.Pass("Task 'postTask' was executed");
 }
 
@@ -279,33 +206,43 @@ export async function CheckOnlineHelpTest() : Promise<void> {
  * Checks if offline documentation displays desired contnent.
  */
 export async function CheckOfflineHelpPageTest() : Promise<void> {
-    logger.Info("Check offline help page");
-    const workbench = new Workbench();
-    let input = await workbench.openCommandPrompt();
+    try {
+        logger.Info("Check offline help page");
+        const workbench = new Workbench();
+        let input = await workbench.openCommandPrompt();
 
-    input = await ClearInputText(input);
-    await SetInputText(input, "> Intel oneAPI: List gdb-oneapi debugger unique commands (help)");
-    await Wait(2 * 1000);
-    logger.Pass("Tab 'Debugger Commands' has been found");
-    await Wait(1 * 1000);
-    const offlineHelpReference = JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
+        input = await ClearInputText(input);
+        await SetInputText(input, "> Intel oneAPI: List gdb-oneapi debugger unique commands (help)");
+        await Wait(2 * 1000);
+        logger.Pass("Tab 'Debugger Commands' has been found");
+        await Wait(1 * 1000);
+        const offlineHelpReference = JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
 
-    logger.Info("Get all nested values");
-    const values = GetAllNestedValues(offlineHelpReference);
-    const webView = new WebView();
+        logger.Info("Get all nested values");
+        const values = GetAllNestedValues(offlineHelpReference);
+        const webView = new WebView();
 
-    logger.Info("Switch to frame");
-    await webView.switchToFrame();
-    logger.Info("Get current frame page source");
-    const offlineHelpBody = await webView.getDriver().getPageSource();
+        logger.Info("Switch to frame");
+        await webView.switchToFrame();
+        logger.Info("Get current frame page source");
+        const offlineHelpBody = await webView.getDriver().getPageSource();
 
-    for (const value of values) {
-        const parsed = value.replace(/\s>\s+/g, " &gt; ").replace("<oneapiExt>", "<span class=\"oneapi-ext\">").replace("</oneapiExt>", "</span>").replace("</br>", "<br>");
+        logger.Info("Switch back from frame");
+        await webView.switchBack();
+        for (const value of values) {
+            const parsed = value.replace(/\s>\s+/g, " &gt; ").replace("<oneapiExt>", "<span class=\"oneapi-ext\">").replace("</oneapiExt>", "</span>").replace("</br>", "<br>");
 
-        assert.isTrue(offlineHelpBody.includes(parsed), `Can't find desired line.\nExpected original: '${value}'\nExpected parsed: '${parsed}'\n`);
+            assert.isTrue(offlineHelpBody.includes(parsed), `Can't find desired line.\nExpected original: '${value}'\nExpected parsed: '${parsed}'\n`);
+        }
+    } catch (e) {
+        logger.Exception(e);
+        throw e;
+    } finally {
+        const editorView = new EditorView();
+
+        logger.Info("Close all editors");
+        await editorView.closeAllEditors();
     }
-    logger.Info("Switch back from frame");
-    await webView.switchBack();
 }
 
 /**
@@ -323,6 +260,298 @@ export async function UninstallAllExtensions(): Promise<void> {
     for await (const extension of extensionsToUninstall) {
         await UninstallExtension(extension);
     }
+}
+
+/**
+ * Executes 'Refresh SIMD data' command and checks if debug views data' 
+ */
+export async function RefreshSimdDataTest(): Promise<void> {
+    logger.Info("Refresh SIMD data");
+    const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
+
+    await LaunchSequence();
+    await SetBreakpoint(breakpoint.fileName, breakpoint.lineNumber);
+    try {
+        await StartDebugging();
+        assert.isTrue(
+            await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+            `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
+        logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
+        assert.isTrue(
+            await CheckIfTaskWasExecuted("preTask", "simple preTask"),
+            "Task 'preTask' was not executed");
+        logger.Pass("Task 'preTask' was executed");
+        const consoleOutput = (await GetDebugConsoleOutput()).filter(x =>
+            x.includes("[Switching to Thread") || x.includes(`at ${breakpoint.fileName}:${breakpoint.lineNumber}`)).join(" ");
+        const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
+        let gpuThreadsViewContent = [""], hwInfoViewContent = [""], selectedLaneViewContent = [""];
+        const workbench = new Workbench();
+        const input = await workbench.openCommandPrompt();
+
+        await ClearInputText(input);
+        await SetInputText(input, "> Intel oneAPI: Refresh SIMD Data");
+        await Wait(3 * 1000);
+        const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+
+        await gpuThreadsView?.click();
+        await ExecuteInIFrame(null, async() => {
+            await ExecuteInIFrame(null, async driver => {
+                gpuThreadsViewContent = (await driver.findElement(By.id("simd-view")).getText()).split("\n");
+            });
+        });
+        await gpuThreadsView?.click();
+        const hwInfo = await GetDebugPane("Hardware Info Section");
+        
+        await hwInfo?.click();
+        await ExecuteInIFrame(null, async() => {
+            await ExecuteInIFrame(null, async driver => {
+                hwInfoViewContent = (await driver.findElement(By.className("content")).getText()).split("\n");
+            });
+        });
+        await hwInfo?.click();
+        const selectedLane = await GetDebugPane("Selected Lane Section");
+
+        await selectedLane?.click();
+        await ExecuteInIFrame(null, async() => {
+            await ExecuteInIFrame(null, async driver => {
+                selectedLaneViewContent = (await driver.findElement(By.css("tbody")).getText()).split("\n");
+            });
+        });
+        const currentThreadId = GetStringBetweenStrings(consoleOutput, ".", " lane");
+        const currentThreadLane = GetStringBetweenStrings(consoleOutput, "lane ", "]");
+        const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
+        const currentgpuThread = gpuThreadsViewContent[gpuThreadsViewContent.indexOf("⇨") - 1];
+
+        logger.Info("Check if 'HARDWARE INFO' view contains expected info");
+        assert.isTrue(hwInfoViewContent?.includes(`Name: ${deviceName}`),
+            "Device name doesn't match");
+        logger.Info("Check if 'SELECTED LANE' view contains expected info");
+        assert.isTrue(selectedLaneViewContent?.includes(`Lane Number: ${currentThreadLane}`),
+            "Lane number doesn't match");
+        logger.Info("Check if 'ONEAPI GPU THREADS' view contains expected info");
+        assert.isTrue(currentgpuThread.includes(`.${currentThreadId}`),
+            "Current thread doesn't match");
+    } catch (e) {
+        logger.Exception(e);
+    } finally {
+        logger.Info("Get 'DebugToolbar' handle");
+        const bar = await DebugToolbar.create();
+
+        logger.Info("Stop debugging");
+        await bar.stop();
+    }
+}
+
+/**
+ * Checks if current thread is the same in debug console and oneapi gpu threads window.
+ */
+export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperties) {
+    logger.Info(`Validate OneAPI GPU Threads - Check threads ${threadProperty.toString()}`);
+    const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
+
+    await LaunchSequence();
+    await SetBreakpoint(breakpoint.fileName, breakpoint.lineNumber);
+    try {
+        await StartDebugging();
+        assert.isTrue(
+            await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+            `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
+        logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
+        assert.isTrue(
+            await CheckIfTaskWasExecuted("preTask", "simple preTask"),
+            "Task 'preTask' was not executed");
+        logger.Pass("Task 'preTask' was executed");
+        const workbench = new Workbench();
+        const input = await workbench.openCommandPrompt();
+
+        await ClearInputText(input);
+        await SetInputText(input, "> Intel oneAPI: Refresh SIMD Data");
+        await Wait(3 * 1000);
+        const getRefreshButton = async(gpuThreadsView: WebElement) => {
+            const buttons = await gpuThreadsView.findElements(By.xpath("//*/div[3]/div/div/ul/li/a"));
+
+            for (const button of buttons) {
+                const value = await button.getAttribute("aria-label");
+            
+                if (value === "Intel oneAPI: Refresh SIMD Data") {
+                    return button;
+                }
+            }
+        };
+        const getThreads = async() => {
+            let gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+            const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
+
+            if (!gpuThreadsViewClass?.includes("expanded")) {
+                await gpuThreadsView?.click();
+            }
+            gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+            await Wait(3 * 1000);
+            const refreshButton = await getRefreshButton(gpuThreadsView as WebElement);
+
+            await refreshButton?.click();
+            await Wait(3 * 1000);
+            const gpuThreadsParsed: string[][] = [];
+
+            await ExecuteInIFrame(null, async() => {
+                await ExecuteInIFrame(null, async driver => {
+                    const gpuThreads = await driver.findElement(By.id("simd-view"));
+                    const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr"));
+        
+                    for (const row of gpuThreadsRows) {
+                        const rowData = await row.findElements(By.css("td"));
+                        const rowParsed = [];
+        
+                        for (const data of rowData) {
+                            const rowDataText = await data.getText();
+        
+                            if (rowDataText) {rowParsed.push(rowDataText);}
+                        }
+                        gpuThreadsParsed.push(rowParsed);
+                    }
+                });
+            });
+
+            return gpuThreadsParsed;
+        };
+
+        let linesPrev: string | string[] = [];
+        const threadsNumber = (await getThreads()).length;
+        let currentIteration = 1;
+
+        while (currentIteration < threadsNumber) {
+            logger.Info(`Iteration ${currentIteration}`);
+            const gpuThreadsParsed = await getThreads();
+            const consoleOutput = await GetDebugConsoleOutput();
+            const linesNext = consoleOutput.filter(x => x.includes(`at ${breakpoint.fileName}:${breakpoint.lineNumber}`));
+            const currentBpInfo = linesNext.filter(x => !linesPrev.includes(x))[0];
+            const currentThread = gpuThreadsParsed.reduce((x, y) => x.length > y.length ? x : y, []);
+            let result = false;
+
+            switch (threadProperty) {
+            case ThreadProperties.Id:
+                result = currentBpInfo.includes(`${parseInt(currentThread[0]) - 2}`);
+                break;
+            case ThreadProperties.Location:
+                result = currentBpInfo.includes(currentThread[2]);
+                break;
+            }
+            logger.Info(`Current thread in gpu threads view: ${currentThread}`);
+            logger.Info(`Current thread in debug console view: ${currentBpInfo}`);
+            logger.Info(`Check if thread ${threadProperty} is the same in debug console and gpu threads view.`);
+            assert.isTrue(result, "Threads are different");
+            logger.Pass(`Thread ${threadProperty} is the same in debug console and gpu threads view`);
+            const bar = await DebugToolbar.create();
+        
+            await bar.continue();
+
+            linesPrev = linesNext;
+            currentIteration++;
+        }
+    } finally {
+        const bar = await DebugToolbar.create();
+    
+        await bar.stop();
+    }
+}
+
+/**
+ * Installs required extensions.
+ */
+export async function InstallRequiredExtensions(): Promise<void> {
+    logger.Info("Check if required extensions are installed");
+    const requiredExtensions = [
+        "Analysis Configurator for Intel® oneAPI Toolkits",
+        "Code Sample Browser for Intel® oneAPI Toolkits",
+        "Environment Configurator for Intel® oneAPI Toolkits",
+        "C/C++",
+        "CMake Tools",
+    ];
+
+    for await (const requiredExtension of requiredExtensions) {
+        const isExtensionInstalled = await IsExtensionInstalled(requiredExtension);
+
+        if (!isExtensionInstalled) {
+            await InstallExtension(requiredExtension);
+        }
+    }
+    await Wait(3 * 1000);
+}
+
+function GetStringBetweenStrings(str: string, startStr: string, endStr: string) {
+    const pos = str.indexOf(startStr) + startStr.length;
+    
+    return str.substring(pos, str.indexOf(endStr, pos));
+}
+
+async function GetDebugPane(paneToFind: string): Promise<WebElement | undefined> {
+    const debugView = await GetDebugView();
+    const debugPanes = await debugView.findElements(By.className("pane-header"));
+
+    for (const pane of debugPanes) {
+        const value = await pane.getAttribute("aria-label");
+
+        if (value === paneToFind) {
+            return pane;
+        }
+    }
+}
+
+async function ExecuteInIFrame(frame: number | WebElement | null, body: (driver: WebDriver) => unknown): Promise<void> {
+    const workbench = new Workbench();
+    const driver = await workbench.getDriver();
+
+    if (!frame) {
+        frame = await driver.findElement(By.css("iframe"));
+    }
+    await driver.switchTo().frame(frame);
+    await body(driver);
+    await driver.switchTo().parentFrame();
+}
+
+async function GetDebugConsoleOutput(): Promise<string[]> {
+    const workbench = new Workbench();
+    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
+    const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
+
+    await outputButton.click();
+    const debugOutputWindow = new DebugConsoleView();
+    const debugOutput = await debugOutputWindow.getText();
+    const lines = debugOutput.split("\n");
+
+    return lines;
+}
+
+async function StartDebugging() {
+    const configurationName = await GenerateLaunchConfigurations();
+
+    await Wait(5 * 1000);
+    const debugView = await GetDebugView();
+
+    logger.Info(`Select '${configurationName}' launch configuration`);
+    await debugView.selectLaunchConfiguration(configurationName);
+    logger.Info("Start debugging");
+    await debugView.start();
+    await Wait(5 * 1000);
+    await CloseAllNotifications();
+}
+
+async function LaunchSequence() {
+    CreateCCppPropertiesFile();
+    await InitDefaultEnvironment();
+    AddTask({
+        "label": "preTask",
+        "command": "source /opt/intel/oneapi/setvars.sh --force && mkdir -p build && cd build && cmake .. && make && echo simple preTask",
+        "type": "shell",
+        "problemMatcher": []
+    });
+    AddTask({
+        "label": "postTask",
+        "command": "echo simple postTask",
+        "type": "shell"
+    });
+    await RunTask("preTask", "[100%] Built target array-transform");
+    await RemoveAllBreakpoints();
 }
 
 function GetAllNestedValues(jsonObject: unknown): string[] {
@@ -408,32 +637,34 @@ async function RunTask(taskName: string, expectedOutput: string): Promise<void> 
     logger.Pass(`Running ${taskName} task succeed`);
 }
 
-function AddTask(task: object): void {
-    const dotVscodePath = "../array-transform/.vscode";
-    const filePath = `${dotVscodePath}/tasks.json`;
+function AddTask(task: IVsCodeTask): void {
     const emptyTasks = { "tasks": [] };
 
     logger.Info(`Check if '${dotVscodePath}' exists`);
     if (!fs.existsSync(dotVscodePath)) {
         fs.mkdirSync(dotVscodePath);
     }
-    logger.Info(`Check if '${filePath}' exists`);
-    if (!fs.existsSync(filePath)) {
-        logger.Info(`File '${filePath}' doesn't exist`);
-        logger.Info(`Create '${filePath}' file`);
-        fs.writeFileSync(filePath, JSON.stringify(emptyTasks));
+    logger.Info(`Check if '${tasksJsonFilePath}' exists`);
+    if (!fs.existsSync(tasksJsonFilePath)) {
+        logger.Info(`File '${tasksJsonFilePath}' doesn't exist`);
+        logger.Info(`Create '${tasksJsonFilePath}' file`);
+        fs.writeFileSync(tasksJsonFilePath, JSON.stringify(emptyTasks));
     }
-    logger.Info(`Load '${filePath}' file`);
-    const tasksObj = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    logger.Info(`Load '${tasksJsonFilePath}' file`);
+    const tasksObj = JSON.parse(fs.readFileSync(tasksJsonFilePath, "utf-8"));
 
-    logger.Info(`Add ${task} task to '${filePath}' file`);
-    tasksObj.tasks.push(task);
-    logger.Info(`Save '${filePath}' file`);
-    fs.writeFileSync(filePath, JSON.stringify(tasksObj));
+    logger.Info(`Check if ${task} exists`);
+    const exists = (tasksObj.tasks as Array<IVsCodeTask>).some(x => x.label === task.label);
+    
+    if (!exists) {
+        logger.Info(`Add ${task} task to '${tasksJsonFilePath}' file`);
+        tasksObj.tasks.push(task);
+    }
+    logger.Info(`Save '${tasksJsonFilePath}' file`);
+    fs.writeFileSync(tasksJsonFilePath, JSON.stringify(tasksObj));
 }
 
 function CreateCCppPropertiesFile(): void {
-    const ccppPropertiesFilePath = "../array-transform/.vscode/c_cpp_properties.json";
     const ccppProperties = {
         "configurations": [
             {
@@ -450,12 +681,31 @@ function CreateCCppPropertiesFile(): void {
                 "cStandard": "c17",
                 "cppStandard": "gnu++17",
                 "intelliSenseMode": "linux-gcc-x64"
-            }
+            } as unknown as ICcppConfiguration,
         ],
         "version": 4
     };
 
-    fs.writeFileSync(ccppPropertiesFilePath, JSON.stringify(ccppProperties));
+    logger.Info(`Check if '${dotVscodePath}' exists`);
+    if (!fs.existsSync(dotVscodePath)) {
+        fs.mkdirSync(dotVscodePath);
+    }
+    logger.Info(`Check if '${ccppPropertiesFilePath}' exists`);
+    if (!fs.existsSync(ccppPropertiesFilePath)) {
+        logger.Info(`File '${ccppPropertiesFilePath}' doesn't exist`);
+        logger.Info(`Create '${ccppPropertiesFilePath}' file`);
+        fs.writeFileSync(ccppPropertiesFilePath, JSON.stringify(ccppProperties));
+        return;
+    }
+
+    logger.Info(`Load '${ccppPropertiesFilePath}' file`);
+    const ccppPropertiesFileContent: {configurations: Array<ICcppConfiguration>} = JSON.parse(fs.readFileSync(ccppPropertiesFilePath, "utf-8"));
+
+    const exists = ccppPropertiesFileContent.configurations.some((x: ICcppConfiguration) => x === ccppProperties.configurations[0]);
+
+    if (!exists) {
+        ccppPropertiesFileContent.configurations.push(ccppProperties.configurations[0]);
+    }
 }
 
 async function CloseAllNotifications(): Promise<void> {
@@ -465,6 +715,7 @@ async function CloseAllNotifications(): Promise<void> {
 
     logger.Info("Clear all notifications");
     await center.clearAllNotifications();
+    await center.close();
 }
 
 async function Retry<TResult>(fn: () => TResult, timeout: number): Promise<TResult | undefined> {
@@ -505,24 +756,37 @@ async function CheckIfTaskWasExecuted(taskName: string, expectedOutput: string):
     logger.Info("Set command palette text to '> Terminal: Create New Terminal'");
 
     await SetInputText(input, "> Terminal: Create New Terminal");
-    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
-    const terminalButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[4]"));
-
-    await terminalButton.click();
-    const terminals = await bp.findElements(By.className("monaco-list-row"));
-    const preTask = terminals.find(async x => (await x.getAttribute("aria-label")).includes(taskName));
-    const taskLabel = preTask?.findElement(By.className("label-name"));
-
-    await taskLabel?.click();
-    const terminal = new TerminalView();
-
-    logger.Info(`Get '${taskName}' task terminal text`);
-    const innerText = await Retry(async() => await terminal.getText(), 5 * 1000);
+    const innerText = await GetTerminalOutput(taskName);
 
     logger.Info(`'${taskName}' task output: ${innerText}`);
     const result = innerText?.includes(expectedOutput);
 
     return result as boolean;
+}
+
+async function GetTerminalOutput(terminalName: string): Promise<string | undefined> {
+    const workbench = new Workbench();
+    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
+    const terminalButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[4]"));
+
+    await terminalButton.click();
+    const terminals = await bp.findElements(By.className("monaco-list-row"));
+    let terminalFound = null;
+
+    for (const terminal of terminals) {
+        const name = await terminal.getAttribute("aria-label");
+
+        if (name.includes(terminalName)) {terminalFound = terminal;}
+    }
+    const taskLabel = terminalFound?.findElement(By.className("label-name"));
+
+    await taskLabel?.click();
+    const terminal = new TerminalView();
+
+    logger.Info(`Get '${terminalName}' terminal text`);
+    const innerText = await Retry(async() => await terminal.getText(), 5 * 1000);
+
+    return innerText;
 }
 
 async function CheckIfBreakpointHasBeenHit(fileName: string, lineNumber: number): Promise<boolean> {
@@ -667,15 +931,19 @@ async function InstallExtension(extensionToInstall: string): Promise<void> {
     await extensionsView.clearSearch();
 }
 
-async function IsExtensionsInstalled(extensionName: string) : Promise<boolean | undefined> {
-    const extensionsView = await GetExtensionsSection("Installed");
+async function IsExtensionInstalled(extensionName: string) : Promise<boolean | undefined> {
+    const result = await Retry(async() => {
+        const extensionsView = await GetExtensionsSection("Installed");
 
-    await extensionsView.clearSearch();
-    const extensionsList = await extensionsView.getText();
-    const isInstalled = extensionsList.includes(extensionName);
+        await extensionsView.clearSearch();
+        const extensionsList = await extensionsView.getText();
+        const isInstalled = extensionsList.includes(extensionName);
 
-    logger.Info(isInstalled ? `Extension: '${extensionName}' is installed` : `Extension: '${extensionName}' is not installed`);
-    return isInstalled;
+        logger.Info(isInstalled ? `Extension: '${extensionName}' is installed` : `Extension: '${extensionName}' is not installed`);
+        return isInstalled;
+    }, 5 * 1000);
+
+    return result;
 }
 
 async function Wait(duration: number): Promise<void> {
@@ -693,6 +961,59 @@ async function RemoveAllBreakpoints(): Promise<void> {
     logger.Info("Perform '> Remove All Breakpoints' command");
     await input.setText("> Remove All Breakpoints");
     await input.confirm();
+}
+
+async function InitDefaultEnvironment(): Promise<void> {
+    const workbench = new Workbench();
+    let input = await workbench.openCommandPrompt();
+
+    input = await workbench.openCommandPrompt();
+    input = await ClearInputText(input);
+    await SetInputText(input, "> Intel oneAPI: Initialize default environment variables");
+    await Wait(3 * 1000);
+}
+
+async function GenerateLaunchConfigurations(): Promise<string> {
+    logger.Info("Check if debug launch configuration already exists");
+    // const dotVscodePath = "../array-transform/.vscode";
+    const workbench = new Workbench();
+    let input = await workbench.openCommandPrompt();
+
+    input = await workbench.openCommandPrompt();
+    input = await ClearInputText(input);
+    input = await SetInputText(input, "> Intel oneAPI: Generate launch configurations");
+    await Wait(5 * 1000);
+    logger.Info("Get quick picks");
+    const picks = await input.getQuickPicks();
+    const pick = picks.find(async x => (await x.getText()).includes("array-transform"));
+
+    logger.Info(`Select Quick pick: ${await pick?.getText()}`);
+    await pick?.select();
+    logger.Info("Select Quick pick: 'no'");
+    await input.selectQuickPick("no");
+    await Wait(3 * 1000);
+    logger.Info("Confirm");
+    await input.confirm();
+    logger.Info("Select Quick pick: 'preTask'");
+    await input.selectQuickPick("preTask");
+    logger.Info("Select Quick pick: 'postTask'");
+    await input.selectQuickPick("postTask");
+    logger.Info("Cancel");
+    await input.cancel();
+
+    logger.Info(`Load '${launchJsonPath}' file`);
+    const launchJson = JSON.parse(fs.readFileSync(launchJsonPath, "utf-8"));
+
+    logger.Info("Check if debug launch configuration has been created and exists in 'launch.json'");
+    assert.exists(launchJson.configurations[0], "[ERROR] Debug launch configuration hasn't been created!");
+    logger.Pass("Debug launch configuration has been created and exists in 'launch.json'");
+    launchJson.configurations[0].miDebuggerPath = "/opt/intel/oneapi/debugger/2023.1.0/gdb/intel64/bin/gdb-oneapi";
+    const configurationName: string = launchJson.configurations[0].name;
+
+    logger.Info(`Write '${launchJsonPath}' file`);
+    fs.writeFileSync(launchJsonPath, JSON.stringify(launchJson));
+
+    return configurationName;
 }
 
 export * as TestFunctions from "./TestFunctions";
