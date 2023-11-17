@@ -181,8 +181,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
             const tableString = this.getColorsRow(newSimdRow, m);
             const x = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
-            const y = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
-            const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
+            const y = m.threadWorkgroup ? m.threadWorkgroup.split(",")[1] : "-";
+            const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[2] : "-";
 
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td> <td title="${m.fullname}"> ${m.file}:${m.line} </td><td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
         }
