@@ -1,5 +1,9 @@
 # Change Log
 
+##  0.4.0
+
+  - Added the option in settings to enable the display of inactive threads
+
 ##  0.3.2
 
  - Added content to the Selected lane view
