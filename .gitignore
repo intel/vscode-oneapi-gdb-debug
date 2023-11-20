@@ -4,4 +4,4 @@ node_modules
 test-resources/
 *.vsix
 .vscode
-.vscode-test
+.@vscode/test-electron

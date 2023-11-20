@@ -19,6 +19,9 @@ describe("Basic UI tests", () => {
         browser = VSBrowser.instance;
         await browser.openResources("../array-transform", "../array-transform/src/array-transform.cpp");
     });
+    after(async function() {
+        await TestFunctions.UninstallAllExtensions();
+    });
     describe("Generate tasks", () => {
         it("Install 'C/C++' extension", async function() {
             this.timeout(10 * 1000);
@@ -47,6 +50,14 @@ describe("Basic UI tests", () => {
         it("Generate 'Debug' launch configuration", async function() {
             this.timeout(120 * 1000);
             await TestFunctions.GenerateDebugLaunchConfigurationTest(); 
+        });
+        it("Check online help page", async function() {
+            this.timeout(60 * 1000);
+            await TestFunctions.CheckOnlineHelpTest(); 
+        });
+        it("Check offline help page", async function() {
+            this.timeout(60 * 1000);
+            await TestFunctions.CheckOfflineHelpPageTest(); 
         });
     });
 });

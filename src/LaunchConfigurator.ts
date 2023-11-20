@@ -49,6 +49,11 @@ const debugConfig = {
              description: "Disable target async",
              text: "set target-async off",
              ignoreFailures: true
+         },
+         {
+             description: "Do not display function arguments when printing a stack frame",
+             text: "set print frame-arguments none",
+             ignoreFailures: true
          }
      ]
 };
