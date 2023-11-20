@@ -34,6 +34,17 @@ Note that you can modify the configuration manually. For example, you may need t
 
 More information about all the `launch.json` features can be found at [Configuring C/C++ debugging](https://code.visualstudio.com/docs/cpp/launch-json-reference).
 
+## Settings
+### Symbolic indication of SIMD lanes
+In the settings, you can specify an additional designation for active and inactive lanes using any text character. This may be useful for clearer recognition of lane status.
+
+![Symbolic indication](/media/symbols.png)
+
+### Display Threads Settings
+In the settings, there's an option to enable or disable the display of inactive threads. This can help users focus on active threads or get a comprehensive view of all threads.
+
+![Show incative](/media/show_inactive.png)
+
 ## SIMD View
 In the debug view, this extension provides SIMD View, which displays the SIMD lane state of an Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
 
@@ -59,23 +70,16 @@ There are several ways to set a SIMD lane specific breakpoint:
 `THREADID:SIMDLANE`
 ![Functional conditional breakpoint](/media/func_cbp.gif)
 
-
-### Symbolic indication of SIMD lanes
-In the settings, you can specify an additional designation for active and inactive lanes using any text character. This may be useful for clearer recognition of lane status.
-
-![Symbolic indication](/media/symbols.png)
 ### Choose SIMD Lane
 You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will show updated information in the SELECTED LANE tab, and extended thread information can be found using the debug console (command `-exec -thread-info`).
-Please note that at the moment the Variables view is not refreshed automatically after clicking on SIMD lane. To get around this and see the current state of the variables for the selected SIMD, you need to perform any manipulation with Watch view, for example, add or remove any value.
 
 ![Lane info](/media/lane.gif)
 
 ### Selected lane
 You can see additional properties of the selected lane in a separate tab while debugging:
 * Lane Number - the number of the currently selected lane;
-* Thread Workgroup - the workgroup coordinates of the current thread. If the thread is stopped, available and the workgroup is defined for its architecture, the field contains a string with 3D tuple: "x, y, z" that denotes the coordinates of the thread workgroup;
-* Work item Global Id - the global ID coordinates of the Work item processed by the current context. Unsigned int vector of size 3, when available. Otherwise, void;
-* Work item Local Id - The local ID coordinates of the work item processed by the current context, within its thread's workgroup. Unsigned int vector of size 3, when available.  Otherwise, void;
+* Work item Global ID - the global ID coordinates of the Work item processed by the current context. Unsigned int vector of size 3, when available. Otherwise, void;
+* Work item Local ID - The local ID coordinates of the work item processed by the current context, within its thread's workgroup. Unsigned int vector of size 3, when available.  Otherwise, void;
 * Execution Mask - the hex mask encodes for which lanes the breakpoint condition was evaluated to true;
 * Hit Lanes mask - the hex mask of the SIMD lanes which were hit by the breakpoint;
 * SIMD Width - the number of working items processed in kernel by a GPU thread.
@@ -86,6 +90,12 @@ You can see additional properties of the selected lane in a separate tab while d
 You can see your device's info in a separate tab while debugging.
 
 ![Hardware info](/media/hwInfo.gif)
+
+## GPU Memory Viewing
+VS Code's generic debugger now includes a feature for viewing binary data. When a variable supports memory viewing and editing, an inline binary icon appears in the Variables view. Clicking on the icon opens the Hex Editor, allowing to perform operations on the binary data.
+This functionality appears in the Variables and Watch panels. Clicking on the icon opens the Hex Editor, in which is possible to inspect conveniently large pieces of data. This functionality enables users to examine the memory space of Intel® GPU kernels.
+
+![Memory Viewing](/media/memView.png)
 
 ## Differences Between GDB and GDB-oneapi
 To display the differences between these two distributions of GDB:
@@ -122,7 +132,7 @@ Development Host".
 1. This extension is released under the MIT License.
 
 
-2. oneapi-gdb-debug-0.2.1.vsix\extension\media\userHelp\content.json
+2. oneapi-gdb-debug-0.4.0.vsix\extension\media\userHelp\content.json
 
     Copyright (c) Intel Corporation
 

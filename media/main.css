@@ -1,59 +1,67 @@
 body {
-	background-color: transparent;
-  text-align: left;
+    background-color: transparent;
+    text-align: left;
 }
 
 table {
-  text-align: left;
+    text-align: left;
 }
 
 th {
-  position: sticky;
-  top: 0;
-  color: #1e1e1e;
-  background:#d3d3d3;
-  max-width: 50%;
+    position: sticky;
+    top: 0;
+    color: #1e1e1e;
+    background:#d3d3d3;
+    max-width: 50%;
+}
+td {
+    color: var(--vscode-editor-foreground);
 }
 
-  @keyframes blink {
-    0%, 100% { opacity: 0; }
-    50% { opacity: 1; }
-  }
+@keyframes blink {
+    0%,
+    100% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 1;
+    }
+}
 
-  .dot {
+.dot {
     animation: blink 2s infinite;
-  }
+}
 
-  .cell {
+.cell {
     min-width: 16px;
     min-height: 16px;
     width: 16px;
     height: 16px;
-    color: black;
-    background-color:#d3d3d3;
+    color: var(--vscode-editor-foreground);
+    background-color: var(--vscode-icon-foreground);
     font-size: 12px;
     text-align: center;
-  }
+}
 
-  .cell:hover {
-      cursor: pointer;
-  }
+.cell:hover {
+    cursor: pointer;
+}
 
-  .lane{
-    border: #757575;
-  }
+.lane {
+    border: var(--vscode-editorOverviewRuler-incomingContentForeground);
+}
 
-  .colored{
-    background-color: #01ffff;
-    color: #ffff00;
-  }
+.colored {
+    background-color: var(--vscode-focusBorder);
+    color: var(--vscode-gitlens-graphMinimapMarkerHighlightsColor);
+}
 
-  .hitCell{
-    background-color: #4882b1;
-    color: #ffff00;
-  }
+.hitCell {
+    background-color: var(--vscode-debugIcon-breakpointForeground);
+    color: yellow;
+}
 
-  .collapsible {
+.collapsible {
     background-color: #777;
     color: white;
     cursor: pointer;
@@ -62,17 +70,61 @@ th {
     text-align: left;
     outline: none;
     font-size: 15px;
-  }
-  
-  .active, .collapsible:hover {
+}
+
+.active,
+.collapsible:hover {
     background-color: #555;
-  }
-  
-  .content {
+}
+
+.content {
     padding: 0;
     display: block;
     overflow: hidden;
-    background-color: #d3d3d3;
-    color: #1e1e1e;
-  }
-  
+    color: var(--vscode-editor-foreground);
+}
+
+
+.tooltip {
+    position: sticky;
+    cursor: pointer;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 220px;
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-icon-foreground);
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 6px;
+    position: absolute;
+    z-index: 1;
+    overflow: auto;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.hittedlane {
+    color: var(--vscode-debugIcon-breakpointForeground);
+    background-color: var(--vscode-editor-background);
+    text-align: center;
+}
+
+.activelane {
+    color: var(--vscode-focusBorder);
+    background-color: var(--vscode-editor-background);
+    text-align: center;
+}
+
+.inactivelane {
+    color: var(--vscode-icon-foreground);
+    background-color: var(--vscode-editor-background);
+    text-align: center;
+}
+
+/* Show tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
