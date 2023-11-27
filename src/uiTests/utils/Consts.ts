@@ -23,3 +23,13 @@ export const enum ThreadProperties {
     Id = "Id",
     Location = "Location"
 }
+
+/**
+ * Conditional breakpoint types.
+ */
+export const enum ConditionalBreakpointTypes {
+    SimdCommand = "SimdCommand",
+    SimdGui = "SimdGui",
+    NativeCommand = "NativeCommand",
+    NativeGui = "NativeGui",
+}
