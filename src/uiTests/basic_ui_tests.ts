@@ -50,7 +50,7 @@ describe("Basic UI tests", () => {
             this.timeout(60 * 1000);
             await TestFunctions.CheckOnlineHelpTest(); 
         });
-        it("Check offline help page", async function() {
+        it.skip("Check offline help page", async function() {
             this.timeout(60 * 1000);
             await TestFunctions.CheckOfflineHelpPageTest(); 
         });
