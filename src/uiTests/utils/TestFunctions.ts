@@ -1,12 +1,12 @@
 import * as fs from "fs";
 import * as util from "util";
 import { assert } from "chai";
-import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebDriver, WebElement, WebView, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView, ExtensionsViewSection, InputBox, Key, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebDriver, WebElement, WebView, Workbench } from "vscode-extension-tester";
 import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
 import { exec } from "child_process";
 import axios from "axios";
-import { IVsCodeTask, ICcppConfiguration, INotification } from "./Interfaces";
-import { ThreadProperties } from "./Consts";
+import { IVsCodeTask, ICcppConfiguration, INotification, IThread, IBreakpoint, IConditionalBreakpoint } from "./Interfaces";
+import { ConditionalBreakpointTypes, ThreadProperties } from "./Consts";
 
 const execAsync = util.promisify(exec);
 const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]);
@@ -19,7 +19,7 @@ const launchJsonPath = `${dotVscodePath}/launch.json`;
  * Generates launch task by given @param taskName
  * @param taskName Task name to generate.
  */
-export async function GenerateTaskTest(taskName: string) : Promise<void> {
+export async function GenerateTaskTest(taskName: string): Promise<void> {
     logger.Info(`Generate '${taskName}' task`);
     const workbench = new Workbench();
     let input = await workbench.openCommandPrompt();
@@ -39,7 +39,7 @@ export async function GenerateTaskTest(taskName: string) : Promise<void> {
     logger.Info(`Load 'tasks.json' file and look for created '${taskName}' task`);
     const tasks = JSON.parse(fs.readFileSync("../array-transform/.vscode/tasks.json", "utf-8"));
     const runCpuTask = tasks.tasks.find((task: { label: string }) => task.label === taskName);
-    
+
     logger.Info(`Check if '${taskName}' has been created and exists in 'tasks.json'`);
     assert.exists(runCpuTask, `'${taskName}' task doesn't exists!`);
     logger.Pass(`Task: '${taskName}' has been created and exists in 'tasks.json'`);
@@ -58,15 +58,15 @@ export async function GenerateTaskTest(taskName: string) : Promise<void> {
 /**
  * Generates debug launch task by given
  */
-export async function GenerateDebugLaunchConfigurationTest() : Promise<void> {
+export async function GenerateDebugLaunchConfigurationTest(): Promise<void> {
     logger.Info("Generate debug launch configuration");
     const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
 
     await LaunchSequence();
-    await SetBreakpoint("array-transform.cpp", 54);
+    await SetBreakpoint(breakpoint);
     await StartDebugging();
     assert.isTrue(
-        await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+        await CheckIfBreakpointHasBeenHit(breakpoint),
         `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
     logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
     assert.isTrue(
@@ -95,8 +95,8 @@ export async function InstallExtensionFromNotificationTest(expectedNotification:
 
     logger.Info("Get all notifications");
     const notifications = await center.getNotifications(NotificationType.Any);
-    
-    for (const notification of notifications){
+
+    for (const notification of notifications) {
         const message = await notification.getMessage();
 
         if (message === expectedNotification.message) {
@@ -134,7 +134,7 @@ export async function InstallExtensionFromNotificationTest(expectedNotification:
 /** 
  * Checks if online documentation has been opened on notification button click.
  */
-export async function CheckOnlineHelpTest() : Promise<void> {
+export async function CheckOnlineHelpTest(): Promise<void> {
     const onlineHelpNotification: INotification = {
         name: "Online help notification",
         message: "Open online documentation",
@@ -205,7 +205,7 @@ export async function CheckOnlineHelpTest() : Promise<void> {
 /**
  * Checks if offline documentation displays desired contnent.
  */
-export async function CheckOfflineHelpPageTest() : Promise<void> {
+export async function CheckOfflineHelpPageTest(): Promise<void> {
     try {
         logger.Info("Check offline help page");
         const workbench = new Workbench();
@@ -270,11 +270,11 @@ export async function RefreshSimdDataTest(): Promise<void> {
     const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
 
     await LaunchSequence();
-    await SetBreakpoint(breakpoint.fileName, breakpoint.lineNumber);
+    await SetBreakpoint(breakpoint);
     try {
         await StartDebugging();
         assert.isTrue(
-            await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+            await CheckIfBreakpointHasBeenHit(breakpoint),
             `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
         logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
         assert.isTrue(
@@ -301,7 +301,7 @@ export async function RefreshSimdDataTest(): Promise<void> {
         });
         await gpuThreadsView?.click();
         const hwInfo = await GetDebugPane("Hardware Info Section");
-        
+
         await hwInfo?.click();
         await ExecuteInIFrame(null, async() => {
             await ExecuteInIFrame(null, async driver => {
@@ -333,6 +333,7 @@ export async function RefreshSimdDataTest(): Promise<void> {
             "Current thread doesn't match");
     } catch (e) {
         logger.Exception(e);
+        throw e;
     } finally {
         logger.Info("Get 'DebugToolbar' handle");
         const bar = await DebugToolbar.create();
@@ -350,11 +351,11 @@ export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadPropert
     const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
 
     await LaunchSequence();
-    await SetBreakpoint(breakpoint.fileName, breakpoint.lineNumber);
+    await SetBreakpoint(breakpoint);
     try {
         await StartDebugging();
         assert.isTrue(
-            await CheckIfBreakpointHasBeenHit(breakpoint.fileName, breakpoint.lineNumber),
+            await CheckIfBreakpointHasBeenHit(breakpoint),
             `Breakpoint ${breakpoint.fileName}:${breakpoint.lineNumber} has not been hit`);
         logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been hit.`);
         assert.isTrue(
@@ -367,73 +368,25 @@ export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadPropert
         await ClearInputText(input);
         await SetInputText(input, "> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);
-        const getRefreshButton = async(gpuThreadsView: WebElement) => {
-            const buttons = await gpuThreadsView.findElements(By.xpath("//*/div[3]/div/div/ul/li/a"));
-
-            for (const button of buttons) {
-                const value = await button.getAttribute("aria-label");
-            
-                if (value === "Intel oneAPI: Refresh SIMD Data") {
-                    return button;
-                }
-            }
-        };
-        const getThreads = async() => {
-            let gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
-            const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
-
-            if (!gpuThreadsViewClass?.includes("expanded")) {
-                await gpuThreadsView?.click();
-            }
-            gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
-            await Wait(3 * 1000);
-            const refreshButton = await getRefreshButton(gpuThreadsView as WebElement);
-
-            await refreshButton?.click();
-            await Wait(3 * 1000);
-            const gpuThreadsParsed: string[][] = [];
-
-            await ExecuteInIFrame(null, async() => {
-                await ExecuteInIFrame(null, async driver => {
-                    const gpuThreads = await driver.findElement(By.id("simd-view"));
-                    const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr"));
-        
-                    for (const row of gpuThreadsRows) {
-                        const rowData = await row.findElements(By.css("td"));
-                        const rowParsed = [];
-        
-                        for (const data of rowData) {
-                            const rowDataText = await data.getText();
-        
-                            if (rowDataText) {rowParsed.push(rowDataText);}
-                        }
-                        gpuThreadsParsed.push(rowParsed);
-                    }
-                });
-            });
-
-            return gpuThreadsParsed;
-        };
-
         let linesPrev: string | string[] = [];
-        const threadsNumber = (await getThreads()).length;
+        const threadsNumber = (await GetGpuThreads()).length;
         let currentIteration = 1;
 
         while (currentIteration < threadsNumber) {
             logger.Info(`Iteration ${currentIteration}`);
-            const gpuThreadsParsed = await getThreads();
+            const gpuThreadsParsed = await GetGpuThreads();
             const consoleOutput = await GetDebugConsoleOutput();
             const linesNext = consoleOutput.filter(x => x.includes(`at ${breakpoint.fileName}:${breakpoint.lineNumber}`));
             const currentBpInfo = linesNext.filter(x => !linesPrev.includes(x))[0];
-            const currentThread = gpuThreadsParsed.reduce((x, y) => x.length > y.length ? x : y, []);
+            const currentThread = gpuThreadsParsed.find(x => x.simdLanes.includes("⇨")) as IThread;
             let result = false;
 
             switch (threadProperty) {
             case ThreadProperties.Id:
-                result = currentBpInfo.includes(`${parseInt(currentThread[0]) - 2}`);
+                result = currentBpInfo.includes(`${currentThread.threadId - 2}`);
                 break;
             case ThreadProperties.Location:
-                result = currentBpInfo.includes(currentThread[2]);
+                result = currentBpInfo.includes(currentThread.location);
                 break;
             }
             logger.Info(`Current thread in gpu threads view: ${currentThread}`);
@@ -442,15 +395,18 @@ export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadPropert
             assert.isTrue(result, "Threads are different");
             logger.Pass(`Thread ${threadProperty} is the same in debug console and gpu threads view`);
             const bar = await DebugToolbar.create();
-        
+
             await bar.continue();
 
             linesPrev = linesNext;
             currentIteration++;
         }
+    } catch (e) {
+        logger.Exception(e);
+        throw e;
     } finally {
         const bar = await DebugToolbar.create();
-    
+
         await bar.stop();
     }
 }
@@ -478,9 +434,284 @@ export async function InstallRequiredExtensions(): Promise<void> {
     await Wait(3 * 1000);
 }
 
+export async function SimdLaneConditionalBreakpointTest(breakpointType: ConditionalBreakpointTypes) {
+    logger.Info(`SimdLaneConditionalBreakpointTest with ${breakpointType}`);
+    const initialBreakpoint: IBreakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
+    const simdBreakpoint = breakpointType === ConditionalBreakpointTypes.SimdCommand || breakpointType === ConditionalBreakpointTypes.SimdGui;
+
+    await LaunchSequence();
+    await SetBreakpoint(initialBreakpoint);
+    try {
+        await StartDebugging();
+        assert.isTrue(
+            await CheckIfBreakpointHasBeenHit(initialBreakpoint),
+            `Breakpoint ${initialBreakpoint.fileName}:${initialBreakpoint.lineNumber} has not been hit`);
+        logger.Pass(`Breakpoint '${initialBreakpoint.fileName}:${initialBreakpoint.lineNumber}' has been hit.`);
+        assert.isTrue(
+            await CheckIfTaskWasExecuted("preTask", "simple preTask"),
+            "Task 'preTask' was not executed");
+        logger.Pass("Task 'preTask' was executed");
+
+        await RemoveAllBreakpoints();
+        const workbench = new Workbench();
+        const input = await workbench.openCommandPrompt();
+
+        await ClearInputText(input);
+        await SetInputText(input, "> Intel oneAPI: Refresh SIMD Data");
+        await Wait(3 * 1000);
+        const gpuThreads = await GetGpuThreads();
+        const currentThread = gpuThreads.find(x => x.simdLanes.includes("⇨")) as IThread;
+        const gpuThreadExceptCurrent = gpuThreads.filter(x => x !== currentThread);
+        const threadToSetBpOn = gpuThreadExceptCurrent[Math.floor(Math.random() * gpuThreadExceptCurrent.length)];
+        const conditions = (() => {
+            let condition;
+
+            return {
+                SimdCommand: `${threadToSetBpOn.threadId}:0`,
+                SimdGui: `-break-insert -p ${threadToSetBpOn.threadId} -l 0`,
+                NativeCommand: (condition = `$_thread + 2 == ${threadToSetBpOn.threadId}`),
+                NativeGui: condition,
+            };
+        })();
+        const C_BP_61: IConditionalBreakpoint = { fileName: "array-transform.cpp", lineNumber: 61, type: breakpointType, condition: conditions[breakpointType] };
+
+        await SetConditionalBreakpoint(C_BP_61);
+        const bar = await DebugToolbar.create();
+
+        await bar.continue();
+        
+        let exceptionDescription: string | unknown = undefined;
+        let breakpointSignature: string | unknown = undefined;
+
+        if (simdBreakpoint) {
+            let exceptionPopup = null;
+
+            await Retry(async() => {
+                exceptionPopup = await workbench.getDriver().findElement(By.className("zone-widget-container exception-widget"));
+                exceptionDescription = await exceptionPopup.findElement(By.className("description")).getText();
+            }, 10 * 1000);
+
+            assert.isTrue(exceptionPopup !== undefined, "Cannot find 'breakpoint hit' exception popup");
+            logger.Pass("Exception popup found!");
+            breakpointSignature = GetStringBetweenStrings(exceptionDescription as string, "Hit ", " at");
+            breakpointSignature = `${(breakpointSignature as string)[0].toUpperCase()}${(breakpointSignature as string).slice(1)}`;
+        }
+        assert.isTrue(
+            await CheckIfBreakpointHasBeenHit(C_BP_61),
+            `Breakpoint ${C_BP_61.fileName}:${C_BP_61.lineNumber} has not been hit`);
+        logger.Pass(`Breakpoint '${C_BP_61.fileName}:${C_BP_61.lineNumber}' has been hit.`);
+
+        const gpuThreadsParsed = await GetGpuThreads();
+        const gpuThreadsViewBpInfo = gpuThreadsParsed.find(x => x.simdLanes.includes("⇨")) as IThread;
+        const simdLane  = gpuThreadsViewBpInfo.simdLanes.indexOf("⇨");
+        const consoleOutput = await GetDebugConsoleOutput();
+        const consoleBpInfo = consoleOutput.find(x => {
+            return x.includes(`.${gpuThreadsViewBpInfo.threadId -2}`) &&
+                simdBreakpoint ? x.includes(breakpointSignature as string) : true &&
+                simdBreakpoint ? x.includes(`SIMD lane ${simdLane}`) : true &&
+                x.includes(`at ${C_BP_61.fileName}:${C_BP_61.lineNumber}`);
+        });
+
+        assert.isTrue(consoleBpInfo !== undefined, "Cannot find breakpoint info");
+        logger.Pass("Conditional BP has been hit!");
+        logger.Info(`Breakpoint info: '${C_BP_61.fileName}:${C_BP_61.lineNumber}' | '${C_BP_61.condition}' | '${C_BP_61.type}'`);
+        if (simdBreakpoint) { logger.Info(`Conditional BP exception message: '${exceptionDescription}'`); }
+        logger.Pass(`Thread info: '${consoleBpInfo}'`);
+    } catch (e) {
+        logger.Exception(e);
+        throw e;
+    } finally {
+        const bar = await DebugToolbar.create();
+
+        await bar.stop();
+    }
+}
+
+async function GetGpuThreads(): Promise<IThread[]> {
+    const getRefreshButton = async(gpuThreadsView: WebElement) => {
+        const buttons = await gpuThreadsView.findElements(By.xpath("//*/div[3]/div/div/ul/li/a"));
+
+        for (const button of buttons) {
+            const value = await button.getAttribute("aria-label");
+
+            if (value === "Intel oneAPI: Refresh SIMD Data") {
+                return button;
+            }
+        }
+    };
+    let gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+    const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
+
+    if (!gpuThreadsViewClass?.includes("expanded")) {
+        await gpuThreadsView?.click();
+    }
+    gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+    await Wait(3 * 1000);
+    const refreshButton = await getRefreshButton(gpuThreadsView as WebElement);
+
+    await refreshButton?.click();
+    await Wait(3 * 1000);
+    const gpuThreadsObj: IThread[] = [];
+
+    await ExecuteInIFrame(null, async() => {
+        await ExecuteInIFrame(null, async driver => {
+            const gpuThreads = await driver.findElement(By.id("simd-view"));
+            const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr:not(:first-child)"));
+
+            for (const row of gpuThreadsRows) {
+                const rowData = await row.findElements(By.css("td"));
+                const rowParsed = [];
+
+                for (const data of rowData) {
+                    const rowDataText = await data.getText();
+                    const index = rowData.indexOf(data);
+
+                    if (index !== 4 ) { rowParsed.push(rowDataText); }
+                }
+                gpuThreadsObj.push({
+                    threadId: parseInt(rowParsed[0]),
+                    targetId: rowParsed[1],
+                    location: rowParsed[2],
+                    workGroup: rowParsed[3],
+                    simdLanes: rowParsed.slice(4)
+                });
+            }
+        });
+    });
+
+    return gpuThreadsObj;
+}
+
+export async function CheckIfBreakpointHasBeenSet(breakpoint: IBreakpoint): Promise<boolean> {
+    logger.Info(`Check if '${breakpoint.fileName}:${breakpoint.lineNumber}' breakpoint has been set`);
+    const breakpointsPaneHeader = await GetDebugPane("Breakpoints Section");
+    const breakpointsPane = await breakpointsPaneHeader?.findElement(By.xpath("./../div[2]"));
+    const breakpoints = await breakpointsPane?.findElements(By.className("monaco-list-row")) as WebElement[];
+    const breakpointsParsed = await Promise.all(breakpoints?.map(async x => {
+        return {
+            Enabled: await x.getAttribute("aria-checked"),
+            Details: await x.getAttribute("aria-label")
+        };
+    }));
+    const matches = breakpointsParsed?.filter(x => Boolean(x.Enabled) && x.Details.includes(`${breakpoint.fileName} ${breakpoint.lineNumber}`));
+    
+    logger.Info(matches.map(x => `Enabled: ${x.Enabled} | Details: ${x.Details}`).join("\n"));
+    assert.isTrue(matches?.length !== 0, `Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has not been set`);
+    logger.Pass(`Breakpoint '${breakpoint.fileName}:${breakpoint.lineNumber}' has been set`);
+    return matches?.length !== 0;
+}
+
+export async function GetConditionalBreakpointExpressionInput(lineNumber: number) {
+    const textEditor = new TextEditor();
+    const lineNumbers = await textEditor.findElements(By.className("line-numbers lh-odd"));
+    let bpLine = undefined;
+
+    for (const line of lineNumbers) {
+        const elementText = await line.getText();
+
+        if (elementText === `${lineNumber}`) {
+            bpLine = line;
+            break;
+        }
+    }
+    await bpLine?.getDriver().actions().contextClick(bpLine).perform();
+    let bpContextMenu;
+
+    try {
+        bpContextMenu = await bpLine?.getDriver().findElement(By.xpath("/html/body/div[2]/div[3]/div[2]/div[1]/div/ul"));
+    } catch {
+        bpContextMenu = await bpLine?.getDriver().findElement(By.xpath("/html/body/div[2]/div[5]/div[2]/div[1]/div/ul"));
+    }
+    const bpContextMenuItems = await bpContextMenu?.findElements(By.className("action-label"));
+    let addConBpButton: WebElement | undefined = undefined;
+
+    for (const menuItem of bpContextMenuItems as WebElement[]) {
+        const itemText = await menuItem.getText();
+
+        if (itemText === "Add Conditional Breakpoint...") {
+            addConBpButton = menuItem;
+        }
+    }
+    await addConBpButton?.click();
+    await Wait(3 * 1000);
+    const conditionExpressionInputBox = await addConBpButton?.getDriver().findElement(By.css("div.inputContainer > div > div > textarea.inputarea.monaco-mouse-cursor-text"));
+
+    if (conditionExpressionInputBox === undefined) { throw new Error("Cannot find conditional BP expression input box"); }
+    return conditionExpressionInputBox;
+}
+
+async function SetConditionalBreakpoint(breakpoint: IConditionalBreakpoint) {
+    logger.Info("Set conditional breakpoint");
+    const workbench = new Workbench();
+    const [fileName, lineNumber] = [breakpoint.fileName, breakpoint.lineNumber];
+    let input = await workbench.openCommandPrompt();
+
+    await input.cancel();
+    input = await workbench.openCommandPrompt();
+    input = await ClearInputText(input);
+    input = await SetInputText(input, "> Go to File...");
+    await Wait(1 * 1000);
+    input = await SetInputText(input, fileName);
+    await Wait(2 * 1000);
+    const editorView = new EditorView();
+
+    await Wait(1 * 1000);
+    logger.Info(`Open text editor with: ${fileName}`);
+    const textEditor = new TextEditor(editorView);
+
+    await Wait(1 * 1000);
+    logger.Info(`Move cursor to [x: 1, y: ${lineNumber}]`);
+    await textEditor.moveCursor(lineNumber, 1);
+    await Wait(1 * 1000);
+    logger.Info(`Toggle conditional breakpoint at '${breakpoint.fileName}:${breakpoint.lineNumber}'` +
+        `with condition '${breakpoint.condition}' using '${breakpoint.type}'`);
+    switch (breakpoint.type) {
+    case ConditionalBreakpointTypes.SimdGui:
+    case ConditionalBreakpointTypes.NativeGui: {
+        let conditionExpressionInputBox: WebElement | undefined;
+
+        await Retry(async() => {
+            conditionExpressionInputBox = await GetConditionalBreakpointExpressionInput(breakpoint.lineNumber);
+        }, 30 * 1000);
+        
+        await conditionExpressionInputBox?.sendKeys(breakpoint.condition);
+        await conditionExpressionInputBox?.sendKeys(Key.ENTER);
+        await textEditor.click();
+        break; }
+    case ConditionalBreakpointTypes.SimdCommand:
+        input = await workbench.openCommandPrompt();
+        input = await ClearInputText(input);
+        input = await SetInputText(input, "> Intel oneAPI: Add SIMD lane conditional breakpoint");
+        input = await SetInputText(input, breakpoint.condition);
+        await textEditor.click();
+        break;
+    case ConditionalBreakpointTypes.NativeCommand:
+        input = await workbench.openCommandPrompt();
+        input = await ClearInputText(input);
+        input = await SetInputText(input, "> Debug: Add Conditional Breakpoint...");
+        const conditionExpressionInputBox = await input.getDriver().findElement(By.css("div.inputContainer > div > div > textarea.inputarea.monaco-mouse-cursor-text"));
+
+        await conditionExpressionInputBox?.sendKeys(breakpoint.condition);
+        await conditionExpressionInputBox?.sendKeys(Key.ENTER);
+        await textEditor.click();
+        break;
+    default:
+        const exception = new Error(`Unknown 'ConditionalBreakpointTypes' member of ${breakpoint.type}`);
+
+        logger.Exception(exception);
+        throw exception;
+    }
+    await Wait(1 * 1000);
+    const res = await CheckIfBreakpointHasBeenSet(breakpoint);
+    const bpSetOrRemoved = res ? "set" : "removed";
+
+    logger.Info(`Breakpoint at line ${lineNumber} has been ${bpSetOrRemoved}`);
+    return res;
+}
+
 function GetStringBetweenStrings(str: string, startStr: string, endStr: string) {
     const pos = str.indexOf(startStr) + startStr.length;
-    
+
     return str.substring(pos, str.indexOf(endStr, pos));
 }
 
@@ -584,7 +815,7 @@ async function UninstallExtension(extensionName: string): Promise<void> {
         await extensionsView.clearSearch();
         const extension = await extensionsView.findItem(extensionName);
         const menu = await extension?.manage();
-    
+
         await Wait(1000);
         await menu?.select("Uninstall");
         await Wait(2 * 1000);
@@ -603,7 +834,7 @@ async function ProcessStart(command: string): Promise<string | undefined | unkno
     logger.Info(`Perform '${command}' command`);
     try {
         const { stdout } = await execAsync(command);
-        
+
         result = stdout;
         logger.Info(`'${command}' command standard output: ${stdout}`);
     } catch (e) {
@@ -630,7 +861,7 @@ async function RunTask(taskName: string, expectedOutput: string): Promise<void> 
 
     await Retry(async() => {
         result = await CheckIfTaskWasExecuted(taskName, expectedOutput);
-        if (!result) {throw new Error();}
+        if (!result) { throw new Error(); }
     }, 10 * 1000);
 
     assert.isTrue(result, `Error while running ${taskName} task`);
@@ -655,7 +886,7 @@ function AddTask(task: IVsCodeTask): void {
 
     logger.Info(`Check if ${task} exists`);
     const exists = (tasksObj.tasks as Array<IVsCodeTask>).some(x => x.label === task.label);
-    
+
     if (!exists) {
         logger.Info(`Add ${task} task to '${tasksJsonFilePath}' file`);
         tasksObj.tasks.push(task);
@@ -699,7 +930,7 @@ function CreateCCppPropertiesFile(): void {
     }
 
     logger.Info(`Load '${ccppPropertiesFilePath}' file`);
-    const ccppPropertiesFileContent: {configurations: Array<ICcppConfiguration>} = JSON.parse(fs.readFileSync(ccppPropertiesFilePath, "utf-8"));
+    const ccppPropertiesFileContent: { configurations: Array<ICcppConfiguration> } = JSON.parse(fs.readFileSync(ccppPropertiesFilePath, "utf-8"));
 
     const exists = ccppPropertiesFileContent.configurations.some((x: ICcppConfiguration) => x === ccppProperties.configurations[0]);
 
@@ -709,33 +940,39 @@ function CreateCCppPropertiesFile(): void {
 }
 
 async function CloseAllNotifications(): Promise<void> {
-    logger.Info("Open notification center");
-    const workbench = new Workbench();
-    const center = await workbench.openNotificationsCenter();
+    await Retry(async() => {
+        logger.Info("Open notification center");
+        const workbench = new Workbench();
+        const center = await workbench.openNotificationsCenter();
 
-    logger.Info("Clear all notifications");
-    await center.clearAllNotifications();
-    await center.close();
+        logger.Info("Clear all notifications");
+        await center.clearAllNotifications();
+        await center.close();
+    }, 20 * 1000, true);
 }
 
-async function Retry<TResult>(fn: () => TResult, timeout: number): Promise<TResult | undefined> {
+async function Retry<TResult>(fn: () => TResult, timeout: number, throwOnTimeout: boolean = false): Promise<TResult | undefined> {
     const startTime = Date.now();
     let currentTime = startTime;
     let result: TResult | undefined;
+    let eleapsed = currentTime - startTime;
 
     logger.Info("Retry");
-    while ((currentTime - startTime) < timeout) {
-        currentTime = Date.now();
+    while (eleapsed < timeout) {
+        logger.Info(`Elapsed ${eleapsed} ms`);
+        eleapsed = currentTime - startTime;
         try {
             result = await fn();
             break;
         } catch (e) {
             logger.Exception(e);
+            if ((eleapsed >= timeout) && throwOnTimeout) {
+                throw e;
+            }
         }
     }
-
     currentTime = Date.now();
-    logger.Info(`Elapsed ${currentTime - startTime} ms`);
+    logger.Info(`Elapsed ${eleapsed} ms`);
     return result;
 }
 
@@ -747,14 +984,11 @@ async function CheckIfTaskWasExecuted(taskName: string, expectedOutput: string):
 
     await Wait(3 * 1000);
     input = await Retry(async() => {
-        let input = await workbench.openCommandPrompt();
+        input = await workbench.openCommandPrompt();
 
         input = await ClearInputText(input);
         return input;
     }, 10 * 1000);
-
-    logger.Info("Set command palette text to '> Terminal: Create New Terminal'");
-
     await SetInputText(input, "> Terminal: Create New Terminal");
     const innerText = await GetTerminalOutput(taskName);
 
@@ -776,7 +1010,7 @@ async function GetTerminalOutput(terminalName: string): Promise<string | undefin
     for (const terminal of terminals) {
         const name = await terminal.getAttribute("aria-label");
 
-        if (name.includes(terminalName)) {terminalFound = terminal;}
+        if (name.includes(terminalName)) { terminalFound = terminal; }
     }
     const taskLabel = terminalFound?.findElement(By.className("label-name"));
 
@@ -789,35 +1023,34 @@ async function GetTerminalOutput(terminalName: string): Promise<string | undefin
     return innerText;
 }
 
-async function CheckIfBreakpointHasBeenHit(fileName: string, lineNumber: number): Promise<boolean> {
-    const breakpoint = `${fileName}:${lineNumber}`;
-    
+async function CheckIfBreakpointHasBeenHit(breakpoint: IBreakpoint | IConditionalBreakpoint): Promise<boolean> {
+    const breakpointStr = `${breakpoint.fileName}:${breakpoint.lineNumber}`;
+
     await CloseAllNotifications();
     const workbench = new Workbench();
-    let input = await workbench.openCommandPrompt();
+    const input = await workbench.openCommandPrompt();
 
-    input = await ClearInputText(input);
-    logger.Info("Set command palette text to '> Terminal: Create New Terminal'");
-
-    await SetInputText(input, "> Terminal: Create New Terminal");
-    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
-    const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
-
-    await outputButton.click();
+    await ClearInputText(input);
+    await Retry(async() => {
+        const bp = await workbench.findElement(By.id("workbench.parts.panel"));
+        const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
+    
+        await outputButton.click();
+    }, 60 * 1000);
     const debugOutputWindow = new DebugConsoleView();
     let retries = 1;
     let line;
 
     while (retries <= 5 && !line) {
-        logger.Info(`Check if breakpoint '${breakpoint}' has been hit. Attempt ${retries}`);
+        logger.Info(`Check if breakpoint '${breakpointStr}' has been hit. Attempt ${retries}`);
         await Wait(1000);
         const debugOutput = await debugOutputWindow.getText();
         const lines = debugOutput.split("\n");
 
-        line = lines.find(x => x.includes(breakpoint));
+        line = lines.find(x => x.includes(breakpointStr));
         retries++;
     }
-    logger.Info(`Breakpoint: ${breakpoint} ${line ? "has been hit" : "has not been hit"}`);
+    logger.Info(`Breakpoint: ${breakpointStr} ${line ? "has been hit" : "has not been hit"}`);
     return line !== undefined && line !== null;
 }
 
@@ -845,14 +1078,15 @@ async function ClearInputText(input: QuickOpenBox | InputBox): Promise<QuickOpen
     return input;
 }
 
-async function SetBreakpoint(fileName: string, lineNumber: number): Promise<boolean> {
+async function SetBreakpoint(breakpoint: IBreakpoint): Promise<boolean> {
     const workbench = new Workbench();
+    const [fileName, lineNumber] = [breakpoint.fileName, breakpoint.lineNumber];
     let input = await workbench.openCommandPrompt();
 
     await input.cancel();
     input = await workbench.openCommandPrompt();
     input = await ClearInputText(input);
-    input = await SetInputText(input,"> Go to File...");
+    input = await SetInputText(input, "> Go to File...");
     await Wait(1 * 1000);
     input = await SetInputText(input, fileName);
     await Wait(2 * 1000);
@@ -869,14 +1103,13 @@ async function SetBreakpoint(fileName: string, lineNumber: number): Promise<bool
     logger.Info(`Toggle breakpoint at line ${lineNumber}`);
     input = await workbench.openCommandPrompt();
     input = await ClearInputText(input);
-    input = await SetInputText(input,"> Debug: Inline Breakpoint");
+    input = await SetInputText(input, "> Debug: Inline Breakpoint");
     await Wait(1 * 1000);
-    const bpIcons = await textEditor.getDriver().findElements(By.className("codicon-debug-breakpoint"));
-    const bpset = bpIcons.find(async x => await x.findElement(By.xpath("./..")).findElement(By.className("line-numbers")).getText() === lineNumber.toString());
-    const bpSetOrRemoved = bpset ? "set" : "removed";
+    const res = await CheckIfBreakpointHasBeenSet(breakpoint);
+    const bpSetOrRemoved = res ? "set" : "removed";
 
     logger.Info(`Breakpoint at line ${lineNumber} has been ${bpSetOrRemoved}`);
-    return bpset ? true : false;
+    return res;
 }
 
 async function GetDebugView(): Promise<DebugView> {
@@ -931,7 +1164,7 @@ async function InstallExtension(extensionToInstall: string): Promise<void> {
     await extensionsView.clearSearch();
 }
 
-async function IsExtensionInstalled(extensionName: string) : Promise<boolean | undefined> {
+async function IsExtensionInstalled(extensionName: string): Promise<boolean | undefined> {
     const result = await Retry(async() => {
         const extensionsView = await GetExtensionsSection("Installed");
 
