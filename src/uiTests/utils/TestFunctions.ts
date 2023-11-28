@@ -940,15 +940,14 @@ function CreateCCppPropertiesFile(): void {
 }
 
 async function CloseAllNotifications(): Promise<void> {
-    await Retry(async() => {
-        logger.Info("Open notification center");
+    try {
         const workbench = new Workbench();
-        const center = await workbench.openNotificationsCenter();
+        const input = await workbench.openCommandPrompt();
 
-        logger.Info("Clear all notifications");
-        await center.clearAllNotifications();
-        await center.close();
-    }, 20 * 1000, true);
+        await SetInputText(input, "> Notifications: Clear All Notifications");
+    } catch (e) {
+        logger.Exception(e);
+    }
 }
 
 async function Retry<TResult>(fn: () => TResult, timeout: number, throwOnTimeout: boolean = false): Promise<TResult | undefined> {
