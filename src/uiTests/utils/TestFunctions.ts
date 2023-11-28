@@ -335,11 +335,7 @@ export async function RefreshSimdDataTest(): Promise<void> {
         logger.Exception(e);
         throw e;
     } finally {
-        logger.Info("Get 'DebugToolbar' handle");
-        const bar = await DebugToolbar.create();
-
-        logger.Info("Stop debugging");
-        await bar.stop();
+        await StopDebugging();
     }
 }
 
@@ -405,9 +401,7 @@ export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadPropert
         logger.Exception(e);
         throw e;
     } finally {
-        const bar = await DebugToolbar.create();
-
-        await bar.stop();
+        await StopDebugging();
     }
 }
 
@@ -521,10 +515,18 @@ export async function SimdLaneConditionalBreakpointTest(breakpointType: Conditio
         logger.Exception(e);
         throw e;
     } finally {
+        await StopDebugging();
+    }
+}
+
+async function StopDebugging(): Promise<void> {
+    await Retry(async() => {
+        logger.Info("Get 'DebugToolbar' handle");
         const bar = await DebugToolbar.create();
 
+        logger.Info("Stop debugging");
         await bar.stop();
-    }
+    }, 20 * 1000);
 }
 
 async function GetGpuThreads(): Promise<IThread[]> {
@@ -955,22 +957,25 @@ async function Retry<TResult>(fn: () => TResult, timeout: number, throwOnTimeout
     let currentTime = startTime;
     let result: TResult | undefined;
     let eleapsed = currentTime - startTime;
+    let iteration = 1;
 
     logger.Info("Retry");
     while (eleapsed < timeout) {
-        logger.Info(`Elapsed ${eleapsed} ms`);
+        logger.Info(`Iteration ${iteration} | Elapsed ${eleapsed} ms`);
         eleapsed = currentTime - startTime;
         try {
             result = await fn();
             break;
         } catch (e) {
             logger.Exception(e);
+            iteration++;
+            currentTime = Date.now();
+            eleapsed = currentTime - startTime;
             if ((eleapsed >= timeout) && throwOnTimeout) {
                 throw e;
             }
         }
     }
-    currentTime = Date.now();
     logger.Info(`Elapsed ${eleapsed} ms`);
     return result;
 }
