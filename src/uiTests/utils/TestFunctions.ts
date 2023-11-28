@@ -617,14 +617,7 @@ export async function GetConditionalBreakpointExpressionInput(lineNumber: number
         }
     }
     await bpLine?.getDriver().actions().contextClick(bpLine).perform();
-    let bpContextMenu;
-
-    try {
-        bpContextMenu = await bpLine?.getDriver().findElement(By.xpath("/html/body/div[2]/div[3]/div[2]/div[1]/div/ul"));
-    } catch {
-        bpContextMenu = await bpLine?.getDriver().findElement(By.xpath("/html/body/div[2]/div[5]/div[2]/div[1]/div/ul"));
-    }
-    const bpContextMenuItems = await bpContextMenu?.findElements(By.className("action-label"));
+    const bpContextMenuItems = await textEditor.getDriver().findElements(By.className("action-label"));
     let addConBpButton: WebElement | undefined = undefined;
 
     for (const menuItem of bpContextMenuItems as WebElement[]) {
