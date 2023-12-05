@@ -2,6 +2,7 @@ import {
     commands,
     CancellationToken,
     Uri,
+    window,
     Webview,
     WebviewView,
     WebviewViewProvider,
@@ -19,6 +20,7 @@ enum ViewState {
 export class SIMDViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.simdview";
     public _view!: WebviewView;
+    private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
     private _masks!: Emask[];
 
     private htmlStart = "";
@@ -47,6 +49,24 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     constructor(private readonly _extensionUri: Uri,
                 private selectedLaneViewProvider: SelectedLaneViewProvider) { }
+
+    public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
+        if (this.waitingIntervalId !== undefined) {
+            clearInterval(this.waitingIntervalId);
+            this.waitingIntervalId = undefined;
+        }
+
+        return new Promise<void>((resolve) => {
+            this.waitingIntervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(this.waitingIntervalId);
+                    this.waitingIntervalId = undefined;
+                    callback();
+                    resolve();
+                }
+            }, checkInterval);
+        });
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
@@ -131,11 +151,22 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     }
     
-    public setLoadingView(){
-        if (this._view.webview.html){
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
-        } else {
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>...</h4>" + this.htmlEnd;
+    public async setLoadingView() {
+        try {
+            this._view.webview.html = this.htmlStart + "<h4></h4>" + this.htmlEnd;
+            this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                this.selectedLaneViewProvider.setLoadingView();
+            });
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
+    }
+
+    public async setErrorView(errMsg: string) {
+        try {
+            this._view.webview.html = this.htmlStart + "Error occured while getting SIMD Lanes Info:" + errMsg + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
         }
     }
 
@@ -145,23 +176,16 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     public async setView(masks: Emask[], currentThread?: CurrentThread){
         this.chosenLaneId = undefined;
-        await this.ensureViewExists();
-        this.setLoadingView();
         this._masks = masks;
-        this._view.webview.html = this.htmlStart + await this.getThreadsView(masks, currentThread) + this.htmlEnd;
-    }
-
-    // After setting "setContext", "oneapi:haveSIMD" to true, some time passes before initializing this._view,
-    // so we check its presence every 50 ms
-    private async ensureViewExists() {
-        return new Promise<void>((resolve) => {
-            const intervalId = setInterval(() => {
-                if (this._view && this._view.visible) {
-                    clearInterval(intervalId);
-                    resolve();
-                }
-            }, 50);
-        });
+        try {
+            // Synchronously updates the 'selectedLaneViewProvider' panel each time 'simdViewProvider.setView' is called
+            this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                this.selectedLaneViewProvider.setLoadingView();
+            });
+            this._view.webview.html = this.htmlStart + await this.getThreadsView(masks, currentThread) + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
     }
 
     private async getThreadsView(masks: Emask[], currentThread?: CurrentThread){
@@ -175,8 +199,22 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
             if (currentThread?.name === m.name) {
                 this.chosenLaneId = `{"lane": ${currentThread.lane}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
-                await commands.executeCommand("setContext", "oneapi:haveselected", true);
-                this.selectedLaneViewProvider.setView(currentThread, m.executionMask, m.hitLanesMask, m.length);
+                try {
+                    await commands.executeCommand("setContext", "oneapi:haveSelected", true);
+                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                        this.selectedLaneViewProvider.setLoadingView();
+                        this.selectedLaneViewProvider.setView(currentThread, m.executionMask, m.hitLanesMask, m.length);
+                    });
+                } catch (error) {
+                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                        // Handle errors in gdb requests: display error message in panel
+                        if (error instanceof Error) {
+                            this.selectedLaneViewProvider.setErrorView(error.message);
+                        } else {
+                            this.selectedLaneViewProvider.setErrorView(String(error));
+                        }
+                    });
+                }
             }
 
             const tableString = this.getColorsRow(newSimdRow, m);
@@ -222,7 +260,9 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     public async updateView(masks: Emask[]){
-        this.setLoadingView();
+        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+            this.selectedLaneViewProvider.setLoadingView();
+        });
         this._view.webview.html = this.htmlStart + await this.getThreadsView(masks) + this.htmlEnd;
     }
 
@@ -233,30 +273,67 @@ export class SIMDViewProvider implements WebviewViewProvider {
             switch (command) {
             case "change":
                 {
-                    this.viewState = this.viewState === ViewState.COLORS ? ViewState.NUMBERS : ViewState.COLORS;
-                    this.updateView(this._masks);
+                    this.waitForViewToBecomeVisible(() => {
+                        this.setLoadingView();
+                    });
+                    await this.setLoadingView();
+                    try {
+                        await window.withProgress(
+                            { location: { viewId: "intelOneAPI.debug.simdview" } },
+                            () => this.updateView(this._masks)
+                        );
+                    } catch (error) {
+                        this.waitForViewToBecomeVisible(() => {
+                            // Handle errors in gdb requests: display error message in panel
+                            if (error instanceof Error) {
+                                this.setErrorView(error.message);
+                            } else {
+                                this.setErrorView(String(error));
+                            }
+                        });
+                    }
                 }
                 break;
 
             case "changeLane":
                 {
-                    // TODO: update real thread lane
-                    webviewView.webview.postMessage({
-                        command: "changeLane",
-                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
+                    await commands.executeCommand("setContext", "oneapi:haveSelected", true);
+                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                        this.selectedLaneViewProvider.setLoadingView();
                     });
-                    this.chosenLaneId = message.payload;
-                    const parsedMessage = JSON.parse(message.payload);
-                    const currentThread = await getThread(parsedMessage.threadId, parsedMessage.lane);
+                    await window.withProgress(
+                        { location: { viewId: "intelOneAPI.debug.selectedLane" } },
+                        async() => {
+                            try {
+                                webviewView.webview.postMessage({
+                                    command: "changeLane",
+                                    payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
+                                });
+                                this.chosenLaneId = message.payload;
+                                const parsedMessage = JSON.parse(message.payload);
+                                const currentThread = await getThread(parsedMessage.threadId, parsedMessage.lane);
 
-                    if (!currentThread) {
-                        await commands.executeCommand("setContext", "oneapi:haveselected", false);
-                        return;
-                    }
-                    await commands.executeCommand("setContext", "oneapi:haveselected", true);
-                    await this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
+                                if (!currentThread) {
+                                    await commands.executeCommand("setContext", "oneapi:haveSelected", false);
+                                    return;
+                                }
+
+                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                    this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
+                                });
+                            } catch (error) {
+                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                    // Handle errors in gdb requests: display error message in panel
+                                    if (error instanceof Error) {
+                                        this.selectedLaneViewProvider.setErrorView(error.message);
+                                    } else {
+                                        this.selectedLaneViewProvider.setErrorView(String(error));
+                                    }
+                                });
+                            }
+                        }
+                    );
                 }
-
                 break;
 
             default:
