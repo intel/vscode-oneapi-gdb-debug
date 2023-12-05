@@ -347,6 +347,7 @@
         "@types/glob": "^8.1.0",
         "@types/mocha": "^10.0.1",
         "@types/node": "^20.6.1",
+        "@types/source-map-support": "^0.5.10",
         "@types/vscode": "^1.82.0",
         "@typescript-eslint/eslint-plugin": "^6.7.0",
         "@typescript-eslint/parser": "^6.7.0",
@@ -359,6 +360,7 @@
         "mocha-junit-reporter": "^2.2.1",
         "mocha-multi-reporters": "^1.5.1",
         "react": "^18.2.0",
+        "source-map-support": "^0.5.21",
         "typescript": "^5.0.2",
         "vscode-extension-tester": "^5.5.1"
     },
