@@ -1,4 +1,6 @@
-import { INotification } from "./Interfaces";
+import { INotification } from "../models";
+import { ConditionalBreakpointTypes, OneApiDebugPane } from "./Enums";
+type TestSuite = { breakpointType: ConditionalBreakpointTypes; paneToCheck: OneApiDebugPane };
 
 /**
  * Expected notifications for missing extenions.
@@ -16,20 +18,18 @@ export const expectedNotifications: Record<string, INotification> = {
     },
 };
 
-/**
- * Thread properties.
- */
-export const enum ThreadProperties {
-    Id = "Id",
-    Location = "Location"
-}
+export const simdTestSuites = (() => {
+    let outObj: TestSuite[] = [];
 
-/**
- * Conditional breakpoint types.
- */
-export const enum ConditionalBreakpointTypes {
-    SimdCommand = "SimdCommand",
-    SimdGui = "SimdGui",
-    NativeCommand = "NativeCommand",
-    NativeGui = "NativeGui",
-}
+    Object.values(ConditionalBreakpointTypes).forEach((bpType) => {
+        const obj: TestSuite[] = [];
+
+        Object.values(OneApiDebugPane).forEach((pane) => {
+            obj.push({ breakpointType: bpType, paneToCheck: pane });
+        });
+        outObj = outObj.concat(obj);
+    });
+    return outObj;
+})();
+
+export const simdTestsToSkip: TestSuite[] = [];
