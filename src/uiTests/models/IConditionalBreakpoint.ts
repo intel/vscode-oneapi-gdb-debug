@@ -1,4 +1,4 @@
-import { ConditionalBreakpointTypes } from "../utils/Consts";
+import { ConditionalBreakpointTypes } from "../utils/Enums";
 import { IBreakpoint } from "./IBreakpoint";
 
 /**
