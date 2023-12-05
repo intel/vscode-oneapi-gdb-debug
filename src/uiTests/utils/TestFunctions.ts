@@ -5,8 +5,9 @@ import { ActivityBar, By, DebugConsoleView, DebugToolbar, DebugView, EditorView,
 import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
 import { exec } from "child_process";
 import axios from "axios";
-import { IVsCodeTask, ICcppConfiguration, INotification, IThread, IBreakpoint, IConditionalBreakpoint } from "./Interfaces";
-import { ConditionalBreakpointTypes, ThreadProperties } from "./Consts";
+import { IVsCodeTask, ICcppConfiguration, INotification, IThread, IBreakpoint, IConditionalBreakpoint } from "../models";
+import { SimdLane, SimdLaneDetails } from "../models/IThread";
+import { ThreadProperties, ConditionalBreakpointTypes, OneApiDebugPane } from "./Enums";
 
 const execAsync = util.promisify(exec);
 const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]);
@@ -342,7 +343,7 @@ export async function RefreshSimdDataTest(): Promise<void> {
 /**
  * Checks if current thread is the same in debug console and oneapi gpu threads window.
  */
-export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperties) {
+export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperties): Promise<void> {
     logger.Info(`Validate OneAPI GPU Threads - Check threads ${threadProperty.toString()}`);
     const breakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
 
@@ -374,7 +375,7 @@ export async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadPropert
             const consoleOutput = await GetDebugConsoleOutput();
             const linesNext = consoleOutput.filter(x => x.includes(`at ${breakpoint.fileName}:${breakpoint.lineNumber}`));
             const currentBpInfo = linesNext.filter(x => !linesPrev.includes(x))[0];
-            const currentThread = gpuThreadsParsed.find(x => x.simdLanes.includes("⇨")) as IThread;
+            const currentThread = gpuThreadsParsed.find(x => x.simdLanes.find(y => y.current)) as IThread;
             let result = false;
 
             switch (threadProperty) {
@@ -428,8 +429,15 @@ export async function InstallRequiredExtensions(): Promise<void> {
     await Wait(3 * 1000);
 }
 
-export async function SimdLaneConditionalBreakpointTest(breakpointType: ConditionalBreakpointTypes) {
-    logger.Info(`SimdLaneConditionalBreakpointTest with ${breakpointType}`);
+/**
+ * Sets conditional breakpoint and checks if has been hit on condition met.
+ * @param breakpointType Breakpoint type to use.
+ */
+export async function SimdLaneConditionalBreakpointTest(testSuite: { breakpointType: ConditionalBreakpointTypes; paneToCheck: OneApiDebugPane } ): Promise<void> {
+    const breakpointType = testSuite.breakpointType;
+    const paneToCheck = testSuite.paneToCheck;
+
+    logger.Info(`SimdLaneConditionalBreakpointTest | { breakpointType: '${breakpointType}'; paneToCheck: '${paneToCheck}' }`);
     const initialBreakpoint: IBreakpoint = { fileName: "array-transform.cpp", lineNumber: 54 };
     const simdBreakpoint = breakpointType === ConditionalBreakpointTypes.SimdCommand || breakpointType === ConditionalBreakpointTypes.SimdGui;
 
@@ -454,15 +462,16 @@ export async function SimdLaneConditionalBreakpointTest(breakpointType: Conditio
         await SetInputText(input, "> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);
         const gpuThreads = await GetGpuThreads();
-        const currentThread = gpuThreads.find(x => x.simdLanes.includes("⇨")) as IThread;
+        const currentThread = gpuThreads.find(x => x.simdLanes.find(y => y.current)) as IThread;
         const gpuThreadExceptCurrent = gpuThreads.filter(x => x !== currentThread);
         const threadToSetBpOn = gpuThreadExceptCurrent[Math.floor(Math.random() * gpuThreadExceptCurrent.length)];
+        const simdLaneId = Math.floor(Math.random() * 8); // Random SIMD lane between 0 and 7
         const conditions = (() => {
             let condition;
 
             return {
-                SimdCommand: `${threadToSetBpOn.threadId}:0`,
-                SimdGui: `-break-insert -p ${threadToSetBpOn.threadId} -l 0`,
+                SimdCommand: `${threadToSetBpOn.threadId}:${simdLaneId}`,
+                SimdGui: `-break-insert -p ${threadToSetBpOn.threadId} -l ${simdLaneId}`,
                 NativeCommand: (condition = `$_thread + 2 == ${threadToSetBpOn.threadId}`),
                 NativeGui: condition,
             };
@@ -496,13 +505,13 @@ export async function SimdLaneConditionalBreakpointTest(breakpointType: Conditio
         logger.Pass(`Breakpoint '${C_BP_61.fileName}:${C_BP_61.lineNumber}' has been hit.`);
 
         const gpuThreadsParsed = await GetGpuThreads();
-        const gpuThreadsViewBpInfo = gpuThreadsParsed.find(x => x.simdLanes.includes("⇨")) as IThread;
-        const simdLane  = gpuThreadsViewBpInfo.simdLanes.indexOf("⇨");
+        const gpuThreadsViewBpInfo = gpuThreadsParsed.find(x => x.simdLanes.find(y => y.current)) as IThread;
+        const simdLane  = gpuThreadsViewBpInfo.simdLanes.find(x => x.current);
         const consoleOutput = await GetDebugConsoleOutput();
         const consoleBpInfo = consoleOutput.find(x => {
             return x.includes(`.${gpuThreadsViewBpInfo.threadId -2}`) &&
                 simdBreakpoint ? x.includes(breakpointSignature as string) : true &&
-                simdBreakpoint ? x.includes(`SIMD lane ${simdLane}`) : true &&
+                simdBreakpoint ? x.includes(`SIMD lane ${simdLane?.laneId}`) : true &&
                 x.includes(`at ${C_BP_61.fileName}:${C_BP_61.lineNumber}`);
         });
 
@@ -511,6 +520,31 @@ export async function SimdLaneConditionalBreakpointTest(breakpointType: Conditio
         logger.Info(`Breakpoint info: '${C_BP_61.fileName}:${C_BP_61.lineNumber}' | '${C_BP_61.condition}' | '${C_BP_61.type}'`);
         if (simdBreakpoint) { logger.Info(`Conditional BP exception message: '${exceptionDescription}'`); }
         logger.Pass(`Thread info: '${consoleBpInfo}'`);
+        logger.Info(`Check if '${paneToCheck}' debug pane contains expected info`);
+
+        switch (paneToCheck) {
+        case OneApiDebugPane.HardwareInfo:
+            await CheckIfHwInfoViewContainsExpectedInfo();
+            break;
+        case OneApiDebugPane.OneApiGpuThreads:
+            const BP_62 = { fileName: "array-transform.cpp", lineNumber: 62 };
+
+            await CheckIfGpuThreadsViewContainsExpectedInfo();
+            await RemoveAllBreakpoints();
+            await SetBreakpoint(BP_62);
+            await SetInputText(undefined, "> View: Focus Active Editor Group");
+            const bar = await DebugToolbar.create();
+
+            await bar.continue();
+            assert.isTrue(
+                await CheckIfBreakpointHasBeenHit(BP_62),
+                `Breakpoint ${BP_62.fileName}:${BP_62.lineNumber} has not been hit`);
+            logger.Pass(`Breakpoint '${BP_62.fileName}:${BP_62.lineNumber}' has been hit.`);
+            await CheckIfGpuThreadsViewContainsExpectedInfo();
+            break;
+        default:
+            throw new Error(`Unrecognized member of ${typeof paneToCheck}. Member: ${paneToCheck}`);
+        }
     } catch (e) {
         logger.Exception(e);
         throw e;
@@ -519,14 +553,67 @@ export async function SimdLaneConditionalBreakpointTest(breakpointType: Conditio
     }
 }
 
-async function StopDebugging(): Promise<void> {
-    await Retry(async() => {
-        logger.Info("Get 'DebugToolbar' handle");
-        const bar = await DebugToolbar.create();
+async function CheckIfGpuThreadsViewContainsExpectedInfo() {
+    const consoleOutput = await GetDebugConsoleOutput();
+    const breakpointHits = consoleOutput.join("\n").match(/Thread.*hit.*with SIMD lane.*at.*/gm) as string[];
+    const lastBreakpointHit = breakpointHits.pop() as string;
+    const lineHit = (lastBreakpointHit.match(/(?<=lane )(\d)(?=,)|(?<=\[)(.*)(?=])/gm) as string[])[0];
+    const elements = lineHit.split("-").map(x => Number(x));
+    const laneIDs = elements.length === 2 ?
+        Array.from({ length: (elements[1] - elements[0]) + 1 }, (_, index) => elements[0] + index) :
+        [ elements[0] as number ];
+    const threadId = Number((lastBreakpointHit.match(/(?<=\.)(.*)(?= hit)/gm) as string[])[0]) + 2;
+    const gpuThreads = await GetGpuThreads();
+    const currentThread = gpuThreads.find(x => x.threadId === threadId) as IThread;
 
-        logger.Info("Stop debugging");
-        await bar.stop();
-    }, 20 * 1000);
+    laneIDs.forEach((v) => {
+        logger.Info(`Check if lane '${v}' of thread '${threadId}' is marked as 'Hit'`);
+        assert.strictEqual(currentThread.simdLanes[v].state, "Hit", `Lane '${v}' of thread '${threadId}' isn't marked as 'Hit'`);
+        logger.Pass(`Lane '${v}' of thread '${threadId}' is marked as 'Hit'`);
+    });
+}
+
+async function CheckIfHwInfoViewContainsExpectedInfo() {
+    let hwInfoViewContent: string[] = [];
+    const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
+    const hwInfo = await GetDebugPane("Hardware Info Section");
+
+    await hwInfo?.click();
+    const workbench = new Workbench();
+    const driver = await workbench.getDriver();
+    const outerFrames = await driver.findElements(By.css("iframe"));
+
+    for (const outerFrame of outerFrames) {
+        await ExecuteInIFrame(outerFrame, async driver => {
+            const innerFrame = await driver.findElement(By.css("#active-frame"));
+    
+            await ExecuteInIFrame(innerFrame, async driver => {
+                try {
+                    hwInfoViewContent = (await driver.findElement(By.css("table.content")).getText()).split("\n");
+                } catch (e) {
+                    logger.Exception(e);
+                }
+            });
+        });
+        if (hwInfoViewContent.length >= 1) {break;}
+    }
+    await hwInfo?.click();
+    const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
+
+    logger.Info("Check if 'HARDWARE INFO' view contains expected info");
+    assert.isTrue(hwInfoViewContent?.includes(`Name: ${deviceName}`),
+        `Device name doesn't match.\nExpected: ${deviceName}\nActual: ${hwInfoViewContent?.join(", ")}`);
+    logger.Pass(`'HARDWARE INFO' view contains expected info.\nExpected: ${deviceName}\nActual: ${hwInfoViewContent?.join(", ")}`);
+}
+
+async function StopDebugging(): Promise<void> {
+    logger.Info("Stop debugging");
+    await Retry(async() => {
+        const workbench = new Workbench();
+        const input = await workbench.openCommandPrompt();
+
+        await SetInputText(input, "> Terminal: Kill All Terminals");
+    }, 10 * 1000);
 }
 
 async function GetGpuThreads(): Promise<IThread[]> {
@@ -563,8 +650,26 @@ async function GetGpuThreads(): Promise<IThread[]> {
             for (const row of gpuThreadsRows) {
                 const rowData = await row.findElements(By.css("td"));
                 const rowParsed = [];
+                const simdLanes: SimdLane[] = [];
 
                 for (const data of rowData) {
+                    const rowClass = await data.getAttribute("class");
+                    const rowId = await data.getAttribute("id");
+
+                    if (rowId) {
+                        const simdDetails = JSON.parse(rowId) as SimdLaneDetails;
+                        const current = rowClass.includes("current");
+                        const active = rowClass.includes("colored");
+                        const hit = rowClass.includes("hitCell");
+                        
+                        simdLanes.push({
+                            laneId: simdDetails.lane,
+                            current: current,
+                            state: hit ? "Hit" : active ? "Active" : "Inactive",
+                            details: simdDetails
+                        });
+                        continue;
+                    }
                     const rowDataText = await data.getText();
                     const index = rowData.indexOf(data);
 
@@ -575,7 +680,7 @@ async function GetGpuThreads(): Promise<IThread[]> {
                     targetId: rowParsed[1],
                     location: rowParsed[2],
                     workGroup: rowParsed[3],
-                    simdLanes: rowParsed.slice(4)
+                    simdLanes: simdLanes
                 });
             }
         });
@@ -584,7 +689,7 @@ async function GetGpuThreads(): Promise<IThread[]> {
     return gpuThreadsObj;
 }
 
-export async function CheckIfBreakpointHasBeenSet(breakpoint: IBreakpoint): Promise<boolean> {
+async function CheckIfBreakpointHasBeenSet(breakpoint: IBreakpoint): Promise<boolean> {
     logger.Info(`Check if '${breakpoint.fileName}:${breakpoint.lineNumber}' breakpoint has been set`);
     const breakpointsPaneHeader = await GetDebugPane("Breakpoints Section");
     const breakpointsPane = await breakpointsPaneHeader?.findElement(By.xpath("./../div[2]"));
@@ -603,7 +708,7 @@ export async function CheckIfBreakpointHasBeenSet(breakpoint: IBreakpoint): Prom
     return matches?.length !== 0;
 }
 
-export async function GetConditionalBreakpointExpressionInput(lineNumber: number) {
+async function GetConditionalBreakpointExpressionInput(lineNumber: number) {
     const textEditor = new TextEditor();
     const lineNumbers = await textEditor.findElements(By.className("line-numbers lh-odd"));
     let bpLine = undefined;
@@ -1059,6 +1164,7 @@ async function SetInputText(input: QuickOpenBox | InputBox | undefined, command:
     }
     logger.Info(`Set command palette text to '${command}'`);
     await input.setText(command);
+    await Wait(1 * 1000);
     logger.Info("Confirm");
     await input.confirm();
     return input;
@@ -1205,7 +1311,6 @@ async function InitDefaultEnvironment(): Promise<void> {
 
 async function GenerateLaunchConfigurations(): Promise<string> {
     logger.Info("Check if debug launch configuration already exists");
-    // const dotVscodePath = "../array-transform/.vscode";
     const workbench = new Workbench();
     let input = await workbench.openCommandPrompt();
 
