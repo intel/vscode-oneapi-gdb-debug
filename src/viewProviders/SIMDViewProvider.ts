@@ -77,6 +77,24 @@ export class SIMDViewProvider implements WebviewViewProvider {
         });
     }
 
+    public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
+        if (this.waitingIntervalId !== undefined) {
+            clearInterval(this.waitingIntervalId);
+            this.waitingIntervalId = undefined;
+        }
+
+        return new Promise<void>((resolve) => {
+            this.waitingIntervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(this.waitingIntervalId);
+                    this.waitingIntervalId = undefined;
+                    callback();
+                    resolve();
+                }
+            }, checkInterval);
+        });
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public async resolveWebviewView(webviewView: WebviewView, context: WebviewViewResolveContext, _token: CancellationToken) {
         this._view = webviewView;
