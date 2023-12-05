@@ -1,4 +1,6 @@
 import { VSBrowser } from "vscode-extension-tester";
+import { install } from "source-map-support";
+import { inspect } from "util";
 import { TestFunctions } from "./utils/TestFunctions";
 describe("Basic UI tests", () => {
     let browser: VSBrowser;

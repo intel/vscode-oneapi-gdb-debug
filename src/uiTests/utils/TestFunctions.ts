@@ -534,6 +534,7 @@ async function CheckIfBreakpointHasBeenHit(fileName: string, lineNumber: number)
 async function SetInputText(input: QuickOpenBox | InputBox, command: string): Promise<QuickOpenBox | InputBox> {
     logger.Info(`Set command palette text to '${command}'`);
     await input.setText(command);
+    await Wait(1 * 1000);
     logger.Info("Confirm");
     await input.confirm();
     return input;
