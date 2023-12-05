@@ -1,6 +1,10 @@
 import { VSBrowser } from "vscode-extension-tester";
+import { install } from "source-map-support";
+import { inspect } from "util";
 import { TestFunctions } from "./utils/TestFunctions";
-import { ConditionalBreakpointTypes, ThreadProperties, expectedNotifications } from "./utils/Consts";
+import { expectedNotifications, simdTestSuites, simdTestsToSkip } from "./utils/Consts";
+import { ThreadProperties } from "./utils/Enums";
+install();
 
 describe("Basic UI tests", () => {
     let browser: VSBrowser;
@@ -68,21 +72,15 @@ describe("Basic UI tests", () => {
             this.timeout(5 * 60 * 1000);
             await TestFunctions.ValidateOneApiGpuThreadsTest(ThreadProperties.Location); 
         });
-        it("SIMD lane conditional breakpoint check using '> Intel oneAPI: Add SIMD lane conditional breakpoint' command", async function() {
-            this.timeout(5 * 60 * 1000);
-            await TestFunctions.SimdLaneConditionalBreakpointTest(ConditionalBreakpointTypes.SimdCommand); 
-        });
-        it("SIMD lane conditional breakpoint check using 'Add Conditional Breakpoint...' context menu option", async function() {
-            this.timeout(5 * 60 * 1000);
-            await TestFunctions.SimdLaneConditionalBreakpointTest(ConditionalBreakpointTypes.SimdGui); 
-        });
-        it("Conditional native breakpoint check using '> Debug: Add Conditional Breakpoint...' command", async function() {
-            this.timeout(5 * 60 * 1000);
-            await TestFunctions.SimdLaneConditionalBreakpointTest(ConditionalBreakpointTypes.NativeCommand); 
-        });
-        it("Conditional native breakpoint check using 'Add Conditional Breakpoint...' context menu option", async function() {
-            this.timeout(5 * 60 * 1000);
-            await TestFunctions.SimdLaneConditionalBreakpointTest(ConditionalBreakpointTypes.NativeGui); 
-        });
+
+        console.log(`simdTestsToSkip: ${inspect(simdTestsToSkip)}`);
+        for (const simdTestSuite of simdTestSuites) {
+            const skip = simdTestsToSkip.find(x => JSON.stringify(x) === JSON.stringify(simdTestSuite));
+
+            (skip ? it.skip : it)(`SIMD lane conditional breakpoint | { breakpointType: '${simdTestSuite.breakpointType}'; paneToCheck: '${simdTestSuite.paneToCheck}' }`, async function() {
+                this.timeout(5 * 60 * 1000);
+                await TestFunctions.SimdLaneConditionalBreakpointTest(simdTestSuite);
+            });
+        }
     });
 });
