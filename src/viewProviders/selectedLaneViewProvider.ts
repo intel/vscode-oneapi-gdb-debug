@@ -11,6 +11,8 @@ import { CurrentThread } from "../SimdProvider";
 export class SelectedLaneViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.selectedLane";
     public _view!: WebviewView;
+    private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
+
 
     private htmlStart = "";
     private htmlEnd = "";
@@ -19,6 +21,24 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
 
     getUri(webview: Webview, extensionUri: Uri, pathList: string[]) {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
+    }
+
+    public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
+        if (this.waitingIntervalId !== undefined) {
+            clearInterval(this.waitingIntervalId);
+            this.waitingIntervalId = undefined;
+        }
+
+        return new Promise<void>((resolve) => {
+            this.waitingIntervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(this.waitingIntervalId);
+                    this.waitingIntervalId = undefined;
+                    callback();
+                    resolve();
+                }
+            }, checkInterval);
+        });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -50,27 +70,31 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script type="module" src="${toolkitUri}"></script>
-          <title>Hardware Info</title>
+          <title>Selected Lane Info</title>
         </head>
         <body>`;
 
         this.htmlEnd = "</body></html>";
     }
 
-    public setLoadingView(){
-        if (this._view.webview.html){
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
-        } else {
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>...</h4>" + this.htmlEnd;
+    public async setLoadingView() {
+        try {
+            this._view.webview.html = this.htmlStart + "<h4></h4>" + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
+
+    }
+
+    public async setErrorView(errMsg: string) {
+        try {
+            this._view.webview.html = this.htmlStart + "Error occured while getting Selected Lane Info: " + errMsg + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
         }
     }
 
-    public setErrorView(){
-        this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
-    }
-
     public async setView(currentThread: CurrentThread, executionMask: string, hitLanesMask: string, length: number){
-        await this.ensureViewExists();
         const table = `<table>
             <tr><td>Lane Number: </td>
             <td id="selectedLane">${currentThread.lane}</td></tr>
@@ -86,19 +110,10 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
             <td id="selectedWidth">${length}</td></tr>
         </table>`;
 
-        this._view.webview.html = this.htmlStart + table + this.htmlEnd;
-    }
-
-    // After setting "setContext", "oneapi:haveSIMD" to true, some time passes before initializing this._view,
-    // so we check its presence every 50 ms
-    private async ensureViewExists() {
-        return new Promise<void>((resolve) => {
-            const intervalId = setInterval(() => {
-                if (this._view && this._view.visible) {
-                    clearInterval(intervalId);
-                    resolve();
-                }
-            }, 50);
-        });
+        try {
+            this._view.webview.html = this.htmlStart + table + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
     }
 }

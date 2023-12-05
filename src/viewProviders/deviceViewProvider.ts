@@ -12,6 +12,8 @@ import { getNonce } from "./utils";
 export class DeviceViewProvider implements WebviewViewProvider {
     public static readonly viewType = "intelOneAPI.debug.deviceView";
     public _view!: WebviewView;
+    private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
+
 
     private htmlStart = "";
     private htmlEnd = "";
@@ -20,6 +22,24 @@ export class DeviceViewProvider implements WebviewViewProvider {
 
     getUri(webview: Webview, extensionUri: Uri, pathList: string[]) {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
+    }
+
+    public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
+        if (this.waitingIntervalId !== undefined) {
+            clearInterval(this.waitingIntervalId);
+            this.waitingIntervalId = undefined;
+        }
+
+        return new Promise<void>((resolve) => {
+            this.waitingIntervalId = setInterval(() => {
+                if (this._view && this._view.visible) {
+                    clearInterval(this.waitingIntervalId);
+                    this.waitingIntervalId = undefined;
+                    callback();
+                    resolve();
+                }
+            }, checkInterval);
+        });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -64,7 +84,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
             <link href="${styleMainUri}" rel="stylesheet
 
             <script type="module" src="${toolkitUri}"></script>
-            <title>SIMD Lanes</title>
+            <title>Hardware Info</title>
         </head>
         <body>`;
 
@@ -73,16 +93,21 @@ export class DeviceViewProvider implements WebviewViewProvider {
         </html>`;
     }
 
-    public setLoadingView() {
-        if (this._view.webview.html) {
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>Waiting for data to show ...</h4>" + this.htmlEnd;
-        } else {
-            this._view.webview.html = this.htmlStart + "<h4 class = 'dot'>...</h4>" + this.htmlEnd;
+    public async setLoadingView() {
+        try {
+            this._view.webview.html = this.htmlStart + "<h4></h4>" + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
         }
     }
 
-    public setErrorView() {
-        this._view.webview.html = this.htmlStart + "Error occured while getting devices info" + this.htmlEnd;
+    public async setErrorView(errMsg: string) {
+
+        try {
+            this._view.webview.html = this.htmlStart + "Error occured while getting devices info: "+ errMsg + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
     }
 
     public async setView(sortedDevices: SortedDevices) {
@@ -109,21 +134,12 @@ export class DeviceViewProvider implements WebviewViewProvider {
                 upd += "&emsp;" + table + "<br>";
             }
         }
-        await this.ensureViewExists();
-        this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
-    }
 
-    // After setting "setContext", "oneapi:havedevice" to true, some time passes before initializing this._view,
-    // so we check its presence every 50 ms
-    private async ensureViewExists() {
-        return new Promise<void>((resolve) => {
-            const intervalId = setInterval(() => {
-                if (this._view && this._view.visible) {
-                    clearInterval(intervalId);
-                    resolve();
-                }
-            }, 50);
-        });
+        try {
+            this._view.webview.html = this.htmlStart + upd + this.htmlEnd;
+        } catch (error) {
+            console.error("An error occurred while setting the view:", error);
+        }
     }
 
 }
