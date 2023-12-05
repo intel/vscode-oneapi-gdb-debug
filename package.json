@@ -93,13 +93,13 @@
                     "id": "intelOneAPI.debug.deviceView",
                     "type": "webview",
                     "name": "Hardware Info",
-                    "when": "oneapi:havedevice"
+                    "when": "oneapi:haveDevice"
                 },
                 {
                     "id": "intelOneAPI.debug.selectedLane",
                     "type": "webview",
                     "name": "Selected Lane",
-                    "when": "oneapi:haveselected"
+                    "when": "oneapi:haveSelected"
                 }
             ]
         },
