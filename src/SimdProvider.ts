@@ -69,28 +69,28 @@ export async function getThread(threadAndLane?: string): Promise<CurrentThread |
 
     if (session) {
         await session.customRequest("threads");
-        let evalresult;
+        let evalResult;
 
         if (thread === undefined || laneNum === undefined) {
-            evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
+            evalResult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
         } else {
 
             // Using thread-select is caused by the need to switch the debugging context to update the values of local variables and other things in the VSCode window.
-            evalresult = await session.customRequest("evaluate", { expression: `-exec -thread-select --thread ${thread} --lane ${laneNum} ${thread}`, context: "repl" });
+            evalResult = await session.customRequest("evaluate", { expression: `-exec -thread-select --thread ${thread} --lane ${laneNum} ${thread}`, context: "repl" });
             session.customRequest("sendInvalidate", {});
         }
 
-        if (!evalresult || evalresult.result === "void") {
+        if (!evalResult || evalResult.result === "void") {
             return undefined;
         }
 
-        const threadInfo = evalresult.result.split("\n")[0].replace(/[({})]/g, "").split(" ");
+        const threadInfo = evalResult.result.split("\n")[0].replace(/[({})]/g, "").split(" ");
 
-        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_global_id", context: "repl" });
-        const workitemGlobalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, "");
+        evalResult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_global_id", context: "repl" });
+        const workitemGlobalid = evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, "");
 
-        evalresult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_local_id", context: "repl" });
-        const workitemLocalid = evalresult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:|/g, "");
+        evalResult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_workitem_local_id", context: "repl" });
+        const workitemLocalid = evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:|/g, "");
 
         const name = threadInfo.length < 7 ? `${threadInfo[2]} ${threadInfo[3]}` : `${threadInfo[4]} ${threadInfo[5]}`;
         const lane = threadInfo.length < 7 ? laneNum : +threadInfo[7].replace(/[^0-9]/g, "");
