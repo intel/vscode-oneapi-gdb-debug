@@ -69,4 +69,9 @@ export abstract class LoggerAggregator extends ILogger {
     static Pass(message: string): void {
         LoggerAggregator.loggers.forEach(logger => logger.Pass(message));
     }
+    async Step(label: string, fn: () => Promise<void>): Promise<void> {
+        for (const logger of this.loggers) {
+            await logger.Step(label, fn);
+        }
+    }
 }
