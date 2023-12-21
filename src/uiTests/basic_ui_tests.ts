@@ -4,15 +4,25 @@ import { inspect } from "util";
 import { TestFunctions } from "./utils/TestFunctions";
 import { expectedNotifications, simdTestSuites, simdTestsToSkip } from "./utils/Consts";
 import { ThreadProperties } from "./utils/Enums";
+import { existsSync, readFileSync, writeFileSync } from "fs";
 install();
 
 describe("Basic UI tests", () => {
     let browser: VSBrowser;
 
     before(async function() {
+        const vsCodeSettingsPath = "test-resources/settings/User/settings.json";
+
         browser = VSBrowser.instance;
         await browser.openResources("../array-transform", "../array-transform/src/array-transform.cpp");
         await TestFunctions.InstallRequiredExtensions();
+        if (!existsSync(vsCodeSettingsPath)) {
+            writeFileSync(vsCodeSettingsPath, "{}");
+        }
+        const settings = JSON.parse(readFileSync(vsCodeSettingsPath, "utf-8"));
+
+        settings["debug.toolBarLocation"] = "docked";
+        writeFileSync(vsCodeSettingsPath, JSON.stringify(settings));
     });
     after(async function() {
         await TestFunctions.UninstallAllExtensions();
