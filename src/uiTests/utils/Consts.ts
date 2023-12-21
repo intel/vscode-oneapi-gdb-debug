@@ -32,4 +32,20 @@ export const simdTestSuites = (() => {
     return outObj;
 })();
 
-export const simdTestsToSkip: TestSuite[] = [];
+/**
+ * UNCOMMENT TO DISABLE!
+ */
+export const simdTestsToSkip: TestSuite[] = [
+    // { breakpointType: ConditionalBreakpointTypes.SimdCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+    // { breakpointType: ConditionalBreakpointTypes.SimdCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
+    // { breakpointType: ConditionalBreakpointTypes.SimdCommand, paneToCheck: OneApiDebugPane.SelectedLane },
+    // { breakpointType: ConditionalBreakpointTypes.NativeCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+    // { breakpointType: ConditionalBreakpointTypes.NativeCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
+    // { breakpointType: ConditionalBreakpointTypes.NativeCommand, paneToCheck: OneApiDebugPane.SelectedLane },
+    // { breakpointType: ConditionalBreakpointTypes.SimdGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+    // { breakpointType: ConditionalBreakpointTypes.SimdGui, paneToCheck: OneApiDebugPane.HardwareInfo },
+    // { breakpointType: ConditionalBreakpointTypes.SimdGui, paneToCheck: OneApiDebugPane.SelectedLane },
+    // { breakpointType: ConditionalBreakpointTypes.NativeGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+    // { breakpointType: ConditionalBreakpointTypes.NativeGui, paneToCheck: OneApiDebugPane.HardwareInfo },
+    // { breakpointType: ConditionalBreakpointTypes.NativeGui, paneToCheck: OneApiDebugPane.SelectedLane },
+];
