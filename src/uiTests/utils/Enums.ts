@@ -13,5 +13,5 @@ export enum ConditionalBreakpointTypes {
 export enum OneApiDebugPane {
     OneApiGpuThreads = "OneApiGpuThreads",
     HardwareInfo = "HardwareInfo",
-    // SelectedLane = "SelectedLane"
+    SelectedLane = "SelectedLane"
 }

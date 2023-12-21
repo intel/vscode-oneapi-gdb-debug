@@ -1,3 +1,5 @@
+import { WebElement } from "vscode-extension-tester";
+
 /**
  * Gpu thread.
  */
@@ -14,6 +16,8 @@ export interface SimdLane {
     current: boolean;
     state: "Active" | "Inactive" | "Hit";
     details: SimdLaneDetails;
+    indicator: string | undefined;
+    handle: WebElement;
 }
 
 export interface SimdLaneDetails {
