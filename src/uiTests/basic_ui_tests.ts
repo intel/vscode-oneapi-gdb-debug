@@ -5,7 +5,10 @@ import { TestFunctions } from "./utils/TestFunctions";
 import { expectedNotifications, simdTestSuites, simdTestsToSkip } from "./utils/Consts";
 import { ThreadProperties } from "./utils/Enums";
 import { existsSync, readFileSync, writeFileSync } from "fs";
+import { ConsoleLogger, LoggerAggregator as logger } from "./utils/Logger";
+
 install();
+logger.InitLoggers(new ConsoleLogger());
 
 describe("Basic UI tests", () => {
     let browser: VSBrowser;
