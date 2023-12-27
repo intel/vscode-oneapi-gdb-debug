@@ -2,7 +2,7 @@ import * as fs from "fs";
 import * as util from "util";
 import { assert } from "chai";
 import { ActivityBar, By, DebugConsoleView, DebugView, EditorView, ExtensionsViewSection, InputBox, Key, NotificationType, QuickOpenBox, SideBarView, TerminalView, TextEditor, VSBrowser, WebDriver, WebElement, WebView, Workbench } from "vscode-extension-tester";
-import { ConsoleLogger, ILogger, LoggerAggregator } from "./Logger";
+import { LoggerAggregator as logger } from "./Logger";
 import { exec } from "child_process";
 import axios from "axios";
 import { IVsCodeTask, ICcppConfiguration, INotification, IThread, IBreakpoint, IConditionalBreakpoint } from "../models";
@@ -10,7 +10,6 @@ import { SimdLane, SimdLaneDetails } from "../models/IThread";
 import { ThreadProperties, ConditionalBreakpointTypes, OneApiDebugPane } from "./Enums";
 
 const execAsync = util.promisify(exec);
-const logger: ILogger = new LoggerAggregator([new ConsoleLogger()]);
 const dotVscodePath = "../array-transform/.vscode";
 const ccppPropertiesFilePath = `${dotVscodePath}/c_cpp_properties.json`;
 const tasksJsonFilePath = `${dotVscodePath}/tasks.json`;
@@ -561,10 +560,8 @@ export async function SimdLaneConditionalBreakpointTest(testSuite: { breakpointT
 }
 
 async function CleanUp(): Promise<void> {
-    await logger.Step("Clean up", async() => {
-        await StopDebugging(false);
-        await SetInputText(undefined, "> Terminal: Kill All Terminals");
-    });
+    await StopDebugging(false);
+    await SetInputText(undefined, "> Terminal: Kill All Terminals");
 }
 
 async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: number) {
@@ -654,28 +651,25 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
         logger.Pass(`Expected lane '${expectedLaneId}' is equal to other lane ids`);
     };
 
-    await logger.Step("Check if selected lane shows currently selected lane id", async() => {
-        await checkIfSelectedLaneViewContainsExpectedLane(expectedLaneID);
-        await checkIfLaneIdMatchesLanesFromOtherViews(expectedLaneID, ["SelectedLane", "OneApiGpuThreads", "DebugConsole"]);
-    });
+    logger.Info("Check if selected lane shows currently selected lane id");
+    await checkIfSelectedLaneViewContainsExpectedLane(expectedLaneID);
+    await checkIfLaneIdMatchesLanesFromOtherViews(expectedLaneID, ["SelectedLane", "OneApiGpuThreads", "DebugConsole"]);
 
-    await logger.Step("Check if 'current' lane indicator is present '⇨'", async() => {
-        const currentLane = (await getCurrentThread()).simdLanes.find(y => y.current) as SimdLane;
+    logger.Info("Check if 'current' lane indicator is present '⇨'");
+    const currentLane = (await getCurrentThread()).simdLanes.find(y => y.current) as SimdLane;
 
-        logger.Info(`Check if current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
-        assert.strictEqual(currentLane.indicator, "⇨", `Current lane indicator '⇨' is not present on current lane '${currentLane.laneId}'`);
-        logger.Info(`Current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
-    });
+    logger.Info(`Check if current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
+    assert.strictEqual(currentLane.indicator, "⇨", `Current lane indicator '⇨' is not present on current lane '${currentLane.laneId}'`);
+    logger.Info(`Current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
     const randomLaneIdToSelect = Array(8).fill(0).map((_, i) => i).filter(x => x !== expectedLaneID && x !== 0)[GetRandomInt(0, 6)];
 
-    await logger.Step("Set simd lane from GUI and check if it changed in selected lane view", async() => {
-        await SetSimdLaneFromGui(randomLaneIdToSelect);
-        await checkIfSelectedLaneViewContainsExpectedLane(randomLaneIdToSelect);
-    });
-    await logger.Step("Refresh gpu thread view and check lanes again", async() => {
-        await GetGpuThreads();
-        await checkIfLaneIdMatchesLanesFromOtherViews(randomLaneIdToSelect, ["SelectedLane", "OneApiGpuThreads"]);
-    });
+    logger.Info("Set simd lane from GUI and check if it changed in selected lane view");
+    await SetSimdLaneFromGui(randomLaneIdToSelect);
+    await checkIfSelectedLaneViewContainsExpectedLane(randomLaneIdToSelect);
+
+    logger.Info("Refresh gpu thread view and check lanes again");
+    await RefreshGpuThreadsView();
+    await checkIfLaneIdMatchesLanesFromOtherViews(randomLaneIdToSelect, ["SelectedLane", "OneApiGpuThreads"]);
 }
 
 function GetRandomInt(min: number, max: number): number {
@@ -789,29 +783,31 @@ async function ContinueDebugging(): Promise<void> {
     await stopButton.click();
 }
 
-async function GetGpuThreads(): Promise<IThread[]> {
-    const getRefreshButton = async(gpuThreadsView: WebElement) => {
-        const buttons = await gpuThreadsView.findElements(By.xpath("//*/div[3]/div/div/ul/li/a"));
+async function RefreshGpuThreadsView(): Promise<void> {
+    logger.Info("Refresh gpu threads view");
+    const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section") as WebElement;
 
-        for (const button of buttons) {
-            const value = await button.getAttribute("aria-label");
+    await Wait(3 * 1000);
+    const buttons = await gpuThreadsView.findElements(By.xpath("//*/div[3]/div/div/ul/li/a"));
 
-            if (value === "Intel oneAPI: Refresh SIMD Data") {
-                return button;
-            }
+    for (const button of buttons) {
+        const value = await button.getAttribute("aria-label");
+
+        if (value === "Intel oneAPI: Refresh SIMD Data") {
+            await button.click();
+            return;
         }
-    };
-    let gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
+    }
+}
+
+async function GetGpuThreads(): Promise<IThread[]> {
+    const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
     const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
 
     if (!gpuThreadsViewClass?.includes("expanded")) {
         await gpuThreadsView?.click();
     }
-    gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
-    await Wait(3 * 1000);
-    const refreshButton = await getRefreshButton(gpuThreadsView as WebElement);
-
-    await refreshButton?.click();
+    await RefreshGpuThreadsView();
     await Wait(3 * 1000);
     const gpuThreadsObj: IThread[] = [];
 
