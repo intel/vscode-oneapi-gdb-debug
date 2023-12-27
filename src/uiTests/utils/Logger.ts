@@ -1,71 +1,71 @@
-export interface ILogger {
-    Info(message: string): void;
-    Error(message: unknown): void;
-    Pass(message: string): void;
-    Exception(message: unknown): void;
-    Step(label: string, fn: () => Promise<void>): Promise<void>;
+export abstract class ILogger {
+    abstract Info(message: string): void;
+    abstract Error(message: unknown): void;
+    abstract Pass(message: string): void;
+    abstract Exception(message: unknown): void;
 }
 
 export class ConsoleLogger implements ILogger {
-    private indent: number = 0;
-    private get GetPrefix() {
+    Error(message: string): void {
+        console.trace(`${this.GetPrefix()} [ERROR] ${message}`);
+    }
+
+    Pass(message: string): void {
+        console.log(`${this.GetPrefix()} [PASS] ${message}`);
+    }
+
+    Exception(message: unknown): void {
+        console.trace(`${this.GetPrefix()} [EXCEPTION] ${message}`);
+    }
+
+    Info(message: string): void {
+        console.log(`${this.GetPrefix()} [INFO] ${message}`);
+    }
+
+    private GetTimestamp(): string {
         const date = new Date();
 
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
     }
 
-    Error(message: string): void {
-        console.trace(`[${this.GetPrefix}]${" ".repeat(this.indent)} [ERROR] ${message}`);
-    }
-    Pass(message: string): void {
-        console.log(`[${this.GetPrefix}]${" ".repeat(this.indent)} [PASS] ${message}`);
-    }
-    Exception(message: unknown): void {
-        console.trace(`[${this.GetPrefix}]${" ".repeat(this.indent)} [EXCEPTION] ${message}`);
-    }
-    Info(message: string): void {
-        console.log(`[${this.GetPrefix}]${" ".repeat(this.indent)} [INFO] ${message}`);
-    }
-    async Step(label: string, fn: () => Promise<void>): Promise<void> {
-        const charsLength = Math.max(Math.floor((process.stdout.columns - (label.length + 4)) / 2), 0);
+    private GetPrefix(): string {
         const char = "=";
+        const [indent, location] = this.GetStackInfo();
 
-        console.log(`${char.repeat(charsLength)} ${label} ${char.repeat(charsLength)}`);
-        this.indent += 4;
-        try {
-            await fn();
-        } catch (e) {
-            this.Exception(e);
-            throw e;
-        } finally {
-            this.indent -= 4;
-            console.log("\n");
-        }
+        return `[${this.GetTimestamp()} at ${location}] ${char.repeat(indent)}>`;
+
+    }
+
+    private GetStackInfo(): [number, string] {
+        const stack = (new Error().stack ?? "").split("\n").filter(x => /\.ts/.exec(x));
+        const indent = Math.max(stack.length - 5, 1);
+        const location = /(?=[^\/]*$).*\.ts\:\d+\:\d+/.exec(stack[5]);
+
+        return [indent, location?.pop() ?? ""];
     }
 }
 
-export class LoggerAggregator implements ILogger {
-    private loggers: ILogger[];
+export abstract class LoggerAggregator extends ILogger {
+    private static loggers: ILogger[];
     
-    constructor(loggers: ILogger[]) {
-        this.loggers = loggers;
+    static InitLoggers(...loggers: ILogger[]) {
+        Error.stackTraceLimit = Infinity;
+        LoggerAggregator.loggers = loggers;
     }
 
-    Info(message: string): void {
-        this.loggers.forEach(logger => logger.Info(message));
+    static Info(message: string): void {
+        LoggerAggregator.loggers.forEach(logger => logger.Info(message));
     }
-    Error(message: unknown): void {
-        this.loggers.forEach(logger => logger.Error(message));
+
+    static Error(message: unknown): void {
+        LoggerAggregator.loggers.forEach(logger => logger.Error(message));
     }
-    Pass(message: string): void {
-        this.loggers.forEach(logger => logger.Pass(message));
+
+    static Pass(message: string): void {
+        LoggerAggregator.loggers.forEach(logger => logger.Pass(message));
     }
-    Exception(message: unknown): void {
-        this.loggers.forEach(logger => logger.Exception(message));
-    }
-    async Step(label: string, fn: () => Promise<void>): Promise<void> {
-        for (const logger of this.loggers) {
-            await logger.Step(label, fn);
-        }
+
+    static Exception(message: unknown): void {
+        LoggerAggregator.loggers.forEach(logger => logger.Exception(message));
     }
 }
