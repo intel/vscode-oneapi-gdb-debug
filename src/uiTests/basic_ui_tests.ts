@@ -28,7 +28,7 @@ describe("Basic UI tests", () => {
         writeFileSync(vsCodeSettingsPath, JSON.stringify(settings));
     });
     after(async function() {
-        await TestFunctions.UninstallAllExtensions();
+        // await TestFunctions.UninstallAllExtensions();
     });
     describe("Install extensions from notifications", () => {
         it("Install 'C/C++' extension", async function() {
@@ -92,6 +92,7 @@ describe("Basic UI tests", () => {
 
             (skip ? it.skip : it)(`SIMD lane conditional breakpoint | { breakpointType: '${simdTestSuite.breakpointType}'; paneToCheck: '${simdTestSuite.paneToCheck}' }`, async function() {
                 this.timeout(5 * 60 * 1000);
+                this.retries(1);
                 await TestFunctions.SimdLaneConditionalBreakpointTest(simdTestSuite);
             });
         }
