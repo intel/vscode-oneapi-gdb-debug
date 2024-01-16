@@ -221,8 +221,18 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const x = m.threadWorkgroup ? m.threadWorkgroup.split(",")[0] : "-";
             const y = m.threadWorkgroup ? m.threadWorkgroup.split(",")[1] : "-";
             const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[2] : "-";
+            let filename = "";
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td> <td title="${m.fullname}"> ${m.file}:${m.line} </td><td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
+            if (m.file.length > 13) {
+                // Create a shortened filename
+                const shortenedValue = m.file.substring(0, 10);
+
+                filename += `<td class="simdtooltip">${shortenedValue}... :${m.line}<span class="simdtooltiptext">${m.file}:${m.line}</span></td>`;
+            } else {
+                filename += `<td>${m.file}:${m.line}</td>`;
+            }
+
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td>${filename}<td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
         }
         upd = upd + "</tbody></table>" + currentLaneTable;
         return upd;
