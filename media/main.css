@@ -128,3 +128,30 @@ td {
     visibility: visible;
     opacity: 1;
 }
+
+.simdtooltip {
+  position: relative;
+  
+}
+
+.simdtooltip .simdtooltiptext {
+  visibility: hidden;
+  width: fit-content;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-icon-foreground);
+  text-align: center;
+  position: absolute;
+  z-index: 3;
+  padding: 5px;
+  border: 1px solid var(--vscode-icon-foreground);
+  border-radius: 6px;
+  border-style: dotted;
+  overflow: auto;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.simdtooltip:hover .simdtooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
