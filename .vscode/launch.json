@@ -39,7 +39,7 @@
 			"program": "${workspaceFolder}/node_modules/.bin/extest",
 			"args": [
 				"setup-and-run",
-				"${workspaceFolder}/out/uiTests/basic_ui_tests.js",
+				"${workspaceFolder}/out/uiTests/main.js",
 				"--mocha_config",
 				"${workspaceFolder}/src/uiTests/configs/.mocharc-debug.js"
 			],

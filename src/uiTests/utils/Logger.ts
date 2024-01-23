@@ -1,39 +1,42 @@
+/**
+ * Copyright (c) Intel Corporation
+ * Licensed under the MIT License. See the project root LICENSE
+ *
+ * SPDX-License-Identifier: MIT
+ */
+
 export abstract class ILogger {
     abstract Info(message: string): void;
     abstract Error(message: unknown): void;
     abstract Pass(message: string): void;
-    abstract Exception(message: unknown): void;
 }
 
 export class ConsoleLogger implements ILogger {
     Error(message: string): void {
-        console.trace(`${this.GetPrefix()} [ERROR] ${message}`);
+        console.trace(this.Message(`[ERROR] ${message}`));
     }
 
     Pass(message: string): void {
-        console.log(`${this.GetPrefix()} [PASS] ${message}`);
-    }
-
-    Exception(message: unknown): void {
-        console.trace(`${this.GetPrefix()} [EXCEPTION] ${message}`);
+        console.log(this.Message(`[PASS] ${message}`));
     }
 
     Info(message: string): void {
-        console.log(`${this.GetPrefix()} [INFO] ${message}`);
+        console.log(this.Message(`[INFO] ${message}`));
+    }
+
+    private Message(message: string): string {
+        const [indent, location] = this.GetStackInfo();
+        const part1 = `[${this.GetTimestamp()}] ${"=".repeat(indent)}> ${message}`;
+        const part2 = `[at ${location}]`;
+        const spaces = process.stdout.columns - part1.length - part2.length - 2;
+
+        return `${part1} ${spaces <= 0 ? "\n" : " ".repeat(spaces)} ${part2}`;
     }
 
     private GetTimestamp(): string {
         const date = new Date();
 
         return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
-    }
-
-    private GetPrefix(): string {
-        const char = "=";
-        const [indent, location] = this.GetStackInfo();
-
-        return `[${this.GetTimestamp()} at ${location}] ${char.repeat(indent)}>`;
-
     }
 
     private GetStackInfo(): [number, string] {
@@ -47,10 +50,14 @@ export class ConsoleLogger implements ILogger {
 
 export abstract class LoggerAggregator extends ILogger {
     private static loggers: ILogger[];
-    
+    private constructor() {
+        super();
+    }
     static InitLoggers(...loggers: ILogger[]) {
-        Error.stackTraceLimit = Infinity;
-        LoggerAggregator.loggers = loggers;
+        if (!LoggerAggregator.loggers) {
+            Error.stackTraceLimit = Infinity;
+            LoggerAggregator.loggers = loggers;
+        }
     }
 
     static Info(message: string): void {
@@ -63,9 +70,5 @@ export abstract class LoggerAggregator extends ILogger {
 
     static Pass(message: string): void {
         LoggerAggregator.loggers.forEach(logger => logger.Pass(message));
-    }
-
-    static Exception(message: unknown): void {
-        LoggerAggregator.loggers.forEach(logger => logger.Exception(message));
     }
 }
