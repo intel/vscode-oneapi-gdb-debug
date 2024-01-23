@@ -337,10 +337,9 @@
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile",
-        "test": "node ./out/test/runTest.js",
         "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
         "package": "vsce package",
-        "basic-ui-tests": "extest setup-and-run \"out/uiTests/basic_ui_tests.js\" -m \"src/uiTests/configs/.mocharc-debug.js\""
+        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\""
     },
     "devDependencies": {
         "@types/chai": "^4.3.6",
