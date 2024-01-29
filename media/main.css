@@ -12,6 +12,7 @@ th {
     top: 0;
     color: #1e1e1e;
     background:#d3d3d3;
+    z-index: 10;
     max-width: 50%;
 }
 td {
