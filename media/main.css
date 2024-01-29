@@ -1,6 +1,6 @@
 body {
     background-color: transparent;
-    text-align: left;
+text-align: left;
 }
 
 table {
@@ -32,11 +32,27 @@ td {
     animation: blink 2s infinite;
 }
 
+.cell-container {
+    flex-wrap: wrap;
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+.cell-group {
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    width: fit-content;
+}
+
 .cell {
     min-width: 16px;
     min-height: 16px;
     width: 16px;
     height: 16px;
+    margin: 2px;
     color: var(--vscode-editor-foreground);
     background-color: var(--vscode-icon-foreground);
     font-size: 12px;
@@ -92,7 +108,7 @@ td {
 
 .tooltip .tooltiptext {
     visibility: hidden;
-    width: 220px;
+    width: fit-content;
     background-color: var(--vscode-editor-background);
     color: var(--vscode-icon-foreground);
     text-align: center;
@@ -130,28 +146,28 @@ td {
 }
 
 .simdtooltip {
-  position: relative;
-  
+    position: relative;
+
 }
 
 .simdtooltip .simdtooltiptext {
-  visibility: hidden;
-  width: fit-content;
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-icon-foreground);
-  text-align: center;
-  position: absolute;
-  z-index: 3;
-  padding: 5px;
-  border: 1px solid var(--vscode-icon-foreground);
-  border-radius: 6px;
-  border-style: dotted;
-  overflow: auto;
-  opacity: 0;
-  transition: opacity 0.3s;
+    visibility: hidden;
+    width: fit-content;
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-icon-foreground);
+    text-align: center;
+    position: absolute;
+    z-index: 3;
+    padding: 5px;
+    border: 1px solid var(--vscode-icon-foreground);
+    border-radius: 6px;
+    border-style: dotted;
+    overflow: auto;
+    opacity: 0;
+    transition: opacity 0.3s;
 }
 
 .simdtooltip:hover .simdtooltiptext {
-  visibility: visible;
-  opacity: 1;
+    visibility: visible;
+    opacity: 1;
 }

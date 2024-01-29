@@ -247,7 +247,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const id = `{"lane": ${index}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
         
             if (+value === 0) {
-                return `<td id='${id}' class ='cell'>${this._inactiveLaneSymbol}</td>`;
+                return `<div id='${id}' class ='cell'>${this._inactiveLaneSymbol}</div>`;
             }
             let cellStyle = "colored";
 
@@ -258,15 +258,24 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 cellStyle = hitNum === "1" ? "hitCell" : "colored";
             }
 
-            let coloredCell = `<td id='${id}' class ='cell ${cellStyle} one'>${this._activeLaneSymbol}</td>`;
+            let coloredCell = `<div id='${id}' class ='cell ${cellStyle} one'>${this._activeLaneSymbol}</div>`;
 
             if (this.chosenLaneId && this.chosenLaneId === id) {
-                coloredCell = `<td id='${id}' class ='cell ${cellStyle} one current'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></td>`;
+                coloredCell = `<div id='${id}' class ='cell ${cellStyle} one current'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></div>`;
             }
             return coloredCell;
-        }).join("");
+        });
 
-        return tableString;
+        let groupedCells = "<div class='cell-container'>";
+
+        for (let i = 0; i < tableString.length; i += 8) {
+            const group = tableString.slice(i, i + 8).join("");
+
+            groupedCells += `<div class='cell-group'>${group}</div>`;
+        }
+        groupedCells += "</div>";
+
+        return groupedCells;
     }
 
     public async updateView(masks: Emask[]){
