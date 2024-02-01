@@ -41,7 +41,9 @@
 				"setup-and-run",
 				"${workspaceFolder}/out/uiTests/main.js",
 				"--mocha_config",
-				"${workspaceFolder}/src/uiTests/configs/.mocharc-debug.js"
+				"${workspaceFolder}/src/uiTests/configs/.mocharc-debug.js",
+				"-c",
+				"1.85.2"
 			],
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen"
