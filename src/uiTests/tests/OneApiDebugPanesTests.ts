@@ -350,30 +350,40 @@ async function GetGpuThreads(): Promise<Thread[]> {
             const simdLanes: SimdLane[] = [];
 
             for (const data of rowData) {
-                const rowClass = await data.getAttribute("class");
-                const rowId = await data.getAttribute("id");
+                let cellGroup: WebElement | undefined = undefined;
 
-                if (rowId) {
-                    const simdDetails = JSON.parse(rowId) as SimdLaneDetails;
-                    const current = rowClass.includes("current");
-                    const active = rowClass.includes("colored");
-                    const hit = rowClass.includes("hitCell");
-                    let indicator: string | undefined = undefined;
+                try { cellGroup = await data.findElement(By.className("cell-group")); }
+                catch { /* empty */ }
 
-                    try { indicator = await (await data.findElement(By.css("span"))).getText();}
-                    catch { /* empty */ }
+                if (cellGroup) {
+                    const lanes = await cellGroup.findElements(By.css("div"));
+
+                    for (const lane of lanes) {
+                        const laneId = await lane.getAttribute("id");
+                        const laneClass = await lane.getAttribute("class");
+                        const simdDetails = JSON.parse(laneId) as SimdLaneDetails;
+                        const current = laneClass.includes("current");
+                        const active = laneClass.includes("colored");
+                        const hit = laneClass.includes("hitCell");
+                        let indicator: string | undefined = undefined;
+
+                        try { indicator = await (await data.findElement(By.css("span"))).getText();}
+                        catch { /* empty */ }
                         
-                    simdLanes.push({
-                        laneId: simdDetails.lane,
-                        current: current,
-                        state: hit ? "Hit" : active ? "Active" : "Inactive",
-                        details: simdDetails,
-                        indicator: indicator,
-                        handle: data
-                    });
-                    continue;
+                        simdLanes.push({
+                            laneId: simdDetails.lane,
+                            current: current,
+                            state: hit ? "Hit" : active ? "Active" : "Inactive",
+                            details: simdDetails,
+                            indicator: indicator,
+                            handle: lane
+                        });
+                        continue;
+                    }
                 }
                 let location: string | undefined;
+
+                const rowClass = await data.getAttribute("class");
 
                 if (rowClass === "simdtooltip") {
                     try { location = await (await data.findElement(By.css("span"))).getAttribute("innerHTML");}
@@ -508,7 +518,7 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
     const checkIfSelectedLaneViewContainsExpectedLane = async(expectedLaneId: number): Promise<void> => {
         const selectedLaneViewContent = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
 
-        assert.include(selectedLaneViewContent, `Lane Number: ${expectedLaneId}`, `Lane number doesn't match.\nExpected: ${expectedLaneId}\nto be included in ${selectedLaneViewContent}`);
+        assert.include(selectedLaneViewContent, `Lane Number: ${expectedLaneId}`, `Lane number doesn't match.\nExpected: 'Lane Number: ${expectedLaneId}'\nto be included in ${selectedLaneViewContent}`);
         logger.Pass(`Lane number matches. Actual: ${expectedLaneId}`);
     };
     const checkIfLaneIdMatchesLanesFromOtherViews = async(expectedLaneId: number, panes: LaneContainingPane[]): Promise<void> => {
