@@ -339,7 +339,7 @@
         "pretest": "npm run compile",
         "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
         "package": "vsce package",
-        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\""
+        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -c 1.85.2"
     },
     "devDependencies": {
         "@types/chai": "^4.3.6",
