@@ -13,8 +13,8 @@ import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
 
 enum ViewState {
-        COLORS,
-        NUMBERS
+    COLORS,
+    NUMBERS
 }
 
 export class SIMDViewProvider implements WebviewViewProvider {
@@ -25,6 +25,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     private htmlStart = "";
     private htmlEnd = "";
+    private searchPanel = "";
     private simdView = "";
     private viewState = ViewState.COLORS;
 
@@ -48,7 +49,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     constructor(private readonly _extensionUri: Uri,
-                private selectedLaneViewProvider: SelectedLaneViewProvider) { }
+        private selectedLaneViewProvider: SelectedLaneViewProvider) { }
 
     public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
         if (this.waitingIntervalId !== undefined) {
@@ -85,6 +86,31 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.setInitialPageContent(webviewView.webview);
     }
 
+    public async triggerSearch() {
+
+        await window.withProgress(
+            { location: { viewId: "intelOneAPI.debug.simdview" } },
+            async() => {
+                try {
+                    this._view.webview.postMessage({
+                        command: "triggerSearch",
+                        payload: JSON.stringify("triggerSearch")
+                    });
+                } catch (error) {
+                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                        // Handle errors in gdb requests: display error message in panel
+                        if (error instanceof Error) {
+                            this.selectedLaneViewProvider.setErrorView(error.message);
+                        } else {
+                            this.selectedLaneViewProvider.setErrorView(String(error));
+                        }
+                    });
+                }
+            }
+        );
+
+    }
+
     private setInitialPageContent(webview: Webview) {
         const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
 
@@ -118,6 +144,17 @@ export class SIMDViewProvider implements WebviewViewProvider {
         </head>
         <body>`;
 
+        this.searchPanel = `
+        <div class="search-panel">
+            <div class="drag-handle">⋮⋮</div>
+            <input type="text" id="searchInput" placeholder="Find" />
+            <span id="searchCounter">No results</span>
+            <button id="prevBtn">↑</button>
+            <button id="nextBtn">↓</button>
+            <button id="closeBtn">✖</button>
+        </div>`;
+
+
         this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
         </html>`;
@@ -150,7 +187,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     `;
 
     }
-    
+
     public async setLoadingView() {
         try {
             this._view.webview.html = this.htmlStart + "<h4></h4>" + this.htmlEnd;
@@ -189,7 +226,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private async getThreadsView(masks: Emask[], currentThread?: CurrentThread){
-        let upd = this.simdView;
+        let upd = this.searchPanel + this.simdView;
         const currentLaneTable = "";
 
         for (const m of masks) {
@@ -247,7 +284,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         const tableString = newSimdRow.split("").map((value: string, index) => {
             const id = `{"lane": ${index}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
-        
+
             if (+value === 0) {
                 return `<div id='${id}' class ='cell'>${this._inactiveLaneSymbol}</div>`;
             }
@@ -284,7 +321,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
             this.selectedLaneViewProvider.setLoadingView();
         });
-        this._view.webview.html = this.htmlStart + await this.getThreadsView(masks) + this.htmlEnd;
+        this._view.webview.html = this.htmlStart + this.searchPanel + await this.getThreadsView(masks) + this.htmlEnd;
     }
 
     private async _setWebviewMessageListener(webviewView: WebviewView) {
