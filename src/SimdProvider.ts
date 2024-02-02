@@ -93,6 +93,11 @@ export class SimdProvider {
             return;
         }));
 
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerSearch", async() => {
+            this.simdViewProvider.triggerSearch();
+            return;
+        }));
+
         //We need to test if multi debug sessions get affected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
