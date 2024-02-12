@@ -223,13 +223,15 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[2] : "-";
             let filename = "";
 
-            if (m.file.length > 13) {
+            if (m.file && m.file.length > 13) {
                 // Create a shortened filename
                 const shortenedValue = m.file.substring(0, 10);
 
                 filename += `<td class="simdtooltip">${shortenedValue}... :${m.line}<span class="simdtooltiptext">${m.file}:${m.line}</span></td>`;
-            } else {
+            } else if (m.file) {
                 filename += `<td>${m.file}:${m.line}</td>`;
+            } else {
+                filename += "<td> - </td>";
             }
 
             upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td>${filename}<td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
