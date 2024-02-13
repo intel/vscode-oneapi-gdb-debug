@@ -186,7 +186,7 @@ export class SimdProvider {
                                     fullname: propertiesObject.fullname,
                                     file: propertiesObject.file,
                                     line: propertiesObject.line,
-                                    name: this.threadsInfoArray[masks.length]?.name || propertiesObject["target-id"],
+                                    name: this.threadsInfoArray[masks.length]?.name || propertiesObject["details"],
                                     threadId: parseInt(threadProperties[0], 10),
                                     executionMask: propertiesObject["execution-mask"],
                                     hitLanesMask: propertiesObject["hit-lanes-mask"],
