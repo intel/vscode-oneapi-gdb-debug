@@ -68,7 +68,7 @@ export default function() {
             { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.HardwareInfo },
             { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.SelectedLane },
         ]) {
-            it(`SIMD lane conditional breakpoint | { breakpointType: '${simdTestSuite.breakpointType}'; paneToCheck: '${simdTestSuite.paneToCheck}' }`, async function() {
+            it(`SIMD lane conditional breakpoint [${simdTestSuite.breakpointType}] [${simdTestSuite.paneToCheck}]`, async function() {
                 this.timeout(5 * this.test?.ctx?.defaultTimeout);
                 this.retries(1);
                 await SimdLaneConditionalBreakpointTest(simdTestSuite);
