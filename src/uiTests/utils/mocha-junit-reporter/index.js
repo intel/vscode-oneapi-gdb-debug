@@ -321,16 +321,13 @@ MochaJUnitReporter.prototype.getTestsuiteData = function(suite) {
  * @returns {object}
  */
 MochaJUnitReporter.prototype.getTestcaseData = function(test, err) {
-  var jenkinsMode = this._options.jenkinsMode;
-  var flipClassAndName = this._options.testCaseSwitchClassnameAndName;
-  var name = stripAnsi(jenkinsMode ? getJenkinsClassname(test, this._options) : test.fullTitle());
-  var classname = stripAnsi(test.title);
+  var name = stripAnsi(test.title);
   var testcase = {
     testcase: [{
       _attr: {
-        name: flipClassAndName ? classname : name,
+        name: name,
         time: (typeof test.duration === 'undefined') ? 0 : test.duration / 1000,
-        classname: flipClassAndName ? name : classname
+        classname: name
       }
     }]
   };
