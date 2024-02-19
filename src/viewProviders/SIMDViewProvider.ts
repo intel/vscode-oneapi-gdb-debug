@@ -234,8 +234,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const reverseBinSimdRow = binSimdRow.padStart(m.length, "0").split("").reverse().join("");
             const newSimdRow = reverseBinSimdRow.padStart(m.length, "0");
 
-            if (currentThread?.name === m.name) {
-                this.chosenLaneId = `{"lane": ${currentThread.lane}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
+            if (currentThread?.threadId === m.threadId) {
+                this.chosenLaneId = `{"lane": ${currentThread.lane}, "targetId": "${m.targetId}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
                 try {
                     await commands.executeCommand("setContext", "oneapi:haveSelected", true);
                     this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
@@ -271,7 +271,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 filename += "<td> - </td>";
             }
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.name}</td>${filename}<td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
+            upd = upd + `<tr><td>${m.threadId}</td><td>${m.targetId}</td>${filename}<td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
         }
         upd = upd + "</tbody></table>" + currentLaneTable;
         return upd;
@@ -283,7 +283,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         }
 
         const tableString = newSimdRow.split("").map((value: string, index) => {
-            const id = `{"lane": ${index}, "name": "${m.name}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
+            const id = `{"lane": ${index}, "targetId": "${m.targetId}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
 
             if (+value === 0) {
                 return `<div id='${id}' class ='cell'>${this._inactiveLaneSymbol}</div>`;
@@ -369,7 +369,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                                 });
                                 this.chosenLaneId = message.payload;
                                 const parsedMessage = JSON.parse(message.payload);
-                                const currentThread = await getThread(parsedMessage.threadId, parsedMessage.lane);
+                                const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane,10));
 
                                 if (!currentThread) {
                                     await commands.executeCommand("setContext", "oneapi:haveSelected", false);
