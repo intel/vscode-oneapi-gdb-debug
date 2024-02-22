@@ -471,5 +471,12 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 commands.executeCommand("setContext", "oneapi:haveSelected", false);
             }
         });
+        webviewView.onDidChangeVisibility(() => {
+            if (webviewView.visible === true) {
+                commands.executeCommand("intelOneAPI.debug.fetchSIMDInfo");
+            } else {
+                commands.executeCommand("setContext", "oneapi:haveSelected", false);
+            }
+        });
     }
 }
