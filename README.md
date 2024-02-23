@@ -100,7 +100,7 @@ Note that SIMD lane specific breakpoints are saved between sessions, but will be
 There are several ways to set a SIMD lane specific breakpoint:
 * Add such a breakpoint by right-clicking on the desired line, selecting "Add Conditional Breakpoint" and "Expression". Then use the commands -break-insert and specify the thread number using the flag -p and SIMD lane using the flag -l:
 `-break-insert -p THREADID -l SIMDLANE`
-![Right-clicking conditional breakpoint](/media/right_click_cbp.gif)
+![Right-clicking conditional breakpoint](/media/right-clicking_cbp.gif)
 
 * Use the `Intel oneAPI: Add SIMD lane conditional breakpoint` function at the desired line from the drop-down menu and specify the THREADID and SIMDLANE in format:
 `THREADID:SIMDLANE`
