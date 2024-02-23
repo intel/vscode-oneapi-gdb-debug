@@ -1,5 +1,17 @@
 # Change Log
 
+##  0.4.1
+
+  - Added progress bars for all panels
+
+  - Added grouping of SIMD Lanes by 8
+
+  - Limited the maximum width of the Location row
+
+  - Added Search functionality in oneAPI GPU Threads
+
+  - Various bug fixes and performance improvements
+
 ##  0.4.0
 
   - Added the option in settings to enable the display of inactive threads
