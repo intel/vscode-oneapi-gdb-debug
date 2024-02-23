@@ -3,6 +3,8 @@
 This extension for Visual Studio Code (VS Code) enables
 additional features of GPU debugging with GDB for Intel® oneAPI toolkits.
 
+![FullView](/media/full.png)
+
 To learn more about using extensions with oneAPI, see [Using Visual Studio Code with Intel® oneAPI Toolkits](https://www.intel.com/content/www/us/en/develop/documentation/using-vs-code-with-intel-oneapi/top.html).
 
 ## Get started
@@ -48,13 +50,8 @@ In the settings, there's an option to enable or disable the display of inactive 
 ## SIMD View
 In the debug view, this extension provides SIMD View, which displays the SIMD lane state of an Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
 
-### Location
-To see the expanded location, just hover over the desired cell.
-
-![Location column](/media/location.gif)
-
 ### oneAPI GPU Threads
-The status of the SIMD lanes in the thread. Dark blue represents active lanes stopped at a breakpoint, light blue indicates active lanes that do not meet breakpoint conditions and grey indicates inactive lanes.
+The specific values corresponding to the status of the SIMD lanes in your current color scheme can be found in the SIMD Lanes tooltip. Dark blue represents active lanes that are stopped at a breakpoint, light blue indicates active lanes that do not meet breakpoint conditions, and grey indicates inactive lanes.
 
 ![View of SIMD view in VSCode debug session](/media/simd.png)
 
@@ -64,7 +61,7 @@ Note that SIMD lane specific breakpoints are saved between sessions, but will be
 There are several ways to set a SIMD lane specific breakpoint:
 * Add such a breakpoint by right-clicking on the desired line, selecting "Add Conditional Breakpoint" and "Expression". Then use the commands -break-insert and specify the thread number using the flag -p and SIMD lane using the flag -l:
 `-break-insert -p THREADID -l SIMDLANE`
-![Right-clicking conditional breakpoint](/media/right_click_cbp.gif)
+![Right-clicking conditional breakpoint](/media/right-clicking_cbp.gif)
 
 * Use the `Intel oneAPI: Add SIMD lane conditional breakpoint` function at the desired line from the drop-down menu and specify the THREADID and SIMDLANE in format:
 `THREADID:SIMDLANE`
@@ -89,7 +86,7 @@ You can see additional properties of the selected lane in a separate tab while d
 ### Hardware info
 You can see your device's info in a separate tab while debugging.
 
-![Hardware info](/media/hwInfo.gif)
+![Hardware info](/media/hwinfo.png)
 
 ## GPU Memory Viewing
 VS Code's generic debugger now includes a feature for viewing binary data. When a variable supports memory viewing and editing, an inline binary icon appears in the Variables view. Clicking on the icon opens the Hex Editor, allowing to perform operations on the binary data.
@@ -105,34 +102,22 @@ To display the differences between these two distributions of GDB:
 4. A new window will open with a list of the differences and links to documentation.
 5. For quick access to GDB-oneAPI Online Documentation, see `Intel oneAPI: Open gdb-oneapi debugger online documentation (help)`.
 
-## Troubleshooting
-
-### Kernel breakpoints do not work
-The problem is most likely caused by the fact that the environment variables ZET_ENABLE_PROGRAM_DEBUGGING and IGC_EnableGTLocationDebugging were not set. To work around this issue, set the environment variables by doing the following:
-- Click on the **Run** icon or press `Ctrl+Shift+D` to start debugging and end the debugging session. Thanks to this, a debugging terminal will appear:
-- In this terminal, run:
-   `export ZET_ENABLE_PROGRAM_DEBUGGING=1`
-   `export IGC_EnableGTLocationDebugging=1`
-- After that, run debugging as usual without closing this terminal
-
-![Debug terminal](/media/debug-terminal.png)
 
 Note that the debug session is started by running a command from this terminal. If characters remain in the terminal, this will make the command incorrect and cause the debugging session to hang.
 
 ## Contributing
-Install Visual Studio Code (version 1.42, or newer) and open this project within it. You also need `node + yarn`.
+Install Visual Studio Code (version 1.86, or newer) and open this project within it. You also need `node + yarn`.
 - Switch to project root folder.
 - `yarn install`
 - `code .`
 
-At this point you should be able to run the extension in the "Extension
-Development Host".
+At this point you should be able to run the extension in the "Extension Development Host".
 
 ## License
 1. This extension is released under the MIT License.
 
 
-2. oneapi-gdb-debug-0.4.0.vsix\extension\media\userHelp\content.json
+2. oneapi-gdb-debug-0.4.1.vsix\extension\media\userHelp\content.json
 
     Copyright (c) Intel Corporation
 
@@ -146,3 +131,14 @@ Development Host".
     GNU and promoting software freedom.”
 
 Other names and brands may be claimed as the property of others.
+
+## Legal Notice
+
+   Your use of this software and any required dependent software (
+   `GDB with GPU Debug Support for Intel® oneAPI Toolkits`) 
+   is subject to the terms and conditions of the software license
+   agreements for the Software Package, which may also include notices, disclaimers, or
+   license terms for third party or open source software included in or with the Software
+   Package, and your use indicates your acceptance of all such terms. Please refer to the
+   `./third-party-programs*.txt` or other similarly-named text file included with the Software
+   Package for additional details.
