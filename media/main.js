@@ -249,8 +249,22 @@
         const highlightedElements = document.querySelectorAll(".highlight, .current-match");
 
         highlightedElements.forEach(el => {
-        // Create a text node from the span's content
+            // Create a text node from the span's content
             const textNode = document.createTextNode(el.textContent);
+
+            // Check if the current element is inside a tooltip and make it invisible
+            let currentTooltip = el.closest(".tooltiptext");
+            let currentSIMDTooltip = el.closest(".simdtooltiptext");
+
+            if (currentTooltip) {
+                currentTooltip.style.visibility = "hidden";
+                currentTooltip.style.opacity = "0";
+            }
+
+            if (currentSIMDTooltip) {
+                currentSIMDTooltip.style.visibility = "hidden";
+                currentSIMDTooltip.style.opacity = "0";
+            }
 
             // Replace the span with the new text node
             el.parentNode.replaceChild(textNode, el);
