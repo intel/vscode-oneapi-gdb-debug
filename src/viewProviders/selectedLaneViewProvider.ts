@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2022-2024 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 import {
     CancellationToken,
     Uri,
