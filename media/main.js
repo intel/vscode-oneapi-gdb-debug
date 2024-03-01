@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2022-2024 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 (function() {
     // Get access to the VS Code API from within the webview context
     const vscode = acquireVsCodeApi();

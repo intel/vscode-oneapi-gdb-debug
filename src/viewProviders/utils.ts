@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2022-2024 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 export function getNonce() {
     let text = "";
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
