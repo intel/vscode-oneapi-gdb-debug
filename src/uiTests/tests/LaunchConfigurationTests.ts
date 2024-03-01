@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2021-2024 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 import { CheckIfTaskWasExecuted, ClearInputText,LaunchSequence,
     SelectQuickPick, SetInputText, StopDebugging } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
