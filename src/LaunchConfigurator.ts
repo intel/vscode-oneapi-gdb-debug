@@ -342,7 +342,7 @@ export class LaunchConfigurator {
             const pathsToExecutables = execSync(cmd).toString().split("\n");
 
             pathsToExecutables.pop();
-            pathsToExecutables.forEach(async function (onePath, index, execList) {
+            pathsToExecutables.forEach(async function(onePath, index, execList) {
                 // This is the only known way to replace \\ with /
                 execList[index] = posix.normalize(onePath.replace("\r", "")).split(/[\\/]/g).join(posix.sep);
             });
