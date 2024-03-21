@@ -57,7 +57,22 @@ const debugConfig = {
 };
 
 export class LaunchConfigurator {
+    private _disableGDBCheck: boolean | undefined;
+    private _disableENVCheck: boolean | undefined;
 
+    public set disableGDBCheck(flag: boolean | undefined) {
+        this._disableGDBCheck = false;
+        if (flag !== undefined) {
+            this._disableGDBCheck = flag;
+        }
+    }
+
+    public set disableENVCheck(flag: boolean | undefined) {
+        this._disableENVCheck = false;
+        if (flag !== undefined) {
+            this._disableENVCheck = flag;
+        }
+    }
     async makeLaunchFile(): Promise<boolean> {
         if (process.platform === "win32") {
             vscode.window.showInformationMessage("This function cannot be used for Windows as a target platform. Generating configurations for debugging is only possible for use on Linux.", { modal: true });
@@ -182,25 +197,54 @@ export class LaunchConfigurator {
     }
 
     async checkGdb(): Promise<void> {
-        if (!process.env.SETVARS_COMPLETED) {
+        if (!this._disableENVCheck && !process.env.SETVARS_COMPLETED ) {
             if (await this.checkEnvConfigurator()) {
-                const default_env = "default environment";
-                const custom_env = "custom environment using SETVARS_CONFIG";
+                const default_env = "Default environment";
+                const custom_env = "Using SETVARS_CONFIG";
+                const disable_ntf = "Do not show this message again";
                 const selection = await vscode.window.showInformationMessage("oneAPI environment is not configured.\
           Configure your development environment using \"Environment Configurator for Intel oneAPI Toolkits\".",
-                    default_env, custom_env);
-
+                default_env, custom_env, disable_ntf);
+ 
                 if (selection === default_env) {
                     await vscode.commands.executeCommand("intel-corporation.oneapi-environment-configurator.initializeEnvironment");
                 }
                 if (selection === custom_env) {
                     await vscode.commands.executeCommand("intel-corporation.oneapi-environment-configurator.initializeEnvironmentConfig");
                 }
+                if (selection === disable_ntf) {
+                    const configuration = vscode.workspace.getConfiguration("intelOneAPI.debug");
+
+                    configuration.update("DISABLE_ONEAPI_ENV_NOTIFICATION", true, vscode.ConfigurationTarget.Global) 
+                        .then(() => vscode.window.showInformationMessage("Environment notification is disabled."),
+                            (error) => vscode.window.showErrorMessage(`Error updating DISABLE_ONEAPI_ENV_NOTIFICATION: ${error}`));
+                }
             }
         }
-        if (!this.isGdbInPath()) {
-            vscode.window.showInformationMessage("Unable to locate the gdb-oneapi debugger in the PATH.\
-         If you use setvars_config file make sure it includes a debugger");
+        if (!this._disableGDBCheck) {
+            const paths = this.getGdbPaths();
+            const disable_ntf = "Do not show this message again";
+            const close = "Close";
+            let selection; 
+
+            if (paths.length === 0) {
+                selection = await vscode.window.showWarningMessage("gdb-oneapi not found.",disable_ntf,close);
+
+            } else if (paths.length === 1) {
+                selection = await vscode.window.showInformationMessage(`gdb-oneapi found at: ${paths[0]}`,disable_ntf,close);
+
+            } else {
+                selection = await vscode.window.showInformationMessage(`gdb-oneapi found at multiple locations:
+                                                        \n${paths.map((path, index) => `${index + 1}. ${path}`).join("\n")}
+                                                        \nThe first one will be used: ${paths[0]}`, { modal: true },disable_ntf);
+            }
+            if (selection === disable_ntf) {
+                const configuration = vscode.workspace.getConfiguration("intelOneAPI.debug");
+
+                configuration.update("DISABLE_ONEAPI_GDB_PATH_NOTIFICATION", true, vscode.ConfigurationTarget.Global) 
+                    .then(() => vscode.window.showInformationMessage("gdb-oneapi check is disabled."),
+                        (error) => vscode.window.showErrorMessage(`Error updating DISABLE_ONEAPI_GDB_PATH_NOTIFICATION: ${error}`));
+            }
         }
     }
 
@@ -218,23 +262,6 @@ export class LaunchConfigurator {
         }
         return true;
 
-    }
-
-    private isGdbInPath(): boolean {
-        const paths = this.getGdbPaths();
-
-        if (paths.length === 0) {
-            vscode.window.showWarningMessage("gdb-oneapi not found.");
-            return false;
-        } else if (paths.length === 1) {
-            vscode.window.showInformationMessage(`gdb-oneapi found at: ${paths[0]}`);
-            return true;
-        } else {
-            vscode.window.showInformationMessage(`gdb-oneapi found at multiple locations:
-                                                    \n${paths.map((path, index) => `${index + 1}. ${path}`).join("\n")}
-                                                    \nThe first one will be used: ${paths[0]}`, { modal: true });
-            return true;
-        }
     }
 
     private getGdbPaths(): string[] {
@@ -323,7 +350,7 @@ export class LaunchConfigurator {
             const pathsToExecutables = execSync(cmd).toString().split("\n");
 
             pathsToExecutables.pop();
-            pathsToExecutables.forEach(async function (onePath, index, execList) {
+            pathsToExecutables.forEach(async function(onePath, index, execList) {
                 // This is the only known way to replace \\ with /
                 execList[index] = posix.normalize(onePath.replace("\r", "")).split(/[\\/]/g).join(posix.sep);
             });

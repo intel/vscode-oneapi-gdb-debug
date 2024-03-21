@@ -41,6 +41,16 @@
                         "type": "string",
                         "description": "%capabilities.INACTIVE_LANE_SYMBOL.description%",
                         "maxLength": 1
+                    },
+                    "intelOneAPI.debug.DISABLE_ONEAPI_GDB_PATH_NOTIFICATION": {
+                        "type": "boolean",
+                        "description": "%capabilities.DISABLE_ONEAPI_GDB_PATH_NOTIFICATION.description%",
+                        "default": false
+                    },
+                    "intelOneAPI.debug.DISABLE_ONEAPI_ENV_NOTIFICATION": {
+                        "type": "boolean",
+                        "description": "%capabilities.DISABLE_ONEAPI_ENV_NOTIFICATION.description%",
+                        "default": false
                     }
                 }
             }
