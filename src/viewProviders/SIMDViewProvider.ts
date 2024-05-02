@@ -166,8 +166,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         this.simdView = `
         <table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th> <th>Location</th><th>Work-group<br>(x,y,z)</th>
-        <th class="tooltip">SIMD Lanes 🛈
-            <div class="tooltiptext">
+        <th>SIMD Lanes <span class="tooltip"><span class="info-icon">i</span>
+        <div class="tooltiptext">
                 <table>
                     <tr>
                         <th>SIMD lane color</th>
@@ -178,7 +178,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                         <td>Active - have met breakpoint conditions</td>
                     </tr>
                     <tr>
-                    <td class =' activelane'>■</td>
+                    <td class ='activelane'>■</td>
                     <td>Active</td>
                     </tr>
                     <tr>

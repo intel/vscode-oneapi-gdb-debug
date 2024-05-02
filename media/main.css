@@ -109,7 +109,20 @@ td {
 
 .tooltip {
     position: sticky;
+}
+
+.info-icon {
+    font-size: 16px;
     cursor: pointer;
+    width: 17px;
+    height: 17px;
+    line-height: 15px; /* Center the 'i' vertically */
+    text-align: center; /* Center the 'i' horizontally */
+    border-radius: 50%; /* Make it round */
+    background-color: transparent; /* Use a theme-friendly color for background */
+    color: #1e1e1e; /* Use a theme-friendly color for text */
+    border: 2px solid #1e1e1e; /* Black border for the circle */
+    display: inline-block;
 }
 
 .tooltip .tooltiptext {
