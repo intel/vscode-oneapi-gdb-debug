@@ -494,10 +494,10 @@ function CreateCCppPropertiesFile(): void {
                 "name": "Linux",
                 "includePath": [
                     "${workspaceFolder}/**",
-                    "/opt/intel/oneapi/compiler/2023.1.0/linux/include",
-                    "/opt/intel/oneapi/compiler/2023.1.0/linux/include/sycl",
-                    "/opt/intel/oneapi/dev-utilities/2021.9.0/include/",
-                    "/opt/intel/oneapi/dev-utilities/2021.9.0/include"
+                    "/opt/intel/oneapi/compiler/latest/linux/include",
+                    "/opt/intel/oneapi/compiler/latest/linux/include/sycl",
+                    "/opt/intel/oneapi/dev-utilities/latest/include/",
+                    "/opt/intel/oneapi/dev-utilities/latest/include"
                 ],
                 "defines": [],
                 "compilerPath": "/usr/bin/gcc",
@@ -531,7 +531,13 @@ function CreateCCppPropertiesFile(): void {
  * Initializates default oneAPI environment.
  */
 async function InitDefaultEnvironment(): Promise<void> {
-    await SetInputText("> Intel oneAPI: Initialize default environment variables");
+    const input = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+    const quickPick = await input.findQuickPick(0);
+
+    await Wait(3 * 1000);
+    const driver = new Workbench().getDriver();
+
+    await driver.executeScript("arguments[0].click()", quickPick);
     await Wait(3 * 1000);
 }
 
@@ -588,7 +594,10 @@ async function GenerateLaunchConfigurations(): Promise<string> {
     const pick = picks.find(async x => (await x.getText()).includes("array-transform")) as QuickPickItem;
 
     logger.Info(`Select Quick pick: ${await pick?.getText()}`);
-    await pick.select();
+    await Wait(3 * 1000);
+    const driver = new Workbench().getDriver();
+    
+    await driver.executeScript("arguments[0].click()", pick);
     input = await SelectQuickPick("no", input);
     await input.confirm();
     input = await SelectQuickPick("preTask", input);
@@ -598,7 +607,7 @@ async function GenerateLaunchConfigurations(): Promise<string> {
 
     assert.exists(launchJson.configurations[0], "[ERROR] Debug launch configuration hasn't been created!");
     logger.Pass("Debug launch configuration has been created and exists in 'launch.json'");
-    launchJson.configurations[0].miDebuggerPath = "/opt/intel/oneapi/debugger/2023.1.0/gdb/intel64/bin/gdb-oneapi";
+    launchJson.configurations[0].miDebuggerPath = "/opt/intel/oneapi/debugger/latest/bin/gdb-oneapi";
     const configurationName: string = launchJson.configurations[0].name;
 
     WriteFileSync(launchJsonPath, JSON.stringify(launchJson));
