@@ -216,18 +216,26 @@ async function CheckIfBreakpointConditionHasBeenMet(options: {
     breakpoint: ConditionalBreakpoint;
 }): Promise<void> {
     const { expectedSimdLaneId, expectedThread, breakpoint } = options;
-    const simdLane  = (await GetCurrentThread())?.simdLanes.find(x => x.current);
+    const currentThread = await GetCurrentThread() as Thread;
     const breakpointSignature = expectedSimdLaneId ? await (async() => {
         const signature = GetStringBetweenStrings(await GetExceptionPopupMessage() as string, "Hit ", " at");
 
         return `${(signature as string)[0].toUpperCase()}${(signature as string).slice(1)}`;
     })() : undefined;
+    const consoleOutput = await GetDebugConsoleOutput();
+    const lastBreakpointHit = consoleOutput.join("\n").match(/Thread.*hit.*with SIMD lane.*at.*/gm)?.pop() as string;
+    const lastLaneSwitch = consoleOutput.join("\n").match(/\[Switching to thread \d+.\d+:\d+ \([A-Z]* \d+.\d+.\d+.\d+ lane \d+\)]/gm)?.pop() as string;
+    const targetIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "(", ")]");
+    const threadIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "thread ", "(");
+    const laneIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "lane ", ")]");
 
-    assert.notEqual((await GetDebugConsoleOutput()).find(x => x.includes(`.${expectedThread.threadId - 2}`) &&
-    expectedSimdLaneId ? x.includes(breakpointSignature as string) : true &&
-    expectedSimdLaneId ? expectedSimdLaneId === (simdLane as SimdLane).laneId &&
-    x.includes(`SIMD lane ${(simdLane as SimdLane).laneId}`) : true &&
-    x.includes(`at ${breakpoint.fileName}:${breakpoint.lineNumber}`)), undefined, "Condition has not been met");
+    assert.isTrue([currentThread.targetId, targetIdDebugConsole].every(x => x === expectedThread.targetId) &&
+    lastBreakpointHit.includes(threadIdDebugConsole) &&
+    currentThread.threadId === expectedThread.threadId &&
+    currentThread.location === `${breakpoint.fileName}:${breakpoint.lineNumber}` &&
+    (currentThread.simdLanes.find(x => x.laneId === Number(laneIdDebugConsole)) as SimdLane).current &&
+    expectedSimdLaneId ? currentThread.simdLanes.find(x => x.current)?.laneId === expectedSimdLaneId : true &&
+    expectedSimdLaneId ? lastBreakpointHit.includes(breakpointSignature as string) : true);
     logger.Pass("Condition has been met");
 }
 
@@ -244,8 +252,8 @@ async function GetBreakpointCondition(breakpointType: ConditionalBreakpointType)
     const conditions = {
         SimdCommand: `${threadToSetBpOn.threadId}:${simdLaneId}`,
         SimdGui: `-break-insert -p ${threadToSetBpOn.threadId} -l ${simdLaneId}`,
-        NativeCommand: `$_thread + 2 == ${threadToSetBpOn.threadId}`,
-        NativeGui: `$_thread + 2 == ${threadToSetBpOn.threadId}`,
+        NativeCommand: `$_gthread == ${threadToSetBpOn.threadId}`,
+        NativeGui: `$_gthread == ${threadToSetBpOn.threadId}`,
     };
 
     return [conditions[breakpointType], simdLaneId, threadToSetBpOn];
@@ -474,8 +482,8 @@ async function CheckIfHwInfoViewContainsExpectedInfo() {
 async function CheckIfGpuThreadsViewContainsExpectedInfo() {
     const consoleOutput = await GetDebugConsoleOutput();
     const lastBreakpointHit = consoleOutput.join("\n").match(/Thread.*hit.*with SIMD lane.*at.*/gm)?.pop() as string;
-    const lastLaneSwitch = consoleOutput.join("\n").match(/\[Switching to Thread \d+.\d+ lane \d+\]/gm)?.pop();
-    const lastLaneSwitchId = GetStringBetweenStrings(lastLaneSwitch as string, "lane ", "]");
+    const lastLaneSwitch = consoleOutput.join("\n").match(/\[Switching to thread \d+.\d+:\d+ \([A-Z]* \d+.\d+.\d+.\d+ lane \d+\)]/gm)?.pop();
+    const lastLaneSwitchId = GetStringBetweenStrings(lastLaneSwitch as string, "lane ", ")]");
     const currentThread = await GetCurrentThread() as Thread;
 
     assert.strictEqual(currentThread.simdLanes.find(x => x.current)?.laneId, Number(lastLaneSwitchId), "Current lane is not marked as current in OneAPI GPU threads view");
@@ -485,7 +493,8 @@ async function CheckIfGpuThreadsViewContainsExpectedInfo() {
     const laneIDs = elements.length === 2 ?
         Array.from({ length: (elements[1] - elements[0]) + 1 }, (_, index) => elements[0] + index) :
         [ elements[0] as number ];
-    const threadId = Number((lastBreakpointHit.match(/(?<=\.)(.*)(?= hit)/gm) as string[])[0]) + 2;
+    const bpinfo = await GetCallStackInfo();
+    const threadId = Number(GetStringBetweenStrings(bpinfo, "[", "]"));
 
     laneIDs.forEach((v) => {
         assert.strictEqual(currentThread.simdLanes[v].state, "Hit", `Lane '${v}' of thread '${threadId}' isn't marked as 'Hit'`);
@@ -505,7 +514,7 @@ async function GetLaneIdFromView(pane: LaneContainingPane) {
             return laneNumberParsed;
         }, 60 * 1000, true) as number;
     case "DebugConsole":
-        return Number(GetStringBetweenStrings((await GetDebugConsoleOutput()).reverse().find(x => x.includes("Switching to Thread")) as string, "lane ", "]"));
+        return Number(GetStringBetweenStrings((await GetDebugConsoleOutput()).reverse().find(x => x.includes("Switching to thread")) as string, "lane ", ")]"));
     case "oneAPI GPU Threads Section":
         return (await GetCurrentThread())?.simdLanes.find(x => x.current)?.laneId as number;
     }
