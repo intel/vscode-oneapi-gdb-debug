@@ -60,6 +60,6 @@ export type ConditionalBreakpoint = {
 /**
  * Possible debug panes.
  */
-export type DebugPane = "Breakpoints Section" | `${OneApiDebugPane}`;
+export type DebugPane = "Breakpoints Section" | "Call Stack Section" | `${OneApiDebugPane}`;
 
 // #endregion
