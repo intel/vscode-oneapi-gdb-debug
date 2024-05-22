@@ -84,27 +84,24 @@ async function RefreshSimdDataTest(): Promise<void> {
         await SetInputText("> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);
 
-        const consoleOutput = (await GetDebugConsoleOutput())
-            .filter(x => x.includes("[Switching to Thread") || x.includes(`at ${DEFAULT_BREAKPOINT.fileName}:${DEFAULT_BREAKPOINT.lineNumber}`)).join(" ");
+        const debugConsoleOutput = await GetDebugConsoleOutput();
+        const consoleOutput = debugConsoleOutput
+            .filter(x => x.includes("[Switching to thread") || x.includes(`at ${DEFAULT_BREAKPOINT.fileName}:${DEFAULT_BREAKPOINT.lineNumber}`)).join(" ");
         const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
-        const gpuThreadsViewContent = await Retry(async() => {
-            const content = await GetDebugPaneContent(OneApiDebugPane.OneApiGpuThreads);
-
-            assert.isNotEmpty(content);
-            return content;
-        }, 20 * 1000) as string[];
+        const gpuThreads = await GetGpuThreads();
+        const currentgpuThread = gpuThreads.find(x => x.simdLanes.find(y => y.current))?.threadId;
         const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
         const selectedLaneViewContent = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
-        const currentThreadId = GetStringBetweenStrings(consoleOutput, ".", " lane");
-        const currentThreadLane = GetStringBetweenStrings(consoleOutput, "lane ", "]");
+        const bpinfo = await GetCallStackInfo();
+        const currentThreadId = Number(GetStringBetweenStrings(bpinfo, "[", "]"));
+        const currentThreadLane = GetStringBetweenStrings(consoleOutput, "lane ", ")]");
         const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
-        const currentgpuThread = gpuThreadsViewContent[gpuThreadsViewContent.indexOf("⇨") - 2];
 
         assert.include(hwInfoViewContent, `Name: ${deviceName}`, `Device name doesn't match.\nExpected: '${deviceName}'\nto be included in ${hwInfoViewContent}`);
         logger.Pass(`Device name matches. Actual: ${deviceName}`);
         assert.include(selectedLaneViewContent, `Lane Number: ${currentThreadLane}`, `Lane number doesn't match.\nExpected: ${currentThreadLane}\nto be included in ${selectedLaneViewContent}`);
         logger.Pass(`Lane number matches. Actual: ${currentThreadLane}`);
-        assert.include(currentgpuThread, `.${currentThreadId}`, `Current thread doesn't match.\nExpected: ${currentThreadId}\nto be included in ${currentgpuThread}`);
+        assert.equal(currentThreadId, currentgpuThread, `Current thread doesn't match.\nExpected: ${currentThreadId}\nto be included in ${currentgpuThread}`);
         logger.Pass(`Current thread matches. Actual: ${currentgpuThread}`);
     } catch (e) {
         logger.Error(e);
@@ -587,4 +584,27 @@ async function ExecuteInOneApiDebugPaneFrame<TResult>(body: (driver: WebDriver) 
     }
 
     return result as TResult;
+}
+
+async function GetCallStackInfo(): Promise<string> {
+    await Wait(2000);
+    const pane = await GetDebugPane("Call Stack Section");
+    const paneViewClass = await pane?.getAttribute("class");
+
+    if (!paneViewClass?.includes("expanded")) {
+        await pane?.click();
+    }
+    const paneContent = await pane?.findElement(By.xpath("following-sibling::*"));
+    const rows = await paneContent?.findElements(By.className("monaco-list-row"));
+    let bpinfo = "";
+
+    for (const row of rows as WebElement[]) {
+        bpinfo = await row.getAttribute("aria-label");
+
+        if (bpinfo.includes("Paused on breakpoint")) {
+            break;
+        }
+    }
+
+    return bpinfo;
 }
