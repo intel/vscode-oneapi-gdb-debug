@@ -124,12 +124,14 @@ async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperty): Pro
         let currentIteration = 1;
 
         while (currentIteration < threadsNumber) {
+            const callstackBpInfo = await GetCallStackInfo();
+            const callStackThreadId = ` Gpu thread id: ${GetStringBetweenStrings(callstackBpInfo, "[", "]")}`;
             const bpInfoLines = (await GetDebugConsoleOutput())
                 .filter(x => x.includes(`at ${DEFAULT_BREAKPOINT.fileName}:${DEFAULT_BREAKPOINT.lineNumber}`));
-            const bpInfoLine = bpInfoLines.pop() as string;
+            const bpInfoLine = bpInfoLines.pop() as string + callStackThreadId;
             const currentThread = (await GetGpuThreads()).find(x => x.simdLanes.find(y => y.current)) as Thread;
             const properties = {
-                "Id": `${currentThread.threadId - 2}`,
+                "Id": `Gpu thread id: ${currentThread.threadId}`,
                 "Location": currentThread.location
             };
 
