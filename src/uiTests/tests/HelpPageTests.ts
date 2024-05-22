@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ExecuteInIFrame, GetNotifications, SetInputText, Wait } from "../utils/CommonFunctions";
+import { ExecuteInIFrame, GetNotificationActions, GetNotifications, SetInputText, TakeNotificationAction, Wait } from "../utils/CommonFunctions";
 import { By, EditorView, NotificationType, Workbench } from "vscode-extension-tester";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { NotificationPopup } from "../utils/Types";
@@ -19,7 +19,7 @@ export default function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOnlineHelpTest();
         });
-        it.skip("Check offline help page", async function() {
+        it("Check offline help page", async function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOfflineHelpPageTest();
         });
@@ -44,22 +44,33 @@ async function CheckOnlineHelpTest(): Promise<void> {
             const message = await notification.getMessage();
 
             if (message === onlineHelpNotification.message) {
-                const actions = await notification.getActions();
+                const actions = await GetNotificationActions(notification);
 
                 logger.Info("Count firefox processes");
                 const initCount = await ProcessStart("ps aux | grep firefox | wc -l");
-                const title = await actions[0].getTitle();
+                const title = await actions[0].getText();
 
                 assert.equal(title, onlineHelpNotification.installButton, `Open button doesn't exists. Actual: '${title}' | Expected: '${onlineHelpNotification.installButton}'`);
                 logger.Pass(`Open button exists. Button: '${title}'`);
-                await notification.takeAction(onlineHelpNotification.installButton);
-                const popupOpenButton = await new Workbench().getDriver().switchTo().activeElement();
-                const popup = await popupOpenButton.findElement(By.xpath("./../../.."));
+                await TakeNotificationAction(notification, onlineHelpNotification.installButton);                   
+                const popup = await new Workbench().getDriver().findElement(By.className("monaco-dialog-box"));
+
+                await Wait(2 * 1000);
                 const linkWebElement = await popup.findElement(By.id("monaco-dialog-message-detail"));
                 const link = await linkWebElement.getText();
+                const popupButtons = await popup.findElements(By.className("monaco-button monaco-text-button"));
+                const popupOpenButton = await (async() => {
+                    for (const button of popupButtons) {
+                        const name = await button.getText();
+
+                        if (name === "Open") { return button; }
+                    }
+                    throw new Error("Can't find 'Open' button");
+                })();
 
                 assert.isTrue(link && link.startsWith("https:"), `Documentation url has not been found. Actual: '${link && link.startsWith("https:")}' | Expected: 'true'`);
                 logger.Pass(`Documentation url has been found. Url: ${link}`);
+                await Wait(2 * 1000);
                 await popupOpenButton.click();
                 await Wait(2 * 1000);
                 const currentCount = await ProcessStart("ps aux | grep firefox | wc -l");

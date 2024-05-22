@@ -185,6 +185,35 @@ export async function GetNotifications(type: NotificationType): Promise<Notifica
 }
 
 /**
+ * Gets all actions related to given notifiaction object.
+ * @param notification Notification to get actions from
+ * @returns Actions as an array of WebElements.
+ */
+export async function GetNotificationActions(notification: Notification): Promise<WebElement[]> {
+    return await notification.findElement(By.className("notification-list-item-buttons-container")).findElements(By.className("monaco-button monaco-text-button"));
+}
+
+/**
+ * Performs action on fiven notification.
+ * @param notification Notification to perform action on.
+ * @param actionToTake Action to perform.
+ */
+export async function TakeNotificationAction(notification: Notification, actionToTake: string): Promise<void> {
+    const actions = await GetNotificationActions(notification);
+
+    for (const action of actions) {
+        const title = await action.getText();
+
+        if (title === actionToTake) {
+            await action.click();
+            return;
+        }
+    }
+
+    throw new Error(`Can't find '${actionToTake}' action`);
+}
+
+/**
  * 
  * @param body Function to execute inside given iframe.
  * @param frame Frame to switch to
