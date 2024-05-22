@@ -4,7 +4,7 @@
  */
 
 import { NotificationType } from "vscode-extension-tester";
-import { GetExtensionsSection, GetNotifications, Retry, SetInputText, UninstallExtension, Wait } from "../utils/CommonFunctions";
+import { GetExtensionsSection, GetNotificationActions, GetNotifications, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { assert } from "chai";
 import { NotificationPopup } from "../utils/Types";
@@ -54,13 +54,13 @@ async function InstallExtensionFromNotificationTest(expectedNotification: Notifi
             const message = await notification.getMessage();
 
             if (message === expectedNotification.message) {
-                const actions = await notification.getActions();
-                const title = await actions[0].getTitle();
+                const actions = await GetNotificationActions(notification);
+                const title = await actions[0].getText();
 
                 assert.strictEqual(title, expectedNotification.installButton, `Install button doesn't exists. Actual: '${title}' | Expected: '${expectedNotification.installButton}'`);
                 logger.Pass(`Install button exists. Button: ${title}`);
 
-                await notification.takeAction(expectedNotification.installButton);
+                await TakeNotificationAction(notification, expectedNotification.installButton);
                 await Retry(async() => {
                     await Wait(1000);
                     const extensionsView = await GetExtensionsSection("Installed");
