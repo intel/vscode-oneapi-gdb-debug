@@ -359,9 +359,7 @@
         "pretest": "npm run compile",
         "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
         "package": "vsce package",
-        "installReporter": "cd src/uiTests/utils/mocha-junit-reporter && npm install",
-        "prebasic-ui-tests": "npm run installReporter",
-        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -c 1.85.2"
+        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources"
     },
     "devDependencies": {
         "@types/chai": "^4.3.16",
