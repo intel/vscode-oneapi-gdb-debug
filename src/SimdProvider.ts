@@ -131,94 +131,98 @@ export class SimdProvider {
         await vscode.window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
             () => vscode.window.withProgress(
-                { location: { viewId: "intelOneAPI.debug.selectedLane" } },
-                async() => {
-                    try {
-                        const session = vscode.debug.activeDebugSession;
+                { location: { viewId: "intelOneAPI.debug.threadInfoLane" } },
+                async() => vscode.window.withProgress(
+                    { location: { viewId: "intelOneAPI.debug.selectedLane" } },
+                    async() => {
+                        try {
+                            const session = vscode.debug.activeDebugSession;
 
-                        if (session) {
-                            await session.customRequest("threads");
-                            const evalResult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
+                            if (session) {
+                                await session.customRequest("threads");
+                                const evalResult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
 
-                            if (evalResult.result === "void") {
-                                return;
-                            }
-                            const masks: Emask[] = [];
-
-                            if (!/arch=intelgt/.test(evalResult.result)) {
-                                return;
-                            }
-                            const allThreads: string = evalResult.result.match(/\{id=\d+.*\}/g);
-                            const threadsById = allThreads.toString().split("{id=");
-                            const threadsArray = [];
-
-                            if (!threadsById) {
-                                return;
-                            }
-
-                            if (this._showInactiveThreads) {
-                                const threadsToAdd = allThreads.toString().split("{id=").filter(thread => thread.trim() !== "");
-
-                                threadsArray.push(...threadsToAdd);
-                            }
-                            else {
-                                for (const match of threadsById) {
-                                    if (!/arch=intelgt/.test(match)) {
-                                        continue;
-                                    }
-                                    threadsArray.push(match);
+                                if (evalResult.result === "void") {
+                                    return;
                                 }
-                            }
+                                const masks: Emask[] = [];
 
-                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                            threadsArray.forEach((t: string) => {
-                                const threadProperties = t.split(",");
-                                const propertiesObject = Object.fromEntries(threadProperties.map((property: string) => {
-                                    const split = property.split("=");
+                                if (!/arch=intelgt/.test(evalResult.result)) {
+                                    return;
+                                }
+                                const allThreads: string = evalResult.result.match(/\{id=\d+.*\}/g);
+                                const threadsById = allThreads.toString().split("{id=");
+                                const threadsArray = [];
 
-                                    return [split[0], split[1]];
-                                }));
-                                const threadWorkgroupIndex = threadProperties.findIndex((property) => property.includes("thread-workgroup"));
-                                const threadWorkgroup = threadProperties.slice(threadWorkgroupIndex, threadWorkgroupIndex + 3).join(",").split("=")[1];
-                                const parsedThreadWorkgroup = threadWorkgroup;
+                                if (!threadsById) {
+                                    return;
+                                }
+
+                                if (this._showInactiveThreads) {
+                                    const threadsToAdd = allThreads.toString().split("{id=").filter(thread => thread.trim() !== "");
+
+                                    threadsArray.push(...threadsToAdd);
+                                }
+                                else {
+                                    for (const match of threadsById) {
+                                        if (!/arch=intelgt/.test(match)) {
+                                            continue;
+                                        }
+                                        threadsArray.push(match);
+                                    }
+                                }
+
+                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                threadsArray.forEach((t: string) => {
+                                    const threadProperties = t.split(",");
+                                    const propertiesObject = Object.fromEntries(threadProperties.map((property: string) => {
+                                        const split = property.split("=");
+
+                                        return [split[0], split[1]];
+                                    }));
+                                    const threadWorkgroupIndex = threadProperties.findIndex((property) => property.includes("thread-workgroup"));
+                                    const threadWorkgroup = threadProperties.slice(threadWorkgroupIndex, threadWorkgroupIndex + 3).join(",").split("=")[1];
+                                    const parsedThreadWorkgroup = threadWorkgroup;
 
 
-                                masks.push({
-                                    fullname: propertiesObject.fullname,
-                                    file: propertiesObject.file,
-                                    line: propertiesObject.line,
-                                    targetId: this.threadsInfoArray[masks.length]?.name || propertiesObject["details"],
-                                    threadId: parseInt(threadProperties[0], 10),
-                                    executionMask: propertiesObject["execution-mask"],
-                                    hitLanesMask: propertiesObject["hit-lanes-mask"],
-                                    length: parseInt(propertiesObject["simd-width"], 10),
-                                    threadWorkgroup: parsedThreadWorkgroup,
+                                    masks.push({
+                                        fullname: propertiesObject.fullname,
+                                        file: propertiesObject.file,
+                                        line: propertiesObject.line,
+                                        targetId: this.threadsInfoArray[masks.length]?.name || propertiesObject["name"],
+                                        threadId: parseInt(threadProperties[0], 10),
+                                        executionMask: propertiesObject["execution-mask"],
+                                        hitLanesMask: propertiesObject["hit-lanes-mask"],
+                                        length: parseInt(propertiesObject["simd-width"], 10),
+                                        threadWorkgroup: parsedThreadWorkgroup,
+                                    });
                                 });
-                            });
-                            if (!masks.length) {
-                                return;
-                            }
-                            const currentThread = await getThread();
+                                if (!masks.length) {
+                                    return;
+                                }
+                                const currentThread = await getThread();
 
+                                this.simdViewProvider.waitForViewToBecomeVisible(() => {
+                                    this.simdViewProvider.setView(masks, currentThread);
+                                });
+                                this.findAndAddSimdBreakPoints();
+                            }
+                        } catch (error) {
                             this.simdViewProvider.waitForViewToBecomeVisible(() => {
-                                this.simdViewProvider.setView(masks, currentThread);
-                            });
-                            this.findAndAddSimdBreakPoints();
-                        }
-                    } catch (error) {
-                        this.simdViewProvider.waitForViewToBecomeVisible(() => {
                             // Handle errors in gdb requests: display error message in panel
-                            if (error instanceof Error) {
-                                this.simdViewProvider.setErrorView(error.message);
-                            } else {
-                                this.simdViewProvider.setErrorView(String(error));
-                            }
-                        });
+                                if (error instanceof Error) {
+                                    this.simdViewProvider.setErrorView(error.message);
+                                } else {
+                                    this.simdViewProvider.setErrorView(String(error));
+                                }
+                            });
 
+                        }
                     }
-                }
+                )
             )
         );
+        
     }
 
 

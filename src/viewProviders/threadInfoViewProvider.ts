@@ -13,8 +13,8 @@ import {
 } from "vscode";
 import { CurrentThread } from "../SimdProvider";
 
-export class SelectedLaneViewProvider implements WebviewViewProvider {
-    public static readonly viewType = "intelOneAPI.debug.selectedLane";
+export class ThreadInfoViewProvider implements WebviewViewProvider {
+    public static readonly viewType = "intelOneAPI.debug.threadInfo";
     public _view!: WebviewView;
     private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
 
@@ -75,7 +75,7 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <script type="module" src="${toolkitUri}"></script>
-          <title>Selected Lane Info</title>
+          <title>Thread Info</title>
         </head>
         <body>`;
 
@@ -93,32 +93,20 @@ export class SelectedLaneViewProvider implements WebviewViewProvider {
 
     public async setErrorView(errMsg: string) {
         try {
-            this._view.webview.html = this.htmlStart + "Error occured while getting Selected Lane Info: " + errMsg + this.htmlEnd;
+            this._view.webview.html = this.htmlStart + "Error occured while getting Thread Info: " + errMsg + this.htmlEnd;
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
         }
     }
 
-    public async setView(currentThread: CurrentThread, executionMask: string, metBPConditions: boolean | undefined){
-
-        let stateMsg = "Inactive";
-
-        if (metBPConditions !== undefined && !metBPConditions) {
-            stateMsg = "Active";
-        } else {
-            stateMsg = "Active - have met breakpoint conditions";
-        }
+    public async setView(currentThread: CurrentThread, hitLanesMask: string, length: number, metBPConditions: boolean | undefined){
         const table = `<table>
-            <tr><td>Lane Index: </td>
-            <td id="selectedLane">${currentThread.lane}</td></tr>
-            <tr><td>State: </td>
-            <td id="selectedMask">${stateMsg}</td></tr>
-            <tr><td>Work-item Global ID (x,y,z): </td>
-            <td id="workitemGlobalid">${currentThread.workitemGlobalid.toString()}</td></tr>
-            <tr><td>Work-item Local ID (x,y,z): </td>
-            <td id="workitemLocalid">${currentThread.workitemLocalid.toString()}</td></tr>
-            <tr><td>Execution Mask: </td>
-            <td id="selectedMask">${executionMask}</td></tr>
+            <tr><td>ID: </td>
+            <td id="threadID">${currentThread.threadId}</td></tr>
+            <tr><td>Active Lanes Mask: </td>
+            <td id="hitLanesMask">${metBPConditions ? hitLanesMask : "-"}</td></tr>
+            <tr><td>SIMD Width: </td>
+            <td id="width">${length}</td></tr>
         </table>`;
 
         try {

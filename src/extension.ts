@@ -8,6 +8,8 @@ import { LaunchConfigurator } from "./LaunchConfigurator";
 import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from "./UserHelp";
 import { SimdProvider } from "./SimdProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
+import { ThreadInfoViewProvider } from "./viewProviders/threadInfoViewProvider"
+
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SelectedLaneViewProvider } from "./viewProviders/selectedLaneViewProvider";
 
@@ -58,6 +60,14 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("The Windows and macOS operating systems are not currently supported by the \"GDB GPU Support for Intel® oneAPI Toolkits\" extension. Debugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft \"Remote\" extensions.");
     }
 
+    const threadInfoViewProvider = new ThreadInfoViewProvider(context.extensionUri);
+    const threadInfoViewDisposable = vscode.window.registerWebviewViewProvider(
+        ThreadInfoViewProvider.viewType,
+        threadInfoViewProvider
+    );
+
+    context.subscriptions.push(threadInfoViewDisposable);
+
     const selectedLaneViewProvider = new SelectedLaneViewProvider(context.extensionUri);
     const selectedLaneViewDisposable = vscode.window.registerWebviewViewProvider(
         SelectedLaneViewProvider.viewType,
@@ -66,7 +76,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(selectedLaneViewDisposable);
 
-    const simdViewProvider = new SIMDViewProvider(context.extensionUri, selectedLaneViewProvider);
+    const simdViewProvider = new SIMDViewProvider(context.extensionUri, threadInfoViewProvider, selectedLaneViewProvider);
     const simdViewDisposable = vscode.window.registerWebviewViewProvider(
         SIMDViewProvider.viewType,
         simdViewProvider

@@ -14,6 +14,7 @@ import {
     WebviewViewResolveContext,
 } from "vscode";
 import { CurrentThread, Emask, getThread } from "../SimdProvider";
+import { ThreadInfoViewProvider } from "./threadInfoViewProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
 
@@ -54,6 +55,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     constructor(private readonly _extensionUri: Uri,
+        private threadInfoViewProvider: ThreadInfoViewProvider,
         private selectedLaneViewProvider: SelectedLaneViewProvider) { }
 
     public async waitForViewToBecomeVisible(callback: () => void, checkInterval: number = 50) {
@@ -102,12 +104,12 @@ export class SIMDViewProvider implements WebviewViewProvider {
                         payload: JSON.stringify("triggerSearch")
                     });
                 } catch (error) {
-                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
                         // Handle errors in gdb requests: display error message in panel
                         if (error instanceof Error) {
-                            this.selectedLaneViewProvider.setErrorView(error.message);
+                            this.threadInfoViewProvider.setErrorView(error.message);
                         } else {
-                            this.selectedLaneViewProvider.setErrorView(String(error));
+                            this.threadInfoViewProvider.setErrorView(String(error));
                         }
                     });
                 }
@@ -165,7 +167,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         </html>`;
 
         this.simdView = `
-        <table id='simd-view'><tbody><tr><th>ThreadID</th><th>TargetID</th> <th>Location</th><th>Work-group<br>(x,y,z)</th>
+        <table id='simd-view'><tbody><tr><th>Thread ID</th><th>Target ID</th><th>Location</th><th>Work-group<br>(x,y,z)</th>
         <th>SIMD Lanes <span class="tooltip"><span class="info-icon">i</span>
         <div class="tooltiptext">
                 <table>
@@ -195,10 +197,15 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     public async setLoadingView() {
         try {
+            this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                this.threadInfoViewProvider.setLoadingView();
+            });
+
             this._view.webview.html = this.htmlStart + "<h4></h4>" + this.htmlEnd;
             this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                 this.selectedLaneViewProvider.setLoadingView();
             });
+
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
         }
@@ -220,10 +227,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.chosenLaneId = undefined;
         this._masks = masks;
         try {
+            this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                this.threadInfoViewProvider.setLoadingView();
+            });
             // Synchronously updates the 'selectedLaneViewProvider' panel each time 'simdViewProvider.setView' is called
             this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                 this.selectedLaneViewProvider.setLoadingView();
             });
+
             this._view.webview.html = this.htmlStart + await this.getThreadsView(masks, currentThread) + this.htmlEnd;
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
@@ -243,17 +254,29 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 this.chosenLaneId = `{"lane": ${currentThread.lane}, "targetId": "${m.targetId}", "threadId": ${m.threadId}, "executionMask": "${m.executionMask}", "hitLanesMask": "${m.hitLanesMask}", "length": ${m.length}}`;
                 try {
                     await commands.executeCommand("setContext", "oneapi:haveSelected", true);
+                    let metBPConditions: boolean | undefined = undefined;
+
+                    if( m.hitLanesMask !== undefined ) {
+                        metBPConditions = m.hitLanesMask !== "undefined" ? true : false;
+                    }
+
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                        this.threadInfoViewProvider.setLoadingView();
+                        this.threadInfoViewProvider.setView(currentThread, m.hitLanesMask, m.length, metBPConditions);
+                    });
+
+
                     this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                         this.selectedLaneViewProvider.setLoadingView();
-                        this.selectedLaneViewProvider.setView(currentThread, m.executionMask, m.hitLanesMask, m.length);
+                        this.selectedLaneViewProvider.setView(currentThread, m.executionMask, metBPConditions);
                     });
                 } catch (error) {
-                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
                         // Handle errors in gdb requests: display error message in panel
                         if (error instanceof Error) {
-                            this.selectedLaneViewProvider.setErrorView(error.message);
+                            this.threadInfoViewProvider.setErrorView(error.message);
                         } else {
-                            this.selectedLaneViewProvider.setErrorView(String(error));
+                            this.threadInfoViewProvider.setErrorView(String(error));
                         }
                     });
                 }
@@ -326,6 +349,9 @@ export class SIMDViewProvider implements WebviewViewProvider {
         this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
             this.selectedLaneViewProvider.setLoadingView();
         });
+        this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+            this.threadInfoViewProvider.setLoadingView();
+        });
         this._view.webview.html = this.htmlStart + this.searchPanel + await this.getThreadsView(masks) + this.htmlEnd;
     }
 
@@ -364,36 +390,55 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                         this.selectedLaneViewProvider.setLoadingView();
                     });
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                        this.threadInfoViewProvider.setLoadingView();
+                    });
                     await window.withProgress(
-                        { location: { viewId: "intelOneAPI.debug.selectedLane" } },
+                        { location: { viewId: ThreadInfoViewProvider.viewType } },
                         async() => {
-                            try {
-                                webviewView.webview.postMessage({
-                                    command: "changeLane",
-                                    payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
-                                });
-                                this.chosenLaneId = message.payload;
-                                const parsedMessage = JSON.parse(message.payload);
-                                const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane,10));
+                            await window.withProgress(
+                                { location: { viewId: SelectedLaneViewProvider.viewType } },
+                                async() => {
+                                    try {
+                                        webviewView.webview.postMessage({
+                                            command: "changeLane",
+                                            payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
+                                        });
+                                        this.chosenLaneId = message.payload;
+                                        const parsedMessage = JSON.parse(message.payload);
+                                        const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane,10));
 
-                                if (!currentThread) {
-                                    await commands.executeCommand("setContext", "oneapi:haveSelected", false);
-                                    return;
-                                }
+                                        if (!currentThread) {
+                                            await commands.executeCommand("setContext", "oneapi:haveSelected", false);
+                                            return;
+                                        }
 
-                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                    this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, parsedMessage.hitLanesMask, parsedMessage.length);
-                                });
-                            } catch (error) {
-                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                    // Handle errors in gdb requests: display error message in panel
-                                    if (error instanceof Error) {
-                                        this.selectedLaneViewProvider.setErrorView(error.message);
-                                    } else {
-                                        this.selectedLaneViewProvider.setErrorView(String(error));
+                                        let metBPConditions: boolean | undefined = undefined;
+
+                                        if( parsedMessage.hitLanesMask !== undefined ) {
+                                            metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
+                                        }
+
+                                        this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                                            this.threadInfoViewProvider.setView(currentThread, parsedMessage.hitLanesMask, parsedMessage.length, metBPConditions);
+                                        });
+
+                                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                            this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, metBPConditions);
+                                        });
+
+                                    } catch (error) {
+                                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                            // Handle errors in gdb requests: display error message in panel
+                                            if (error instanceof Error) {
+                                                this.selectedLaneViewProvider.setErrorView(error.message);
+                                            } else {
+                                                this.selectedLaneViewProvider.setErrorView(String(error));
+                                            }
+                                        });
                                     }
-                                });
-                            }
+                                }
+                            );
                         }
                     );
                 }

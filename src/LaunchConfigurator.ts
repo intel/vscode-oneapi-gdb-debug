@@ -217,7 +217,7 @@ export class LaunchConfigurator {
 
                     configuration.update("DISABLE_ONEAPI_ENV_NOTIFICATION", true, vscode.ConfigurationTarget.Global) 
                         .then(() => vscode.window.showInformationMessage("Environment notification is disabled."),
-                            (error) => vscode.window.showErrorMessage(`Error updating DISABLE_ONEAPI_ENV_NOTIFICATION: ${error}`));
+                            (error) => vscode.window.showErrorMessage(`Error disabling oneAPI environment extension notification: ${error}`));
                 }
             }
         }
@@ -243,7 +243,7 @@ export class LaunchConfigurator {
 
                 configuration.update("DISABLE_ONEAPI_GDB_PATH_NOTIFICATION", true, vscode.ConfigurationTarget.Global) 
                     .then(() => vscode.window.showInformationMessage("gdb-oneapi check is disabled."),
-                        (error) => vscode.window.showErrorMessage(`Error updating DISABLE_ONEAPI_GDB_PATH_NOTIFICATION: ${error}`));
+                        (error) => vscode.window.showErrorMessage(`Error disabling gdb-oneapi check notification: : ${error}`));
             }
         }
     }
