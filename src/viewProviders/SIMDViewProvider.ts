@@ -28,6 +28,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     public _view!: WebviewView;
     private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
     private _masks!: Emask[];
+    private _currentThread: CurrentThread | undefined
 
     private htmlStart = "";
     private htmlEnd = "";
@@ -97,7 +98,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         await window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
-            async() => {
+            async () => {
                 try {
                     this._view.webview.postMessage({
                         command: "triggerSearch",
@@ -223,7 +224,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return webview.asWebviewUri(Uri.joinPath(extensionUri, ...pathList));
     }
 
-    public async setView(masks: Emask[], currentThread?: CurrentThread){
+    public async setView(masks: Emask[], currentThread?: CurrentThread) {
         this.chosenLaneId = undefined;
         this._masks = masks;
         try {
@@ -234,14 +235,14 @@ export class SIMDViewProvider implements WebviewViewProvider {
             this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                 this.selectedLaneViewProvider.setLoadingView();
             });
-
+            this._currentThread = currentThread;
             this._view.webview.html = this.htmlStart + await this.getThreadsView(masks, currentThread) + this.htmlEnd;
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
         }
     }
 
-    private async getThreadsView(masks: Emask[], currentThread?: CurrentThread){
+    private async getThreadsView(masks: Emask[], currentThread?: CurrentThread) {
         let upd = this.searchPanel + this.simdView;
         const currentLaneTable = "";
 
@@ -256,7 +257,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     await commands.executeCommand("setContext", "oneapi:haveSelected", true);
                     let metBPConditions: boolean | undefined = undefined;
 
-                    if( m.hitLanesMask !== undefined ) {
+                    if (m.hitLanesMask !== undefined) {
                         metBPConditions = m.hitLanesMask !== "undefined" ? true : false;
                     }
 
@@ -345,7 +346,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         return groupedCells;
     }
 
-    public async updateView(masks: Emask[]){
+    public async updateView(masks: Emask[]) {
         this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
             this.selectedLaneViewProvider.setLoadingView();
         });
@@ -356,96 +357,95 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private async _setWebviewMessageListener(webviewView: WebviewView) {
-        webviewView.webview.onDidReceiveMessage(async(message: { command: string; payload: string }) => {
+        webviewView.webview.onDidReceiveMessage(async (message: { command: string; payload: string }) => {
             const command = message.command;
 
             switch (command) {
-            case "change":
-                {
-                    this.waitForViewToBecomeVisible(() => {
-                        this.setLoadingView();
-                    });
-                    await this.setLoadingView();
-                    try {
-                        await window.withProgress(
-                            { location: { viewId: "intelOneAPI.debug.simdview" } },
-                            () => this.updateView(this._masks)
-                        );
-                    } catch (error) {
+                case "change":
+                    {
                         this.waitForViewToBecomeVisible(() => {
-                            // Handle errors in gdb requests: display error message in panel
-                            if (error instanceof Error) {
-                                this.setErrorView(error.message);
-                            } else {
-                                this.setErrorView(String(error));
-                            }
+                            this.setLoadingView();
                         });
-                    }
-                }
-                break;
-
-            case "changeLane":
-                {
-                    await commands.executeCommand("setContext", "oneapi:haveSelected", true);
-                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                        this.selectedLaneViewProvider.setLoadingView();
-                    });
-                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
-                        this.threadInfoViewProvider.setLoadingView();
-                    });
-                    await window.withProgress(
-                        { location: { viewId: ThreadInfoViewProvider.viewType } },
-                        async() => {
+                        await this.setLoadingView();
+                        try {
                             await window.withProgress(
-                                { location: { viewId: SelectedLaneViewProvider.viewType } },
-                                async() => {
-                                    try {
-                                        webviewView.webview.postMessage({
-                                            command: "changeLane",
-                                            payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
-                                        });
-                                        this.chosenLaneId = message.payload;
-                                        const parsedMessage = JSON.parse(message.payload);
-                                        const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane,10));
-
-                                        if (!currentThread) {
-                                            await commands.executeCommand("setContext", "oneapi:haveSelected", false);
-                                            return;
-                                        }
-
-                                        let metBPConditions: boolean | undefined = undefined;
-
-                                        if( parsedMessage.hitLanesMask !== undefined ) {
-                                            metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
-                                        }
-
-                                        this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
-                                            this.threadInfoViewProvider.setView(currentThread, parsedMessage.hitLanesMask, parsedMessage.length, metBPConditions);
-                                        });
-
-                                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                            this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, metBPConditions);
-                                        });
-
-                                    } catch (error) {
-                                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                            // Handle errors in gdb requests: display error message in panel
-                                            if (error instanceof Error) {
-                                                this.selectedLaneViewProvider.setErrorView(error.message);
-                                            } else {
-                                                this.selectedLaneViewProvider.setErrorView(String(error));
-                                            }
-                                        });
-                                    }
-                                }
+                                { location: { viewId: "intelOneAPI.debug.simdview" } },
+                                () => this.updateView(this._masks)
                             );
+                        } catch (error) {
+                            this.waitForViewToBecomeVisible(() => {
+                                // Handle errors in gdb requests: display error message in panel
+                                if (error instanceof Error) {
+                                    this.setErrorView(error.message);
+                                } else {
+                                    this.setErrorView(String(error));
+                                }
+                            });
                         }
-                    );
-                }
-                break;
+                    }
+                    break;
 
-            default:
-                break;
+                case "changeLane":
+                    {
+                        await commands.executeCommand("setContext", "oneapi:haveSelected", true);
+                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                            this.selectedLaneViewProvider.setLoadingView();
+                        });
+                        this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                            this.threadInfoViewProvider.setLoadingView();
+                        });
+                        await window.withProgress(
+                            { location: { viewId: ThreadInfoViewProvider.viewType } },
+                            async () => {
+                                try {
+                                    webviewView.webview.postMessage({
+                                        command: "changeLane",
+                                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
+                                    });
+                                    this.chosenLaneId = message.payload;
+                                    const parsedMessage = JSON.parse(message.payload);
+                                    const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane, 10));
+
+                                    if (!currentThread) {
+                                        await commands.executeCommand("setContext", "oneapi:haveSelected", false);
+                                        return;
+                                    }
+
+                                    let metBPConditions: boolean | undefined = undefined;
+                                    if (parsedMessage.hitLanesMask !== undefined) {
+
+                                        metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
+                                    }
+
+                                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                                        this.threadInfoViewProvider.setView(currentThread, parsedMessage.hitLanesMask, parsedMessage.length, metBPConditions);
+                                    });
+                                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                        this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, metBPConditions);
+                                    });
+
+                                    if (!this._currentThread || this._currentThread.threadId !== currentThread.threadId) {
+                                        this._currentThread = currentThread;
+                                        commands.executeCommand("intelOneAPI.watchPanel.fetchSimdWatchPanel");
+                                    }
+                                } catch (error) {
+                                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                        // Handle errors in gdb requests: display error message in panel
+                                        if (error instanceof Error) {
+                                            this.selectedLaneViewProvider.setErrorView(error.message);
+                                        } else {
+                                            this.selectedLaneViewProvider.setErrorView(String(error));
+                                        }
+                                    }
+                                    );
+                                }
+                            }
+                        );
+                    }
+                    break;
+
+                default:
+                    break;
             }
         });
         webviewView.onDidChangeVisibility(() => {

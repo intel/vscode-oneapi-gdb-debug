@@ -7,11 +7,12 @@ import * as vscode from "vscode";
 import { LaunchConfigurator } from "./LaunchConfigurator";
 import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from "./UserHelp";
 import { SimdProvider } from "./SimdProvider";
+import { SIMDWatchProvider } from "./SimdWatchProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
 import { ThreadInfoViewProvider } from "./viewProviders/threadInfoViewProvider"
-
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SelectedLaneViewProvider } from "./viewProviders/selectedLaneViewProvider";
+import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";
 
 function checkExtensionsConflict() {
     // The function of generating a launcher configuration from an deprecated extension conflicts with the same function from the current one.
@@ -60,6 +61,16 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showWarningMessage("The Windows and macOS operating systems are not currently supported by the \"GDB GPU Support for Intel® oneAPI Toolkits\" extension. Debugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft \"Remote\" extensions.");
     }
 
+    const simdWatchViewProvider = new SIMDWatchViewProvider(context.extensionUri, context);
+    const simdWatchViewDisposable = vscode.window.registerWebviewViewProvider(
+        SIMDWatchViewProvider.viewType,
+        simdWatchViewProvider
+    );
+
+    context.subscriptions.push(simdWatchViewDisposable);
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const simdWatchProvider = new SIMDWatchProvider(context, simdWatchViewProvider);
     const threadInfoViewProvider = new ThreadInfoViewProvider(context.extensionUri);
     const threadInfoViewDisposable = vscode.window.registerWebviewViewProvider(
         ThreadInfoViewProvider.viewType,
@@ -73,6 +84,9 @@ export function activate(context: vscode.ExtensionContext): void {
         SelectedLaneViewProvider.viewType,
         selectedLaneViewProvider
     );
+
+    // Init SimdWatch panel
+    simdWatchProvider.fetchSimdWatchPanel();
 
     context.subscriptions.push(selectedLaneViewDisposable);
 
@@ -105,7 +119,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(deviceViewDisposable);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider);
+    const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider, simdWatchProvider);
 
     simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
 
@@ -176,4 +190,3 @@ export function activate(context: vscode.ExtensionContext): void {
             });
     }
 }
- 

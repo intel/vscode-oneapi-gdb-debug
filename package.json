@@ -70,6 +70,21 @@
                 "icon": "$(extensions-refresh)"
             },
             {
+                "command": "intelOneAPI.watchPanel.expresionInput",
+                "title": "Intel oneAPI: Add SIMD Watch",
+                "icon": "$(add)"
+            },
+            {
+                "command": "intelOneAPI.watchPanel.clearWatchPanel",
+                "title": "Intel oneAPI: Clear All SIMD Watches",
+                "icon": "$(clear-all)"
+            },
+            {
+                "command": "intelOneAPI.watchPanel.fetchSimdWatchPanel",
+                "title": "Intel oneAPI: Refresh SIMD Watch",
+                "icon": "$(extensions-refresh)"
+            },
+            {
                 "command": "intelOneAPI.debug.makeBreak",
                 "title": "Intel oneAPI: Add SIMD lane conditional breakpoint",
                 "icon": "$(debug-restart)"
@@ -117,6 +132,11 @@
                     "when": "oneapi:haveSelected"
                 },
                 {
+                    "id": "intelOneAPI.watchPanel.simdWatchView",
+                    "type": "webview",
+                    "name": "SIMD Variable Watch"
+                },
+                {
                     "id": "intelOneAPI.debug.threadInfo",
                     "type": "webview",
                     "name": "Thread Info",
@@ -126,6 +146,21 @@
         },
         "menus": {
             "view/title": [
+                {
+                    "command": "intelOneAPI.watchPanel.expresionInput",
+                    "when": "view == intelOneAPI.watchPanel.simdWatchView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "intelOneAPI.watchPanel.clearWatchPanel",
+                    "when": "view == intelOneAPI.watchPanel.simdWatchView",
+                    "group": "navigation"
+                },
+                {
+                    "command": "intelOneAPI.watchPanel.fetchSimdWatchPanel",
+                    "when": "view == intelOneAPI.watchPanel.simdWatchView",
+                    "group": "navigation"
+                },
                 {
                     "command": "intelOneAPI.debug.fetchSIMDInfo",
                     "when": "view == intelOneAPI.debug.simdview",

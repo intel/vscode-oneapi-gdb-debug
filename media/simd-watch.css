@@ -1,0 +1,311 @@
+html {
+    min-height: 100%;
+}
+
+body {
+    background-color: transparent;
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+.hidden {
+    display: none;
+}
+
+#simd-watch {
+    border: none;
+    border-collapse: collapse;
+    border-spacing: 0;
+    min-width: 100%;
+}
+
+.row, .header {
+    font-family: var(--vscode-editor-font-family);
+    line-height: 22px;
+}
+
+/* Hide header by default. */
+#simd-watch .header {
+    display: none;
+    background-color: var(--vscode-sideBar-background);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+/* But show it if there is at least one "available". */
+#simd-watch:has(.available) .header {
+    display: table-row;
+}
+
+/* Row hover */
+.row:hover .cell {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+/* Column hovering. Skip #1 column, as it is expression. */
+#simd-watch:has(td.value:nth-child(2):hover, th.lane:nth-child(2):hover) col:nth-child(2),
+#simd-watch:has(td.value:nth-child(3):hover, th.lane:nth-child(3):hover) col:nth-child(3),
+#simd-watch:has(td.value:nth-child(4):hover, th.lane:nth-child(4):hover) col:nth-child(4),
+#simd-watch:has(td.value:nth-child(5):hover, th.lane:nth-child(5):hover) col:nth-child(5),
+#simd-watch:has(td.value:nth-child(6):hover, th.lane:nth-child(6):hover) col:nth-child(6),
+#simd-watch:has(td.value:nth-child(7):hover, th.lane:nth-child(7):hover) col:nth-child(7),
+#simd-watch:has(td.value:nth-child(8):hover, th.lane:nth-child(8):hover) col:nth-child(8),
+#simd-watch:has(td.value:nth-child(9):hover, th.lane:nth-child(9):hover) col:nth-child(9),
+#simd-watch:has(td.value:nth-child(10):hover, th.lane:nth-child(10):hover) col:nth-child(10),
+#simd-watch:has(td.value:nth-child(11):hover, th.lane:nth-child(11):hover) col:nth-child(11),
+#simd-watch:has(td.value:nth-child(12):hover, th.lane:nth-child(12):hover) col:nth-child(12),
+#simd-watch:has(td.value:nth-child(13):hover, th.lane:nth-child(13):hover) col:nth-child(13),
+#simd-watch:has(td.value:nth-child(14):hover, th.lane:nth-child(14):hover) col:nth-child(14),
+#simd-watch:has(td.value:nth-child(15):hover, th.lane:nth-child(15):hover) col:nth-child(15),
+#simd-watch:has(td.value:nth-child(16):hover, th.lane:nth-child(16):hover) col:nth-child(16),
+#simd-watch:has(td.value:nth-child(17):hover, th.lane:nth-child(17):hover) col:nth-child(17),
+#simd-watch:has(td.value:nth-child(18):hover, th.lane:nth-child(18):hover) col:nth-child(18),
+#simd-watch:has(td.value:nth-child(19):hover, th.lane:nth-child(19):hover) col:nth-child(19),
+#simd-watch:has(td.value:nth-child(20):hover, th.lane:nth-child(20):hover) col:nth-child(20),
+#simd-watch:has(td.value:nth-child(21):hover, th.lane:nth-child(21):hover) col:nth-child(21),
+#simd-watch:has(td.value:nth-child(22):hover, th.lane:nth-child(22):hover) col:nth-child(22),
+#simd-watch:has(td.value:nth-child(23):hover, th.lane:nth-child(23):hover) col:nth-child(23),
+#simd-watch:has(td.value:nth-child(24):hover, th.lane:nth-child(24):hover) col:nth-child(24),
+#simd-watch:has(td.value:nth-child(25):hover, th.lane:nth-child(25):hover) col:nth-child(25),
+#simd-watch:has(td.value:nth-child(26):hover, th.lane:nth-child(26):hover) col:nth-child(26),
+#simd-watch:has(td.value:nth-child(27):hover, th.lane:nth-child(27):hover) col:nth-child(27),
+#simd-watch:has(td.value:nth-child(28):hover, th.lane:nth-child(28):hover) col:nth-child(28),
+#simd-watch:has(td.value:nth-child(29):hover, th.lane:nth-child(29):hover) col:nth-child(29),
+#simd-watch:has(td.value:nth-child(30):hover, th.lane:nth-child(30):hover) col:nth-child(30),
+#simd-watch:has(td.value:nth-child(31):hover, th.lane:nth-child(31):hover) col:nth-child(31),
+#simd-watch:has(td.value:nth-child(32):hover, th.lane:nth-child(32):hover) col:nth-child(32),
+#simd-watch:has(td.value:nth-child(33):hover, th.lane:nth-child(33):hover) col:nth-child(33) {
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.cell {
+    line-height: 22px;
+    text-align: center;
+    white-space: nowrap;
+    padding: 0;
+}
+
+/* Sticky first column. */
+.expression-cell,
+th.cell:first-child {
+    width: 1%;
+    text-align: left;
+    white-space: nowrap;
+    position: sticky;
+    left: 0px;
+}
+
+/* Sticky elements hovering.
+   Set background, as in some themes the hover background is transparent. */
+.expression-cell::before,
+.remove-cell::before,
+th.cell:first-child::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -2;
+    background: var(--vscode-sideBar-background);
+}
+
+/* Sticky elements hovering.
+   Set after element which will overlap the :before. */
+.row:hover .expression-cell::after,
+.row:hover .remove-cell::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-color: var(--vscode-list-hoverBackground);
+}
+
+.expression-cell {
+    padding-right: 4px;
+    z-index: 1; /* Required by tooltip to go on top header */
+}
+
+/* The whole cell is clickable if there is a tree. */
+.expression-cell:has(.tree) {
+    cursor: pointer;
+}
+
+/* Stackable indent */
+.level-indent {
+    margin: 0 2px 0 6px;
+    display: inline-block;
+}
+
+/* Draw a line-indent on hover. */
+html:hover .level-indent:before {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    top: 0;
+    border-left: 1px solid var(--vscode-tree-inactiveIndentGuidesStroke);
+}
+
+.expand-box {
+    width: 20px;
+    display: inline-block;
+    text-align: left;
+    position: relative;
+    cursor: pointer;
+}
+
+.tree {
+    width: 16px;
+    padding-right: 4px;
+    align-items: center;
+}
+
+.tree::before {
+    font-weight: 100;
+    content: ">";
+    display: inline-block;
+    padding: 0 6px;
+    transform: matrix(1.4, 0, 0, 1.1, 0, 0) rotate(90deg);
+}
+
+.tree.collapsed::before {
+    transform: matrix(1.2, 0, 0, 1.4, 0, -2);
+}
+
+.expression {
+    display: inline-block;
+    color: var(--vscode-debugTokenExpression-name);
+    text-align: left;
+}
+
+/* Expression input */
+.input-row .expression-cell {
+    padding-left: 20px; /* empty space fitting the tree element. */
+}
+
+.expression-input, .expression-input:focus {
+    background-color: var(--vscode-input-background);
+    border: 1px solid;
+    border-radius: 2px;
+    border-color: var(--vscode-inputOption-activeBorder);
+    color: var(--vscode-input-foreground);
+    outline: none;
+    line-height: 20px;
+    font-family: inherit;
+}
+
+.expression-input::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+    font-family: inherit;
+}
+
+/* Value cells. */
+
+.value, th.lane {
+    padding: 0 4px;
+}
+
+.value {
+    color: var(--vscode-debugTokenExpression-value);
+}
+
+.value.empty {
+    padding: 0; /* empty cells do not take space */
+}
+
+.value.number {
+    color: var(--vscode-debugTokenExpression-number);
+}
+
+.value.bool {
+    color: var(--vscode-debugTokenExpression-boolean);
+}
+
+.unavailable {
+    font-style: italic;
+    text-align: left;
+    max-width: 0; /* let the unavailable cell to overflow. */
+}
+
+/* Hover has to appear even if we hover directly over the remove-cell,
+   e.g., from below or above the remove cell. */
+.row .remove-cell {
+    opacity: 0;
+    z-index: 2; /* remove cell on top of expression-cell */
+}
+
+.row:hover .remove-cell,
+.remove-cell:hover .remove {
+    opacity: 100%;
+}
+
+.remove-cell {
+    width: 25px;
+    position: sticky;
+    right: 0;
+    padding: 0 7px 0 3px;
+}
+
+.remove {
+    padding: 2px 1px;
+    width: 100%;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+.remove:hover {
+    background-color: var(--vscode-toolbar-hoverBackground);
+}
+
+.remove::after {
+    content: "\2715"; /* x in unicode */
+    width: 16px;
+    height: 16px;
+    margin: 2px 4px 1px 4px;
+    text-align: center;
+    padding-bottom: 7px;
+}
+
+.shortTooltip {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.shortTooltip .shortTooltipText {
+    position: absolute;
+    bottom: 70%;
+    left: 100%;
+    visibility: hidden;
+    opacity: 0;
+    z-index: 2;
+    padding: 0px 10px;
+    font-family: var(--monaco-monospace-font);
+    font-size: smaller;
+    text-align: center;
+    background-color: var(--vscode-editorHoverWidget-background);
+    color: var(--vscode-editorWidget-foreground);
+    border-radius: 3px;
+    border: 1px solid var(--vscode-editorHoverWidget-border);
+    box-sizing: border-box;
+    white-space: nowrap;
+    transition: opacity 0.5s, visibility 0s 1s;
+    transition-delay: 1s;
+}
+
+.shortTooltip:hover .shortTooltipText {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0s;
+    transition-duration: 0.5s;
+    cursor: text;
+}
+
+.shortTooltip:not(:hover) .shortTooltipText {
+    transition-delay: 0s;
+    transition-duration: 0.5s;
+}

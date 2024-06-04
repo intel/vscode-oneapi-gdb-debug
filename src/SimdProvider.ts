@@ -7,6 +7,7 @@
 import * as vscode from "vscode";
 import { parse } from "path";
 import { DebugProtocol } from "@vscode/debugprotocol";
+import { SIMDWatchProvider } from "./SimdWatchProvider";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
 
@@ -71,7 +72,7 @@ export class SimdProvider {
 
     private threadsInfoArray: ThreadInfo[] = [];
     private _showInactiveThreads: boolean | undefined;
-
+    private _globalCurrentThread!: number;
 
     public set showInactiveThreads(flag: boolean | undefined) {
         this._showInactiveThreads = false;
@@ -83,18 +84,19 @@ export class SimdProvider {
     constructor(
         private context: vscode.ExtensionContext,
         private simdViewProvider: SIMDViewProvider,
-        private deviceViewProvider: DeviceViewProvider
+        private deviceViewProvider: DeviceViewProvider,
+        private simdWatchProvider: SIMDWatchProvider,
     ) {
 
-        context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this)));
+        context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this, simdWatchProvider)));
 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
-            this.fetchEMaskForAll();
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async () => {
+            this.fetchEMaskForAll(this._globalCurrentThread);
             this.fetchDevicesForAll();
             return;
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerSearch", async() => {
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerSearch", async () => {
             this.simdViewProvider.triggerSearch();
             return;
         }));
@@ -105,6 +107,7 @@ export class SimdProvider {
             vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveDevice", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveSelected", false);
+            simdWatchProvider.fetchSimdWatchPanel(this._globalCurrentThread);
 
         }));
 
@@ -123,7 +126,7 @@ export class SimdProvider {
     }
 
 
-    public async fetchEMaskForAll(): Promise<void> {
+    public async fetchEMaskForAll(globalCurrentThread: number): Promise<void> {
         await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
         this.simdViewProvider.waitForViewToBecomeVisible(() => {
             this.simdViewProvider.setLoadingView();
@@ -132,9 +135,9 @@ export class SimdProvider {
             { location: { viewId: "intelOneAPI.debug.simdview" } },
             () => vscode.window.withProgress(
                 { location: { viewId: "intelOneAPI.debug.threadInfoLane" } },
-                async() => vscode.window.withProgress(
+                async () => vscode.window.withProgress(
                     { location: { viewId: "intelOneAPI.debug.selectedLane" } },
-                    async() => {
+                    async () => {
                         try {
                             const session = vscode.debug.activeDebugSession;
 
@@ -200,7 +203,7 @@ export class SimdProvider {
                                 if (!masks.length) {
                                     return;
                                 }
-                                const currentThread = await getThread();
+                                const currentThread = await getThread(globalCurrentThread);
 
                                 this.simdViewProvider.waitForViewToBecomeVisible(() => {
                                     this.simdViewProvider.setView(masks, currentThread);
@@ -209,7 +212,7 @@ export class SimdProvider {
                             }
                         } catch (error) {
                             this.simdViewProvider.waitForViewToBecomeVisible(() => {
-                            // Handle errors in gdb requests: display error message in panel
+                                // Handle errors in gdb requests: display error message in panel
                                 if (error instanceof Error) {
                                     this.simdViewProvider.setErrorView(error.message);
                                 } else {
@@ -222,7 +225,7 @@ export class SimdProvider {
                 )
             )
         );
-        
+
     }
 
 
@@ -233,7 +236,7 @@ export class SimdProvider {
         });
         await vscode.window.withProgress(
             { location: { viewId: "intelOneAPI.debug.deviceView" } },
-            async() => {
+            async () => {
                 try {
                     const session = vscode.debug.activeDebugSession;
 
@@ -523,18 +526,22 @@ class SimdDebugAdapterProviderFactory implements vscode.DebugAdapterTrackerFacto
 
     constructor(
         private readonly simdtracker: SimdProvider,
+        private readonly simdWatchProvider: SIMDWatchProvider
     ) { }
 
     public createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
         console.log("starting session" + session.id + session.type);
-        return new SimdDebugAdapterProvider(this.simdtracker);
+        return new SimdDebugAdapterProvider(this.simdtracker, this.simdWatchProvider);
     }
 
 }
 
 class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
 
-    constructor(private readonly simdtracker: SimdProvider) { }
+    constructor(
+        private readonly simdtracker: SimdProvider,
+        private readonly simdWatchProvider: SIMDWatchProvider
+    ) { }
     public onDidSendMessage(m: DebugProtocol.ProtocolMessage) {
         this.routeDebugMessage(m);
     }
@@ -544,13 +551,16 @@ class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
             const e = m as DebugProtocol.Event;
 
             switch (e.event) {
-            case "stopped": {
-                this.simdtracker.fetchEMaskForAll();
-                this.simdtracker.fetchDevicesForAll();
-                break;
-            }
-            default:
-                break;
+                case "stopped": {
+                    const threadID = e.body?.threadId as number;
+
+                    this.simdtracker.fetchEMaskForAll(threadID);
+                    this.simdtracker.fetchDevicesForAll();
+                    this.simdWatchProvider.fetchSimdWatchPanel(threadID);
+                    break;
+                }
+                default:
+                    break;
             }
         }
         return;
