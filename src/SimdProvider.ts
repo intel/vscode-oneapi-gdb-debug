@@ -70,19 +70,15 @@ export async function getThread(threadAndLane?: string): Promise<CurrentThread |
     if (session) {
         await session.customRequest("threads");
         let evalResult;
-        let threadId;
         let lane;
 
-        if (thread === undefined || laneNum === undefined) {
-            evalResult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_gthread", context: "repl" });
-            threadId = parseInt(evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, ""), 10);
-            evalResult = await session.customRequest("evaluate", { expression: "-exec -data-evaluate-expression $_simd_lane", context: "repl" });
-            lane = parseInt(evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, ""), 10);
+        if (laneNum === undefined) {
+            evalResult = await session.customRequest("evaluate", { expression: `-exec -data-evaluate-expression --thread ${threadId} $_simd_lane`, context: "repl" });
+            lane = evalResult? parseInt(evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, ""), 10) : 0;
         } else {
             // Using thread-select is caused by the need to switch the debugging context to update the values of local variables and other things in the VSCode window.
-            evalResult = await session.customRequest("evaluate", { expression: `-exec -thread-select --thread ${thread} --lane ${laneNum} ${thread}`, context: "repl" });
+            evalResult = await session.customRequest("evaluate", { expression: `-exec -thread-select --thread ${threadId} --lane ${laneNum} ${threadId}`, context: "repl" });
             session.customRequest("sendInvalidate", {});
-            threadId = thread;
             lane = laneNum;
         }
 
@@ -98,7 +94,7 @@ export async function getThread(threadAndLane?: string): Promise<CurrentThread |
 
 
         return {
-            threadId: threadId,
+            threadId,
             lane: lane,
             workitemGlobalid,
             workitemLocalid
