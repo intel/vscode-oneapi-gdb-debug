@@ -168,26 +168,30 @@ export class SIMDViewProvider implements WebviewViewProvider {
         </html>`;
 
         this.simdView = `
-        <table id='simd-view'><tbody><tr><th>Thread ID</th><th>Target ID</th><th>Location</th><th>Work-group<br>(x,y,z)</th>
-        <th>SIMD Lanes <span class="tooltip"><span class="info-icon">i</span>
+        <table id='simd-view'><tbody><tr><th class="thread-id">Target ID [Thread ID]</th><th>Location</th><th class="workgroup tooltip"><div class="overflow-wrapper">Work-group (x,y,z)</div><span class="tooltiptext">Work-group (x,y,z)</span></th>
+        <th class="lanes">SIMD Lanes <span class="tooltip"><span class="info-icon"></span>
         <div class="tooltiptext">
-                <table>
-                    <tr>
-                        <th>SIMD lane color</th>
-                        <th>Thread State</th>
-                    </tr>
-                    <tr>
-                        <td class ='hittedlane'>■</td>
-                        <td>Active - have met breakpoint conditions</td>
-                    </tr>
-                    <tr>
-                    <td class ='activelane'>■</td>
-                    <td>Active</td>
-                    </tr>
-                    <tr>
-                        <td class ='inactivelane'>■</td>
-                        <td>Inactive</td>
-                    </tr>
+                <table id="info-color">
+                    <thead>
+                        <tr>
+                            <th>Color</th>
+                            <th>Thread State</th>
+                         </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class ='color-info'><div class="cell hitCell"></div></td>
+                            <td>Active - have met breakpoint conditions</td>
+                        </tr>
+                        <tr>
+                            <td class ='color-info'><div class="cell colored"></div></td>
+                            <td>Active</td>
+                        </tr>
+                        <tr>
+                            <td class ='color-info'><div class="cell"></div></td>
+                            <td>Inactive</td>
+                        </tr>
+                    </tbody>
                 </table>
             </div>
         </th>
@@ -289,18 +293,13 @@ export class SIMDViewProvider implements WebviewViewProvider {
             const z = m.threadWorkgroup ? m.threadWorkgroup.split(",")[2] : "-";
             let filename = "";
 
-            if (m.file && m.file.length > 13) {
-                // Create a shortened filename
-                const shortenedValue = m.file.substring(0, 10);
-
-                filename += `<td class="simdtooltip">${shortenedValue}... :${m.line}<span class="simdtooltiptext">${m.file}:${m.line}</span></td>`;
-            } else if (m.file) {
-                filename += `<td>${m.file}:${m.line}</td>`;
+            if (m.file) {
+                filename += `<td class="tooltip filename"><div class="overflow-wrapper">${m.file}</div> :${m.line}<span class="tooltiptext">${m.file}:${m.line}</span></td>`;
             } else {
                 filename += "<td> - </td>";
             }
 
-            upd = upd + `<tr><td>${m.threadId}</td><td>${m.targetId}</td>${filename}<td>${x},${y},${z}</td><td><table><tr>${tableString}</tr></table></td></tr>`;
+            upd = upd + `<tr><td class="thread-id">${m.targetId} [${m.threadId}]</td>${filename}<td class="workgroup">${x},${y},${z}</td><td class="lanes">${tableString}</td></tr>`;
         }
         upd = upd + "</tbody></table>" + currentLaneTable;
         return upd;
@@ -329,7 +328,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
             let coloredCell = `<div id='${id}' class ='cell ${cellStyle} one'>${this._activeLaneSymbol}</div>`;
 
             if (this.chosenLaneId && this.chosenLaneId === id) {
-                coloredCell = `<div id='${id}' class ='cell ${cellStyle} one current'><span style="display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00">⇨</span></div>`;
+                coloredCell = `<div id='${id}' class ='cell ${cellStyle} one current'></div>`;
             }
             return coloredCell;
         });

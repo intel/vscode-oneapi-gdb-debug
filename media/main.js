@@ -34,7 +34,7 @@
     
             basic.addEventListener("click", function(){changeLane(element.id);});
 
-            if(basic.innerText === "⇨" ) {
+            if(basic.classList.contains("current")) {
                 basic.scrollIntoView({ behavior: "auto", block: "center", inline: "start" });
             }
         }
@@ -320,10 +320,11 @@
         if (previousLaneId !== id) {
             const nextLane = document.getElementById(id);
 
-            nextLane.innerHTML = "<span style=\"display:block; font-size:13px; text-align:center; margin:0 auto; width: 14px; height: 14px; color:#ffff00\">⇨</span>";
+            nextLane.classList.add("current");
             if (previousLaneId) {
                 const previousLane = document.getElementById(previousLaneId);
 
+                previousLane.classList.remove("current");
                 previousLane.innerHTML = activeSymbol;
             }}
     }

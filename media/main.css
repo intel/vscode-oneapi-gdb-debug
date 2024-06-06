@@ -5,23 +5,79 @@
 
 body {
     background-color: transparent;
-text-align: left;
+    text-align: left;
+    padding: 0;
 }
 
-table {
+#simd-view {
+    width: 100%;
     text-align: left;
+    border-collapse: collapse;
+    line-height: 22px;
+    min-width: 500px;
+}
+
+/* Table width */
+.thread-id { 
+    min-width: fit-content;
+}
+
+.filename {
+    max-width: fit-content;
+}
+
+th.workgroup {
+    max-width: 50px;
+}
+
+.lanes {
+    min-width: 25%;
+    max-width: 75%;  
+}
+
+tr:hover {
+    background-color: var(--vscode-list-hoverBackground);
 }
 
 th {
     position: sticky;
     top: 0;
-    color: #1e1e1e;
-    background:#d3d3d3;
-    z-index: 10;
+    z-index: 5;
     max-width: 50%;
+    font-weight: 600;
+    background: var(--vscode-sideBar-background);
 }
+
+.overflow-wrapper {
+    vertical-align: bottom;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    display: inline-block;
+    max-width: 100%;
+}
+
 td {
-    color: var(--vscode-editor-foreground);
+    color: var(--vscode-foreground);
+    font-weight: var(--vscode-font-weight);
+}
+
+td, th {
+    padding: 0 5px;
+    white-space: nowrap;
+}
+
+.thread-id {
+    padding-left: 15px;
+}
+
+.filename {
+    max-width: fit-content;
+    z-index: 0;
+}
+
+.filename .overflow-wrapper {
+    max-width: 80%;
+    z-index: 0;
 }
 
 @keyframes blink {
@@ -41,12 +97,11 @@ td {
 .cell-container {
     flex-wrap: wrap;
     display: flex;
-    justify-content: space-between;
-    gap: 4px;
+    margin: 1.5px 0;
 }
 
 .cell-group {
-    margin-top: 4px;
+    margin: 3px 1px;
     display: flex;
     flex-wrap: nowrap;
     justify-content: space-between;
@@ -54,33 +109,58 @@ td {
 }
 
 .cell {
-    min-width: 16px;
-    min-height: 16px;
-    width: 16px;
-    height: 16px;
-    margin: 2px;
+    width: 14px;
+    height: 14px;
+    border-radius: 1px;
+    margin: 0.5px 1px;
     color: var(--vscode-editor-foreground);
-    background-color: var(--vscode-icon-foreground);
     font-size: 12px;
+    line-height: 14px;
     text-align: center;
 }
 
-.cell:hover {
+.cell-container .colored:hover,
+.cell-container .hitCell:hover {
     cursor: pointer;
+    opacity: 0.7;
 }
 
 .lane {
     border: var(--vscode-editorOverviewRuler-incomingContentForeground);
 }
 
+.cell {
+    color: var(--vscode-icon-foreground);
+    opacity: 0.7;
+    background-color: var(--vscode-debugIcon-breakpointDisabledForeground);
+}
+
 .colored {
-    background-color: var(--vscode-focusBorder);
+    background-color: var(--vscode-focusBorder); /* #2 */
+    background-color: var(--vscode-textLink-activeForeground); /* #1 */
     color: var(--vscode-gitlens-graphMinimapMarkerHighlightsColor);
+    opacity: 1;
 }
 
 .hitCell {
     background-color: var(--vscode-debugIcon-breakpointForeground);
-    color: yellow;
+    color: var(--vscode-editorLightBulb-foreground);
+    opacity: 1;
+}
+
+.current::before {
+    content: "\1f836";
+    position: relative;
+    top: -10%;
+    font-size: 14px;
+    text-align: left;
+    vertical-align: middle;
+    margin: 0 auto;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    color: var(--vscode-sideBar-background);
+    -webkit-text-stroke: 1.5px #ffcc00; /* yellow border */
 }
 
 .collapsible {
@@ -106,56 +186,58 @@ td {
     color: var(--vscode-editor-foreground);
 }
 
-
 .tooltip {
     position: sticky;
 }
 
 .info-icon {
-    font-size: 16px;
     cursor: pointer;
     width: 17px;
     height: 17px;
-    line-height: 15px; /* Center the 'i' vertically */
-    text-align: center; /* Center the 'i' horizontally */
-    border-radius: 50%; /* Make it round */
     background-color: transparent; /* Use a theme-friendly color for background */
-    color: #1e1e1e; /* Use a theme-friendly color for text */
-    border: 2px solid #1e1e1e; /* Black border for the circle */
     display: inline-block;
 }
 
-.tooltip .tooltiptext {
-    visibility: hidden;
-    width: fit-content;
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-icon-foreground);
-    text-align: center;
-    padding: 5px 0;
-    border-radius: 6px;
+.info-icon:before {
     position: absolute;
-    z-index: 1;
-    overflow: auto;
+    content: "\1F6C8"; /* info icon in unicode */
+    font-size: 17px;
+    font-weight: 100;
+}
+
+.tooltip .tooltiptext {
+    position: absolute;
+    top: 100%;
+    right: -40%;
+    visibility: hidden;
     opacity: 0;
+    width: fit-content;
+    padding: 3px 7px;
+    background-color: var(--vscode-editorHoverWidget-background);
+    color: var(--vscode-editorWidget-foreground);
+    border-radius: 3px;
+    border: 1px solid var(--vscode-editorHoverWidget-border);
+    font-size: smaller;
+    text-align: center;
+    z-index: 10;
+    overflow: auto;
     transition: opacity 0.3s;
 }
 
-.hittedlane {
-    color: var(--vscode-debugIcon-breakpointForeground);
-    background-color: var(--vscode-editor-background);
-    text-align: center;
+.filename .tooltiptext {
+    top: auto;
+    bottom: 100%;
+    left: 50%;
 }
 
-.activelane {
-    color: var(--vscode-focusBorder);
-    background-color: var(--vscode-editor-background);
-    text-align: center;
+#info-color {
+    border-collapse: collapse;
+    line-height: 22px;
+    background-color: var(--vscode-editorHoverWidget-background);
 }
 
-.inactivelane {
-    color: var(--vscode-icon-foreground);
-    background-color: var(--vscode-editor-background);
-    text-align: center;
+#info-color td {
+    text-align: left;
 }
 
 /* Show tooltip text when you mouse over the tooltip container */
@@ -166,21 +248,22 @@ td {
 
 .simdtooltip {
     position: relative;
-
 }
 
 .simdtooltip .simdtooltiptext {
+    position: absolute;
+    bottom: -70%;
+    left: -100%;
     visibility: hidden;
     width: fit-content;
-    background-color: var(--vscode-editor-background);
-    color: var(--vscode-icon-foreground);
     text-align: center;
-    position: absolute;
     z-index: 3;
-    padding: 5px;
-    border: 1px solid var(--vscode-icon-foreground);
-    border-radius: 6px;
-    border-style: dotted;
+    padding: 0px 10px;
+    background-color: var(--vscode-editorHoverWidget-background);
+    color: var(--vscode-editorWidget-foreground);
+    border-radius: 3px;
+    border: 1px solid var(--vscode-editorHoverWidget-border);
+    font-size: smaller;
     overflow: auto;
     opacity: 0;
     transition: opacity 0.3s;
