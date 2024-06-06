@@ -1,5 +1,15 @@
 # Change Log
 
+##  0.4.2
+
+  - Added SIMD Variable Watch panel
+
+  - Added Thread info panel
+
+  - Added controls to disable annoying notifications
+  
+  - Improved UI panels
+
 ##  0.4.1
 
   - Added progress bars for all panels

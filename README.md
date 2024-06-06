@@ -53,7 +53,7 @@ In the debug view, this extension provides SIMD View, which displays the SIMD la
 ### oneAPI GPU Threads
 The specific values corresponding to the status of the SIMD lanes in your current color scheme can be found in the SIMD Lanes tooltip. Dark blue represents active lanes that are stopped at a breakpoint, light blue indicates active lanes that do not meet breakpoint conditions, and grey indicates inactive lanes.
 
-![View of SIMD view in VSCode debug session](/media/simd.png)
+![View of SIMD view in VSCode debug session](/media/simd.gif)
 
 ### SIMD lane specific breakpoints
 Note that SIMD lane specific breakpoints are saved between sessions, but will be applied only after hitting a regular breakpoint inside the kernel.
@@ -72,21 +72,27 @@ You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will 
 
 ![Lane info](/media/lane.gif)
 
-### Selected lane
-You can see additional properties of the selected lane in a separate tab while debugging:
+### Selected lane and Thread info
+You can see additional properties in separate tabs while debugging:
 * Lane Number - the number of the currently selected lane;
+* State - indicates the current status of the lane;
 * Work item Global ID - the global ID coordinates of the Work item processed by the current context. Unsigned int vector of size 3, when available. Otherwise, void;
 * Work item Local ID - The local ID coordinates of the work item processed by the current context, within its thread's workgroup. Unsigned int vector of size 3, when available.  Otherwise, void;
 * Execution Mask - the hex mask encodes for which lanes the breakpoint condition was evaluated to true;
-* Hit Lanes mask - the hex mask of the SIMD lanes which were hit by the breakpoint;
+* ID - current thread ID;
+* Active Lanes mask - the hex mask of the SIMD lanes which were hit by the breakpoint;
 * SIMD Width - the number of working items processed in kernel by a GPU thread.
-
-![Selected lane](/media/selectedLane.png)
 
 ### Hardware info
 You can see your device's info in a separate tab while debugging.
 
 ![Hardware info](/media/hwinfo.png)
+
+## SIMD Variable Watch
+The SIMD Variable Watch functions like the classic Watch panel but displays values for all lanes, making it convenient to compare values without the need for switching between lanes.
+Most expressions can be evaluated only for active lanes, however GDB convenience variables are usually available for inactive lanes, too, e.g. $_workitem_global_id or $_workitem_local_id.
+
+![Watch Panel](/media/simdWatch.png)
 
 ## GPU Memory Viewing
 VS Code's generic debugger now includes a feature for viewing binary data. When a variable supports memory viewing and editing, an inline binary icon appears in the Variables view. Clicking on the icon opens the Hex Editor, allowing to perform operations on the binary data.
@@ -117,7 +123,7 @@ At this point you should be able to run the extension in the "Extension Developm
 1. This extension is released under the MIT License.
 
 
-2. oneapi-gdb-debug-0.4.1.vsix\extension\media\userHelp\content.json
+2. oneapi-gdb-debug-0.4.2.vsix\extension\media\userHelp\content.json
 
     Copyright (c) 2021-2024 Intel Corporation
 
