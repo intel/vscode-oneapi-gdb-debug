@@ -35,7 +35,7 @@ export async function getThread(threadId: number, laneNum?: number): Promise<Cur
 
         if (laneNum === undefined) {
             evalResult = await session.customRequest("evaluate", { expression: `-exec -data-evaluate-expression --thread ${threadId} $_simd_lane`, context: "repl" });
-            lane = evalResult? parseInt(evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, ""), 10) : 0;
+            lane = evalResult ? parseInt(evalResult.result.replace(/[({< >})]/g, "").split("value:")[1].replace(/x:|y:|z:/g, ""), 10) : 0;
         } else {
             // Using thread-select is caused by the need to switch the debugging context to update the values of local variables and other things in the VSCode window.
             evalResult = await session.customRequest("evaluate", { expression: `-exec -thread-select --thread ${threadId} --lane ${laneNum} ${threadId}`, context: "repl" });
@@ -123,6 +123,11 @@ export class SimdProvider {
 
 
     public async fetchEMaskForAll(globalCurrentThread: number): Promise<void> {
+        // We need to maintain the global current thread because sometimes
+        // the call may not contain a new threadID, for instance during manual updates.
+        if (globalCurrentThread) {
+            this._globalCurrentThread = globalCurrentThread;
+        }
         await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
         this.simdViewProvider.waitForViewToBecomeVisible(() => {
             this.simdViewProvider.setLoadingView();
@@ -199,7 +204,7 @@ export class SimdProvider {
                                 if (!masks.length) {
                                     return;
                                 }
-                                const currentThread = await getThread(globalCurrentThread);
+                                const currentThread = await getThread(this._globalCurrentThread);
 
                                 this.simdViewProvider.waitForViewToBecomeVisible(() => {
                                     this.simdViewProvider.setView(masks, currentThread);
