@@ -39,11 +39,6 @@ const debugConfig = {
     setupCommands:
         [
             {
-                description: "Enable pretty-printing for gdb",
-                text: "-enable-pretty-printing",
-                ignoreFailures: true
-            },
-            {
                 description: "Disable target async",
                 text: "set target-async off",
                 ignoreFailures: true
