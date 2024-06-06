@@ -80,32 +80,16 @@ export class SIMDWatchProvider {
         }
     }
 
-    public async getSIMDExecMask(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
-        try {
-            const result = await this.executeCustomRequest(session, "-exec -thread-execution-mask");
-            const resultObject = parseResultToObject(result);
+    public async getSIMDWidthMask(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
+        const simdWidth = await this.getSIMDWidth(session);
+        const width = (simdWidth.success ? simdWidth.width : 32) ?? 32;
+        const bitmask = (1 << width) - 1;
+        let bitmaskAsString = "0x" + bitmask.toString(16);
 
-            if (resultObject["result-class"] === "done" && resultObject["execution-mask"]) {
-                const execMask = resultObject["execution-mask"];
-
-                return {
-                    result,
-                    success: true,
-                    execMask
-                };
-            } else {
-                return {
-                    result,
-                    success: false
-                };
-            }
-        } catch (error) {
-            console.error("Error fetching SIMD execution mask:", error);
-            return {
-                result: error,
-                success: false
-            };
-        }
+        return {
+            success: true,
+            mask: bitmaskAsString
+        };
     }
 
     public async getSIMDWidth(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
@@ -163,14 +147,14 @@ export class SIMDWatchProvider {
 
     private async ensureVariableCreation(session: vscode.DebugSession, expression: string): Promise<ResultObject | undefined> {
 
-        const simdWidthReq = await this.getSIMDExecMask(session);
+        const simdWidthReq = await this.getSIMDWidthMask(session);
 
-        if (!simdWidthReq.success || !simdWidthReq.execMask) {
-            console.error("Failed to fetch SIMD execMask");
+        if (!simdWidthReq.success || !simdWidthReq.mask) {
+            console.error("Failed to fetch SIMD Width Mask");
             return undefined;
         }
 
-        const bitmask = simdWidthReq.execMask;
+        const bitmask = simdWidthReq.mask;
         const fullExp = `\"${expression}\" ${bitmask}`;
 
         let variableWatchReq = await this.createVariable(session, fullExp);
@@ -335,10 +319,10 @@ export class SIMDWatchProvider {
                 name: child.name,
                 exp: child.exp,
                 numchild: parseInt(child.numchild, 10),
-                value: child.value,
+                value: child.value ? child.value : "",
                 type: child.type,
                 threadId: parseInt(child["thread-id"], 10),
-                lane: parseInt(child.lane, 10),
+                lane: child.lane ? parseInt(child.lane, 10) : parseInt(child.name.split("-").pop()!, 10), // Handle missing lane
                 hasMore: child.has_more
             };
         });
@@ -383,7 +367,7 @@ export class SIMDWatchProvider {
             value: variable.value,
             type: variable.type,
             threadId: parseInt(variable["thread-id"], 10),
-            lane: parseInt(variable.lane, 10),
+            lane: variable.lane ? parseInt(variable.lane, 10) : parseInt(variable.name.split("-").pop()!, 10),
             hasMore: variable.has_more
         }));
 
@@ -403,9 +387,9 @@ export class SIMDWatchProvider {
 
 interface SIMDExecMaskOrWidthRequest {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    result: any;
+    result?: any;
     success: boolean;
-    execMask?: string;
+    mask?: string;
     width?: number;
 }
 
