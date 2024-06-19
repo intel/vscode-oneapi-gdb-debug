@@ -99,7 +99,7 @@ async function RefreshSimdDataTest(): Promise<void> {
 
         assert.include(hwInfoViewContent, `Name: ${deviceName}`, `Device name doesn't match.\nExpected: '${deviceName}'\nto be included in ${hwInfoViewContent}`);
         logger.Pass(`Device name matches. Actual: ${deviceName}`);
-        assert.include(selectedLaneViewContent, `Lane Number: ${currentThreadLane}`, `Lane number doesn't match.\nExpected: ${currentThreadLane}\nto be included in ${selectedLaneViewContent}`);
+        assert.include(selectedLaneViewContent, `Lane Index: ${currentThreadLane}`, `Lane number doesn't match.\nExpected: 'Lane Index: ${currentThreadLane}'\nto be included in '${selectedLaneViewContent}'`);
         logger.Pass(`Lane number matches. Actual: ${currentThreadLane}`);
         assert.equal(currentThreadId, currentgpuThread, `Current thread doesn't match.\nExpected: ${currentThreadId}\nto be included in ${currentgpuThread}`);
         logger.Pass(`Current thread matches. Actual: ${currentgpuThread}`);
@@ -397,6 +397,7 @@ async function GetGpuThreads(): Promise<Thread[]> {
                 const rowDataText = await data.getText();
                 const index = rowData.indexOf(data);
 
+                if (index === 0 ) { rowParsed.push(GetStringBetweenStrings(rowDataText, "[", "]")); }
                 if (index !== 4 ) { rowParsed.push(location || rowDataText); }
             }
             gpuThreadsObj.push({
