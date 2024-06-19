@@ -525,7 +525,7 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
     const checkIfSelectedLaneViewContainsExpectedLane = async(expectedLaneId: number): Promise<void> => {
         const selectedLaneViewContent = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
 
-        assert.include(selectedLaneViewContent, `Lane Number: ${expectedLaneId}`, `Lane number doesn't match.\nExpected: 'Lane Number: ${expectedLaneId}'\nto be included in ${selectedLaneViewContent}`);
+        assert.include(selectedLaneViewContent, `Lane Index: ${expectedLaneId}`, `Lane number doesn't match.\nExpected: 'Lane Index: ${expectedLaneId}'\nto be included in ${selectedLaneViewContent}`);
         logger.Pass(`Lane number matches. Actual: ${expectedLaneId}`);
     };
     const checkIfLaneIdMatchesLanesFromOtherViews = async(expectedLaneId: number, panes: LaneContainingPane[]): Promise<void> => {
