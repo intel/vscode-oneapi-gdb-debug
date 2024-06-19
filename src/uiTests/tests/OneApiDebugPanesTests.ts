@@ -449,7 +449,7 @@ async function GetLineNumberWebElement(lineNumber: number) {
 async function PerformContextMenuAction(element: WebElement, action: string) {
     const driver = new Workbench().getDriver();
 
-    await driver.actions().contextClick(element).perform();
+    await driver.actions({ async: true, bridge: undefined }).contextClick(element).perform();
     const actions = await driver.findElements(By.className("action-label"));
 
     for (const menuAction of actions) {
