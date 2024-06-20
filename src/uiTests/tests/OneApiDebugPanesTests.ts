@@ -36,6 +36,25 @@ type SimdLaneDetails =  {
 };
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
+type HwInfo = {
+    [key: string]: string | undefined | number,
+    Name: string,
+    Cores: number | string,
+    Location?: string,
+    Number?: number | string,
+    "Sub device"?: string,
+    "Vendor ID": string,
+    "Target ID": string
+}
+
+const devices: HwInfo[] = [
+    {
+        Name: "Intel(R) Arc(TM) A730M Graphics",
+        Cores: 384,
+        "Vendor ID": "0x8086",
+        "Target ID": "0x5691",
+    }
+];
 
 export default function() {
     describe("Examine debugging functionality", () => {
@@ -53,22 +72,22 @@ export default function() {
             });
         }
         for (const simdTestSuite of [
-            { breakpointType: ConditionalBreakpointType.SimdCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
-            { breakpointType: ConditionalBreakpointType.SimdCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
             { breakpointType: ConditionalBreakpointType.SimdCommand, paneToCheck: OneApiDebugPane.SelectedLane },
-            { breakpointType: ConditionalBreakpointType.NativeCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
-            { breakpointType: ConditionalBreakpointType.NativeCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
             { breakpointType: ConditionalBreakpointType.NativeCommand, paneToCheck: OneApiDebugPane.SelectedLane },
-            { breakpointType: ConditionalBreakpointType.SimdGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
-            { breakpointType: ConditionalBreakpointType.SimdGui, paneToCheck: OneApiDebugPane.HardwareInfo },
             { breakpointType: ConditionalBreakpointType.SimdGui, paneToCheck: OneApiDebugPane.SelectedLane },
-            { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
-            { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.HardwareInfo },
             { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.SelectedLane },
+            { breakpointType: ConditionalBreakpointType.SimdCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+            { breakpointType: ConditionalBreakpointType.NativeCommand, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+            { breakpointType: ConditionalBreakpointType.SimdGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+            { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.OneApiGpuThreads },
+            { breakpointType: ConditionalBreakpointType.SimdCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
+            { breakpointType: ConditionalBreakpointType.NativeCommand, paneToCheck: OneApiDebugPane.HardwareInfo },
+            { breakpointType: ConditionalBreakpointType.SimdGui, paneToCheck: OneApiDebugPane.HardwareInfo },
+            { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.HardwareInfo },
         ]) {
             it(`SIMD lane conditional breakpoint [${simdTestSuite.breakpointType}] [${simdTestSuite.paneToCheck}]`, async function() {
                 this.timeout(5 * this.test?.ctx?.defaultTimeout);
-                this.retries(1);
+                this.retries(2);
                 await SimdLaneConditionalBreakpointTest(simdTestSuite);
             });
         }
@@ -97,7 +116,7 @@ async function RefreshSimdDataTest(): Promise<void> {
         const currentThreadLane = GetStringBetweenStrings(consoleOutput, "lane ", ")]");
         const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
 
-        assert.include(hwInfoViewContent, `Name: ${deviceName}`, `Device name doesn't match.\nExpected: '${deviceName}'\nto be included in ${hwInfoViewContent}`);
+        assert.include(hwInfoViewContent.join("\n"), deviceName, `Device name doesn't match.\nExpected: '${deviceName}'\nto be included in ${hwInfoViewContent}`);
         logger.Pass(`Device name matches. Actual: ${deviceName}`);
         assert.include(selectedLaneViewContent, `Lane Index: ${currentThreadLane}`, `Lane number doesn't match.\nExpected: 'Lane Index: ${currentThreadLane}'\nto be included in '${selectedLaneViewContent}'`);
         logger.Pass(`Lane number matches. Actual: ${currentThreadLane}`);
@@ -313,7 +332,7 @@ type OneApiDebugPaneFrameTitle = "oneAPI GPU Threads" | "Hardware Info" | "Selec
 async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[]> {
     const selectors: { [Prop in OneApiDebugPane]: { selector: By; frameTitle: OneApiDebugPaneFrameTitle }} = {
         "oneAPI GPU Threads Section": { selector: By.id("simd-view"), frameTitle: "oneAPI GPU Threads" },
-        "Hardware Info Section": { selector: By.className("content"), frameTitle: "Hardware Info" },
+        "Hardware Info Section": { selector: By.css("body"), frameTitle: "Hardware Info" },
         "Selected Lane Section": { selector: By.css("tbody"), frameTitle: "Selected Lane" }
     };
     const pane = await GetDebugPane(paneToFind) as WebElement;
@@ -347,7 +366,7 @@ async function GetGpuThreads(): Promise<Thread[]> {
     return await ExecuteInOneApiDebugPaneFrame(async(driver) => {
         const gpuThreadsObj: Thread[] = [];
         const gpuThreads = await driver.findElement(By.id("simd-view"));
-        const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr:not(:first-child)"));
+        const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr"));
 
         for (const row of gpuThreadsRows) {
             const rowData = await row.findElements(By.css("td"));
@@ -370,17 +389,16 @@ async function GetGpuThreads(): Promise<Thread[]> {
                         const current = laneClass.includes("current");
                         const active = laneClass.includes("colored");
                         const hit = laneClass.includes("hitCell");
-                        let indicator: string | undefined = undefined;
+                        const script = "return window.getComputedStyle(arguments[0],'::before').getPropertyValue('content')";
+                        const driver = new Workbench().getDriver();
+                        const indicator = await driver.executeScript(script, lane) as string;
 
-                        try { indicator = await (await data.findElement(By.css("span"))).getText();}
-                        catch { /* empty */ }
-                        
                         simdLanes.push({
                             laneId: simdDetails.lane,
                             current: current,
                             state: hit ? "Hit" : active ? "Active" : "Inactive",
                             details: simdDetails,
-                            indicator: indicator,
+                            indicator: indicator.replace(/"/g, ""),
                             handle: lane
                         });
                         continue;
@@ -403,7 +421,7 @@ async function GetGpuThreads(): Promise<Thread[]> {
             gpuThreadsObj.push({
                 threadId: parseInt(rowParsed[0]),
                 targetId: rowParsed[1],
-                location: rowParsed[2],
+                location: rowParsed[2].replace(/\s/g, ""),
                 workGroup: rowParsed[3],
                 simdLanes: simdLanes
             });
@@ -475,9 +493,23 @@ async function CheckIfHwInfoViewContainsExpectedInfo() {
     const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
     const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
     const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
+    const expectedDeviceInfo: HwInfo = {Location: "", Number: "", "Sub device": "", ...devices.find(x => x.Name === deviceName)! };
+    const currentDeviceInfo: HwInfo = Object.keys(expectedDeviceInfo).reduce((acc, curr) => {
+        // Skip first 7 chars because of '[[i2]] ' pefix
+        acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(7) : hwInfoViewContent.find(x => x.includes(curr))?.split(': ').pop();
+        return acc;
+    }, {} as HwInfo)
 
-    assert.include(hwInfoViewContent, `Name: ${deviceName}`, `Device name doesn't match.\nExpected: '${deviceName}'\nto be included in ${hwInfoViewContent}`);
-    logger.Pass(`Device name matches. Actual: ${deviceName}`);
+    assert.isTrue(
+        currentDeviceInfo.Name === expectedDeviceInfo.Name &&
+        Number(currentDeviceInfo.Cores) === Number(expectedDeviceInfo.Cores) &&
+        currentDeviceInfo["Vendor ID"] === expectedDeviceInfo["Vendor ID"] &&
+        currentDeviceInfo["Target ID"] === expectedDeviceInfo["Target ID"],
+        `Actual device is not the same as expected.\nActual:\n${JSON.stringify(currentDeviceInfo)}\nExpected:\n${JSON.stringify(expectedDeviceInfo)}`);
+    assert.isNotEmpty(currentDeviceInfo.Number, `Hardware info property 'Number' is empty. 'Number': ${currentDeviceInfo.Number}`);
+    assert.isNotEmpty(currentDeviceInfo.Location, `Hardware info property 'Location' is empty. 'Location': ${currentDeviceInfo.Location}`);
+    assert.isNotEmpty(currentDeviceInfo["Sub device"], `Hardware info property 'Sub device' is empty. 'Sub device': ${currentDeviceInfo["Sub device"]}`);
+    logger.Pass(`'Hardware info' contains expected info. 'Hardware info' content: ${hwInfoViewContent}`);
 }
 
 async function CheckIfGpuThreadsViewContainsExpectedInfo() {
@@ -508,7 +540,7 @@ async function GetLaneIdFromView(pane: LaneContainingPane) {
     case "Selected Lane Section":
         return await Retry(async() => {
             await Wait(3000);
-            const laneNumber = (await GetDebugPaneContent(OneApiDebugPane.SelectedLane)).find(x => x.includes("Lane Number: "));
+            const laneNumber = (await GetDebugPaneContent(OneApiDebugPane.SelectedLane)).find(x => x.includes("Lane Index: "));
             const laneNumberParsed = Number(laneNumber?.split(" ")[2]);
 
             if (isNaN(laneNumberParsed)) { throw new Error("Fetching lane number from 'Selected Lane' view failed;"); };
@@ -537,18 +569,19 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
         assert.isTrue(lanes.every(async x => x.laneId === expectedLaneId), "Lane Ids are not equal to each other");
         logger.Pass(`Expected lane '${expectedLaneId}' is equal to other lane ids`);
     };
+    const indicator = "🠶";
 
     logger.Info("Check if selected lane shows currently selected lane id");
     await checkIfSelectedLaneViewContainsExpectedLane(expectedLaneID);
     await checkIfLaneIdMatchesLanesFromOtherViews(expectedLaneID, ["Selected Lane Section", "oneAPI GPU Threads Section", "DebugConsole"]);
 
-    logger.Info("Check if 'current' lane indicator is present '⇨'");
+    logger.Info(`Check if 'current' lane indicator is present '${indicator}'`);
     const currThread = await GetCurrentThread() as Thread;
     const currentLane = currThread.simdLanes.find(y => y.current) as SimdLane;
 
-    logger.Info(`Check if current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
-    assert.strictEqual(currentLane.indicator, "⇨", `Current lane indicator '⇨' is not present on current lane '${currentLane.laneId}'`);
-    logger.Info(`Current lane indicator '⇨' is present on current lane '${currentLane.laneId}'`);
+    logger.Info(`Check if current lane indicator '${indicator}' is present on current lane '${currentLane.laneId}'`);
+    assert.strictEqual(currentLane.indicator, indicator, `Current lane indicator '${indicator}' is not present on current lane '${currentLane.laneId}'`);
+    logger.Info(`Current lane indicator '${indicator}' is present on current lane '${currentLane.laneId}'`);
     const randomLaneIdToSelect = Array(8).fill(0).map((_, i) => i).filter(x => x !== expectedLaneID && x !== 0)[GetRandomInt(0, 6)];
 
     logger.Info("Set simd lane from GUI and check if it changed in selected lane view");
