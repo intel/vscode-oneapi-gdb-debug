@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { PathLike, PathOrFileDescriptor, existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
+import { PathLike, PathOrFileDescriptor, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { LoggerAggregator as logger } from "./Logger";
 
 /**
@@ -62,4 +62,14 @@ export function LoadAndParseJsonFile<T>(path: PathOrFileDescriptor): T {
     const file = JSON.parse(ReadFileSync(path, "utf-8")) as T;
 
     return file;
+}
+
+/**
+ * Removes file or dir at given path.
+ * @param path Path to a file or dir to remove.
+ */
+export function RmSync(path: PathLike): void {
+    logger.Info(`Remove '${path}' directory`);
+    rmSync(path, { recursive: true, force: true });
+    logger.Info(`Directory '${path}' has been removed`);
 }

@@ -95,6 +95,8 @@ export async function GetExtensionsSection(sectionName: ExtensionSection): Promi
 export async function CleanUp(): Promise<void> {
     await StopDebugging(false);
     await SetInputText("> Terminal: Kill All Terminals");
+    await SetInputText("> Developer: Reload WIndow");
+    await Wait(3 * 1000);
 }
 
 /**
@@ -629,9 +631,11 @@ async function GenerateLaunchConfigurations(): Promise<string> {
     await driver.executeScript("arguments[0].click()", pick);
     input = await SelectQuickPick("no", input);
     await input.confirm();
+    input = await SelectQuickPick("no", input);
     input = await SelectQuickPick("preTask", input);
     input = await SelectQuickPick("postTask", input);
-    await input.cancel();
+    try { await input.cancel(); }
+    catch { /* empty */ }
     const launchJson = LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath);
 
     assert.exists(launchJson.configurations[0], "[ERROR] Debug launch configuration hasn't been created!");
