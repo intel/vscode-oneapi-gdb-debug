@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { FileExistsSync, ReadFileSync, WriteFileSync } from "./utils/FileSystem";
+import { FileExistsSync, ReadFileSync, RmSync, WriteFileSync } from "./utils/FileSystem";
 import { VSBrowser } from "vscode-extension-tester";
 import { ConsoleLogger, LoggerAggregator as logger } from "./utils/Logger";
 import { install } from "source-map-support";
@@ -25,6 +25,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
     before(async function() {
         this.defaultTimeout = 60 * 1000;
         await VSBrowser.instance.openResources("../array-transform", "../array-transform/src/array-transform.cpp");
+        RmSync("../array-transform/.vscode");
         await InstallRequiredExtensions();
         SetToolBarLocationToDocked();
     });
@@ -46,11 +47,11 @@ function SetToolBarLocationToDocked() {
 async function InstallRequiredExtensions(): Promise<void> {
     logger.Info("Check if required extensions are installed");
     const requiredExtensions = [
-        "Analysis Configurator for Intel® oneAPI Toolkits",
+        "Analysis Configurator for Intel Software Developer Tools",
         "C/C++",
         "CMake Tools",
-        "Code Sample Browser for Intel® oneAPI Toolkits",
-        "Environment Configurator for Intel® oneAPI Toolkits",
+        "Code Sample Browser for Intel Software Developer Tools",
+        "Environment Configurator for Intel Software Developer Tools",
     ];
 
     for await (const requiredExtension of requiredExtensions) {

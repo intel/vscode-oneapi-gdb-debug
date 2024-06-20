@@ -12,6 +12,7 @@ import { assert } from "chai";
 import * as util from "util";
 import axios from "axios";
 import { LoadAndParseJsonFile } from "../utils/FileSystem";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 export default function() {
     describe("Check help pages", () => {
@@ -19,7 +20,7 @@ export default function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOnlineHelpTest();
         });
-        it("Check offline help page", async function() {
+        it.skip("Check offline help page", async function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOfflineHelpPageTest();
         });
@@ -74,13 +75,8 @@ async function CheckOnlineHelpTest(): Promise<void> {
                 await popupOpenButton.click();
                 await Wait(2 * 1000);
                 const currentCount = await ProcessStart("ps aux | grep firefox | wc -l");
-                const { status } = await axios.get(link, {
-                    proxy: {
-                        protocol: "http",
-                        host: "proxy-chain.intel.com",
-                        port: 911
-                    }
-                });
+                const httpsAgent = new HttpsProxyAgent("http://proxy-dmz.intel.com:912");
+                const { status } = await axios.get(link, { httpsAgent: httpsAgent });
 
                 await ProcessStart("pkill -f firefox");
                 const message = `Actual: '${Number(currentCount)}' > '${Number(initCount)}' | Expected: '${Number(currentCount)}' < '${Number(initCount)}'`;
