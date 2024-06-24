@@ -100,6 +100,45 @@ This functionality appears in the Variables and Watch panels. Clicking on the ic
 
 ![Memory Viewing](/media/memView.png)
 
+### SIMD lane specific breakpoints
+Note that SIMD lane specific breakpoints are saved between sessions, but will be applied only after hitting a regular breakpoint inside the kernel.
+
+There are several ways to set a SIMD lane specific breakpoint:
+* Add such a breakpoint by right-clicking on the desired line, selecting "Add Conditional Breakpoint" and "Expression". Then use the commands -break-insert and specify the thread number using the flag -p and SIMD lane using the flag -l:
+`-break-insert -p THREADID -l SIMDLANE`
+![Right-clicking conditional breakpoint](/media/right-clicking_cbp.gif)
+
+* Use the `Intel oneAPI: Add SIMD lane conditional breakpoint` function at the desired line from the drop-down menu and specify the THREADID and SIMDLANE in format:
+`THREADID:SIMDLANE`
+![Functional conditional breakpoint](/media/func_cbp.gif)
+
+### Choose SIMD Lane
+You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will show updated information in the SELECTED LANE tab, and extended thread information can be found using the debug console (command `-exec -thread-info`).
+
+![Lane info](/media/lane.gif)
+
+### Selected lane
+You can see additional properties of the selected lane in a separate tab while debugging:
+* Lane Number - the number of the currently selected lane;
+* Work item Global ID - the global ID coordinates of the Work item processed by the current context. Unsigned int vector of size 3, when available. Otherwise, void;
+* Work item Local ID - The local ID coordinates of the work item processed by the current context, within its thread's workgroup. Unsigned int vector of size 3, when available.  Otherwise, void;
+* Execution Mask - the hex mask encodes for which lanes the breakpoint condition was evaluated to true;
+* Hit Lanes mask - the hex mask of the SIMD lanes which were hit by the breakpoint;
+* SIMD Width - the number of working items processed in kernel by a GPU thread.
+
+![Selected lane](/media/selectedLane.png)
+
+### Hardware info
+You can see your device's info in a separate tab while debugging.
+
+![Hardware info](/media/hwinfo.png)
+
+## GPU Memory Viewing
+VS Code's generic debugger now includes a feature for viewing binary data. When a variable supports memory viewing and editing, an inline binary icon appears in the Variables view. Clicking on the icon opens the Hex Editor, allowing to perform operations on the binary data.
+This functionality appears in the Variables and Watch panels. Clicking on the icon opens the Hex Editor, in which is possible to inspect conveniently large pieces of data. This functionality enables users to examine the memory space of Intel® GPU kernels.
+
+![Memory Viewing](/media/memView.png)
+
 ## Differences Between GDB and GDB-oneapi
 To display the differences between these two distributions of GDB:
 1. Press `Ctrl+Shift+P ( or View -> Command Palette... )` to open the Command Palette.

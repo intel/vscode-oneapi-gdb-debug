@@ -210,7 +210,6 @@ export class SIMDViewProvider implements WebviewViewProvider {
             this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
                 this.selectedLaneViewProvider.setLoadingView();
             });
-
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
         }
