@@ -18,12 +18,12 @@ function checkExtensionsConflict() {
     // The function of generating a launcher configuration from an deprecated extension conflicts with the same function from the current one.
     const deprecatedExtension = vscode.extensions.getExtension("intel-corporation.oneapi-launch-configurator");
     const actualExtension = vscode.extensions.getExtension("intel-corporation.oneapi-analysis-configurator"); // if only the deprecated version is installed, otherwise the new version will solve this problem and no action is required.
-
+ 
     if (actualExtension === undefined && deprecatedExtension !== undefined) {
         if (deprecatedExtension) {
             const Update = "Update";
             const deprExtName = deprecatedExtension.packageJSON.displayName;
-
+ 
             vscode.window.showInformationMessage(`${deprExtName} is a deprecated version. This may lead to the unavailability of overlapping functions.`, Update, "Ignore")
                 .then((selection) => {
                     if (selection === Update) {
@@ -31,10 +31,10 @@ function checkExtensionsConflict() {
                             vscode.window.showErrorMessage(`Completed uninstalling ${deprExtName} extension.`);
                             vscode.commands.executeCommand("workbench.extensions.installExtension", "intel-corporation.oneapi-analysis-configurator").then(function() {
                                 const actualExtension = vscode.extensions.getExtension("intel-corporation.oneapi-analysis-configurator");
-
+ 
                                 if (actualExtension) {
                                     const Reload = "Reload";
-
+ 
                                     vscode.window.showInformationMessage("Extension update completed. Please reload Visual Studio Code.", Reload)
                                         .then((selection) => {
                                             if (selection === Reload) {
@@ -51,12 +51,12 @@ function checkExtensionsConflict() {
         }
     }
 }
-
+ 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
     // Checking for outdated versions of extensions in the VS Code environment
     checkExtensionsConflict();
-
+ 
     if (process.platform !== "linux") {
         vscode.window.showWarningMessage("The Windows and macOS operating systems are not currently supported by the \"GDB GPU Support for Intel® oneAPI Toolkits\" extension. Debugging remote Linux systems from a Windows and macOS host is supported when using the various Microsoft \"Remote\" extensions.");
     }
@@ -130,7 +130,7 @@ export function activate(context: vscode.ExtensionContext): void {
     }));
 
     // Register the commands that will interact with the user and write the launcher scripts.
-
+ 
     const launchConfigurator = new LaunchConfigurator();
 
     launchConfigurator.disableGDBCheck = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("DISABLE_ONEAPI_GDB_PATH_NOTIFICATION");
@@ -154,11 +154,12 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.launchConfigurator.generateLaunchJson", () => launchConfigurator.makeLaunchFile()));
     context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.makeBreak", () => simd.addSimdBreakPointsFromEditor()));
 
+ 
     // Register commands that will let user search through documentation easily
     const userHelp = new UserHelp();
-
+ 
     context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.userHelp.openOnlineDocumentation", () => userHelp.openOnlineDocumentation()));
-
+ 
     context.subscriptions.push(
         vscode.commands.registerCommand("intelOneAPI.userHelp.displayDebuggerCommands", () => {
             DebuggerCommandsPanel.createOrShow(context.extensionUri);
@@ -176,12 +177,12 @@ export function activate(context: vscode.ExtensionContext): void {
             }
         });
     }
-
+ 
     const tsExtension = vscode.extensions.getExtension("ms-vscode.cpptools");
-
+ 
     if (!tsExtension) {
         const GoToInstall = "Install C/C++ Extension";
-
+ 
         vscode.window.showInformationMessage("No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.", GoToInstall)
             .then((selection) => {
                 if (selection === GoToInstall) {
@@ -190,3 +191,4 @@ export function activate(context: vscode.ExtensionContext): void {
             });
     }
 }
+ 
