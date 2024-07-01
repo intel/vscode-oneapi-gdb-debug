@@ -179,11 +179,12 @@ export class LaunchConfigurator {
     }
 
     async isThereDebugConfig(): Promise<boolean> {
-        const launchConfig = vscode.workspace.getConfiguration("launch");
-        const configs = launchConfig.configurations;
+        for (const folder of vscode.workspace.workspaceFolders || []) {
+            const launchConfig = vscode.workspace.getConfiguration("launch", folder.uri);
+            const configs = launchConfig.configurations;
 
-        for (const cfg of configs) {
-            if (cfg.type === "cppdbg" && cfg.miDebuggerPath === "gdb-oneapi") {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (configs.some((cfg: any) => cfg.type === "cppdbg" && cfg.miDebuggerPath === "gdb-oneapi")) {
                 return true;
             }
         }
