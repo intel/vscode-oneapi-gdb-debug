@@ -206,19 +206,17 @@
                 },
                 "initialConfigurations": [
                     {
-                        "comments": [
-                            "Full launch.json configuration details can be found here:",
-                            "https://code.visualstudio.com/docs/cpp/launch-json-reference"
-                        ],
-                        "name": "oneAPI C++: Launch & Break",
+                        "name": "C/C++: (gdb-oneapi) oneAPI CPU Launch & Break",
+                        "miDebuggerPath": "gdb-oneapi",
+                        "MIMode": "gdb",
                         "type": "cppdbg",
                         "request": "launch",
                         "preLaunchTask": "",
                         "postDebugTask": "",
-                        "program": "enter program name, for example ${workspaceFolder}/a.exe",
-                        "args": [],
                         "stopAtEntry": true,
-                        "cwd": "${workspaceFolder}",
+                        "program": "${workspaceFolder}/src/array-transform",
+                        "cwd": "${workspaceFolder}/build",
+                        "args": [],
                         "environment": [
                             {
                                 "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
@@ -227,15 +225,32 @@
                             {
                                 "name": "IGC_EnableGTLocationDebugging",
                                 "value": "1"
+                            },
+                            {
+                                "name": "ONEAPI_DEVICE_SELECTOR",
+                                "value": "*:cpu"
                             }
                         ],
                         "externalConsole": false,
-                        "MIMode": "gdb",
-                        "miDebuggerPath": "gdb-oneapi",
                         "setupCommands": [
                             {
-                                "description": "Disable target async",
-                                "text": "set target-async off",
+                                "description": "Disable MI-async",
+                                "text": "set mi-async off",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Enable auto-load for all paths. Considered a security risk. See link for details: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Auto_002dloading-safe-path.html",
+                                "text": "set auto-load safe-path /",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Enable pretty-printing for gdb",
+                                "text": "set print pretty on",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Set Disassembly Flavor to Intel",
+                                "text": "set disassembly intel",
                                 "ignoreFailures": true
                             },
                             {
@@ -256,19 +271,17 @@
                         ]
                     },
                     {
-                        "comments": [
-                            "Full launch.json configuration details can be found here:",
-                            "https://code.visualstudio.com/docs/cpp/launch-json-reference"
-                        ],
-                        "name": "oneAPI C++: Launch & Run",
+                        "name": "C/C++: (gdb-oneapi) oneAPI GPU Launch & Break",
+                        "miDebuggerPath": "gdb-oneapi",
+                        "MIMode": "gdb",
                         "type": "cppdbg",
                         "request": "launch",
                         "preLaunchTask": "",
                         "postDebugTask": "",
-                        "program": "enter program name, for example ${workspaceFolder}/a.exe",
+                        "stopAtEntry": true,
+                        "program": "${workspaceFolder}/build/my-application-name",
+                        "cwd": "${workspaceFolder}/build",
                         "args": [],
-                        "stopAtEntry": false,
-                        "cwd": "${workspaceFolder}",
                         "environment": [
                             {
                                 "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
@@ -277,15 +290,32 @@
                             {
                                 "name": "IGC_EnableGTLocationDebugging",
                                 "value": "1"
+                            },
+                            {
+                                "name": "ONEAPI_DEVICE_SELECTOR",
+                                "value": "level_zero:gpu"
                             }
                         ],
                         "externalConsole": false,
-                        "MIMode": "gdb",
-                        "miDebuggerPath": "gdb-oneapi",
                         "setupCommands": [
                             {
-                                "description": "Disable target async",
-                                "text": "set target-async off",
+                                "description": "Disable MI-async",
+                                "text": "set mi-async off",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Enable auto-load for all paths. Considered a security risk. See link for details: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Auto_002dloading-safe-path.html",
+                                "text": "set auto-load safe-path /",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Enable pretty-printing for gdb",
+                                "text": "set print pretty on",
+                                "ignoreFailures": true
+                            },
+                            {
+                                "description": "Set Disassembly Flavor to Intel",
+                                "text": "set disassembly intel",
                                 "ignoreFailures": true
                             },
                             {
@@ -308,22 +338,20 @@
                 ],
                 "configurationSnippets": [
                     {
-                        "label": "oneAPI C++: Launch & Run",
-                        "description": "Launch a oneAPI program in debug mode without stopping at entry point",
+                        "label": "C/C++: (gdb-oneapi) oneAPI CPU Launch & Break",
+                        "description": "Launch a oneAPI program using CPU in debug mode with stop at entry point",
                         "body": {
-                            "comments": [
-                                "Full launch.json configuration details can be found here:",
-                                "https://code.visualstudio.com/docs/cpp/launch-json-reference"
-                            ],
-                            "name": "oneAPI C++: Launch & Run",
+                            "name": "C/C++: (gdb-oneapi) oneAPI CPU Launch & Break",
+                            "miDebuggerPath": "gdb-oneapi",
+                            "MIMode": "gdb",
                             "type": "cppdbg",
                             "request": "launch",
                             "preLaunchTask": "",
                             "postDebugTask": "",
-                            "program": "enter program name, for example ${workspaceFolder}/a.exe",
+                            "stopAtEntry": true,
+                            "program": "${workspaceFolder}/build/my-application-name",
+                            "cwd": "${workspaceFolder}/build",
                             "args": [],
-                            "stopAtEntry": false,
-                            "cwd": "${workspaceFolder}",
                             "environment": [
                                 {
                                     "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
@@ -332,15 +360,32 @@
                                 {
                                     "name": "IGC_EnableGTLocationDebugging",
                                     "value": "1"
+                                },
+                                {
+                                    "name": "ONEAPI_DEVICE_SELECTOR",
+                                    "value": "*:cpu"
                                 }
                             ],
                             "externalConsole": false,
-                            "MIMode": "gdb",
-                            "miDebuggerPath": "gdb-oneapi",
                             "setupCommands": [
                                 {
-                                    "description": "Disable target async",
-                                    "text": "set target-async off",
+                                    "description": "Disable MI-async",
+                                    "text": "set mi-async off",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Enable auto-load for all paths. Considered a security risk. See link for details: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Auto_002dloading-safe-path.html",
+                                    "text": "set auto-load safe-path /",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Enable pretty-printing for gdb",
+                                    "text": "set print pretty on",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Set Disassembly Flavor to Intel",
+                                    "text": "set disassembly intel",
                                     "ignoreFailures": true
                                 },
                                 {
@@ -362,22 +407,20 @@
                         }
                     },
                     {
-                        "label": "oneAPI C++: Launch & Break",
-                        "description": "Launch a oneAPI program in debug mode with a stop at entry point",
+                        "label": "C/C++: (gdb-oneapi) oneAPI GPU Launch & Break",
+                        "description": "Launch a oneAPI program using GPU in debug mode with stop at entry point",
                         "body": {
-                            "comments": [
-                                "Full launch.json configuration details can be found here:",
-                                "https://code.visualstudio.com/docs/cpp/launch-json-reference"
-                            ],
-                            "name": "oneAPI C++: Launch & Break",
+                            "name": "C/C++: (gdb-oneapi) oneAPI GPU Launch & Break",
+                            "miDebuggerPath": "gdb-oneapi",
+                            "MIMode": "gdb",
                             "type": "cppdbg",
                             "request": "launch",
                             "preLaunchTask": "",
                             "postDebugTask": "",
-                            "program": "enter program name, for example ${workspaceFolder}/a.exe",
-                            "args": [],
                             "stopAtEntry": true,
-                            "cwd": "${workspaceFolder}",
+                            "program": "${workspaceFolder}/build/my-application-name",
+                            "cwd": "${workspaceFolder}/build",
+                            "args": [],
                             "environment": [
                                 {
                                     "name": "ZET_ENABLE_PROGRAM_DEBUGGING",
@@ -386,15 +429,32 @@
                                 {
                                     "name": "IGC_EnableGTLocationDebugging",
                                     "value": "1"
+                                },
+                                {
+                                    "name": "ONEAPI_DEVICE_SELECTOR",
+                                    "value": "level_zero:gpu"
                                 }
                             ],
                             "externalConsole": false,
-                            "MIMode": "gdb",
-                            "miDebuggerPath": "gdb-oneapi",
                             "setupCommands": [
                                 {
-                                    "description": "Disable target async",
-                                    "text": "set target-async off",
+                                    "description": "Disable MI-async",
+                                    "text": "set mi-async off",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Enable auto-load for all paths. Considered a security risk. See link for details: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Auto_002dloading-safe-path.html",
+                                    "text": "set auto-load safe-path /",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Enable pretty-printing for gdb",
+                                    "text": "set print pretty on",
+                                    "ignoreFailures": true
+                                },
+                                {
+                                    "description": "Set Disassembly Flavor to Intel",
+                                    "text": "set disassembly intel",
                                     "ignoreFailures": true
                                 },
                                 {
