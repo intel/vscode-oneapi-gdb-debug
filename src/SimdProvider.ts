@@ -538,6 +538,7 @@ export class SimdProvider {
 
 export interface Device {
     device_name: string;
+    cores: number;
     thread_groups: string;
     location: string;
     number: number;
