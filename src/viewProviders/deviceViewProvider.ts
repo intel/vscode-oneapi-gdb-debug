@@ -61,10 +61,10 @@ export class DeviceViewProvider implements WebviewViewProvider {
     }
 
     private setInitialPageContent(webview: Webview) {
-        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
+        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "hwinfo.js"));
 
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
-        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.css"));
+        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "hwinfo.css"));
 
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
@@ -109,7 +109,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
     public async setErrorView(errMsg: string) {
 
         try {
-            this._view.webview.html = this.htmlStart + "Error occured while getting devices info: "+ errMsg + this.htmlEnd;
+            this._view.webview.html = this.htmlStart + "Error occured while getting devices info: " + errMsg + this.htmlEnd;
         } catch (error) {
             console.error("An error occurred while setting the view:", error);
         }
@@ -119,13 +119,15 @@ export class DeviceViewProvider implements WebviewViewProvider {
         let upd = "";
 
         for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
-            upd += `<div class="collapsible active">▷ ${threadGroups}</div>`;
             for (const device of devices) {
+                upd += `<div class="collapsible active">
+                <span class="arrow"></span>
+                <span>[${threadGroups}] ${device.device_name}</span></div>`;
                 const table = `<table class="content">
                     <tr><td>Number: </td>
                     <td>${device.number}</td></tr>
-                    <tr><td>Name: </td>
-                    <td>${device.device_name}</td></tr>
+                    <tr><td>Cores: </td>
+                    <td>${device.cores}</td></tr>
                     <tr><td>Location: </td>
                     <td>${device.location}</td></tr>
                     <tr><td>Sub device: </td>
@@ -136,7 +138,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
                     <td>${device.target_id}</td></tr>
                 </table>`;
 
-                upd += "&emsp;" + table + "<br>";
+                upd += "&emsp;" + table;
             }
         }
 
