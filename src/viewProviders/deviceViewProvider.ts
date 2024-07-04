@@ -138,7 +138,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
                     <td>${device.target_id}</td></tr>
                 </table>`;
 
-                upd += "&emsp;" + table;
+                upd += table;
             }
         }
 

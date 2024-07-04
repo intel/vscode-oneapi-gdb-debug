@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2022-2024 Intel Corporation
+ * Copyright (c) 2024 Intel Corporation
  * SPDX-License-Identifier: MIT
  */
 
@@ -30,10 +30,9 @@ body {
 }
 
 .arrow {
-
     display: inline-block;
     margin-right: 5px;
-    transform: rotate(90deg) scaleY(1.3);
+    transform: rotate(0deg) scaleY(1.5);
     color: var( --vscode-foreground);
     margin-left: 15px;
 }
@@ -43,7 +42,7 @@ body {
 }
 
 .collapsible.active .arrow {
-    transform: rotate(0deg);
+    transform: rotate(90deg) scaleY(1.8);;
 }
 
 .content {
@@ -51,12 +50,11 @@ body {
     display: none;
     overflow: hidden;
     color: var(--vscode-editor-foreground);
-    padding-left: 20px;
+    padding: 0 0 5px 20px;
     width: auto;
-
 }
 
-.content.show {
+.collapsible.active + .content {
     display: table;
 }
 
@@ -64,32 +62,4 @@ td {
     color: var(--vscode-foreground);
     padding: 0 5px;
     white-space: nowrap;
-}
-
-.table {
-    width: 100%;
-    text-align: left;
-    border-collapse: collapse;
-    line-height: 22px;
-    min-width: 500px;
-    margin-top: 5px;
-}
-
-tr:hover {
-    background-color: var(--vscode-list-hoverBackground);
-}
-
-.hidden {
-    display: none;
-}
-
-/* Additional styles for better UI */
-table {
-    border-spacing: 0;
-    width: 100%;
-    border: none;
-}
-
-tr:hover {
-    background-color: var(--vscode-list-hoverBackground);
 }
