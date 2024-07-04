@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022-2024 Intel Corporation
+ * Copyright (c) 2024 Intel Corporation
  * SPDX-License-Identifier: MIT
  */
 
@@ -23,13 +23,6 @@
         document.querySelectorAll(".collapsible").forEach((collapsible) => {
             collapsible.addEventListener("click", function() {
                 this.classList.toggle("active");
-                let content = this.nextElementSibling;
-
-                if (content.classList.contains("show")) {
-                    content.classList.remove("show");
-                } else {
-                    content.classList.toggle("show");
-                }
             });
         });
     }
