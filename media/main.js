@@ -18,6 +18,8 @@
         NUMBERS: 1
     };
 
+    let hideNonMatchesActive = false;
+
     // Main function that gets executed once the webview DOM loads
     function main() {
 
@@ -113,18 +115,27 @@
         const searchInput = document.getElementById("searchInput");
 
         // Wrapping highlightResults in a debounce function to delay execution
-        const debouncedHighlightResults = debounce(() => highlightResults(), 500); // 500 ms delay
+        const debouncedHighlightResults = debounce(() => {
+            highlightResults();
+            if (hideNonMatchesActive) {
+                toggleHideNonMatches();
+                hideNonMatchesActive = true; // Ensure filtering remains active after updating search
+                toggleHideNonMatches();
+            }
+        }, 500); // 500 ms delay
 
         searchInput.addEventListener("input", debouncedHighlightResults);
 
         document.getElementById("nextBtn").addEventListener("click", () => navigateResults("next"));
         document.getElementById("prevBtn").addEventListener("click", () => navigateResults("prev"));
         document.getElementById("closeBtn").addEventListener("click", () => closeSearch());
+        document.getElementById("toggleHideBtn").addEventListener("click", () => toggleHideNonMatches());
     }
 
     function closeSearch() {
         document.querySelector(".search-panel").style.display = "none"; // Hide search panel
         clearHighlights();
+        showAllContent(); // Show all content when search is closed
     }
 
     function highlightResults() {
@@ -284,6 +295,39 @@
         updateSearchCounter();
     }
 
+    function toggleHideNonMatches() {
+        const keyword = document.getElementById("searchInput").value.toLowerCase().trim();
+        const tableRows = document.querySelectorAll("#simd-view tbody tr");
+        if (!keyword) {
+            showAllContent(); // If no keyword, show all content
+            return;
+        }
+
+        hideNonMatchesActive = !hideNonMatchesActive;
+        const toggleButton = document.getElementById("toggleHideBtn");
+
+        if (hideNonMatchesActive) {
+            tableRows.forEach(row => {
+                const rowText = row.textContent.toLowerCase();
+                const should_hide = (!rowText.includes(keyword));
+                row.classList.toggle("hidden", should_hide);
+            });
+
+            toggleButton.classList.add("active");
+        } else {
+            showAllContent();
+            toggleButton.classList.remove("active");
+        }
+    }
+
+    function showAllContent() {
+        const tableRows = document.querySelectorAll("#simd-view tbody tr");
+
+        tableRows.forEach(row => row.classList.remove("hidden"));
+
+        hideNonMatchesActive = false;
+        document.getElementById("toggleHideBtn").classList.remove("active");
+    }
 
     function updateSearchCounter() {
         document.getElementById("searchCounter").textContent = matches.length > 0 ? `${currentIndex + 1} of ${matches.length}` : "No results";
