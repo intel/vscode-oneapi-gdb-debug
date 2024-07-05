@@ -17,6 +17,10 @@ body {
     min-width: 500px;
 }
 
+.hidden {
+    display: none;
+}
+
 /* Table width */
 .thread-id { 
     min-width: fit-content;
@@ -278,34 +282,31 @@ td, th {
     display: none;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 8px;
-    width: 100%;
-    overflow: hidden;
     gap: 3px;
+    overflow: hidden;
     position: fixed;
     top: 10px;
     right: 10px;
     z-index: 1000;
-    /* Ensure it's above other content */
     background-color: var(--vscode-editor-background);
     padding: 5px;
     border-radius: 5px;
-    border: 1px solid 1px solid var(--vscode-focusBorder);
-    width: 335px;
-    
+    width: 390px;
 }
 
-.search-panel input[type="text"]
-{
+.drag-handle {
+    cursor: move;
+}
+
+.search-panel input[type="text"] {
     padding: 2px;
     background-color: var(--vscode-input-background);
     font-family: var(--vscode-font-family);
     font-weight: var(--vscode-font-weight);
     font-size: var(--vscode-font-size);
-    border: 1px solid 1px solid var(--vscode-focusBorder);
+    border: 1px solid var(--vscode-focusBorder);
     color: var(--vscode-input-foreground);
-    z-index: 1000;
-    width: 60%;
+    width: 50%;
 }
 
 .search-panel button {
@@ -318,16 +319,10 @@ td, th {
     font-size: var(--vscode-font-size);
 }
 
-.drag-handle {
-    background-color: var(--vscode-editor-background);
-    cursor: pointer;
-    border: none;
-    width: 10px;
-    font-family: var(--vscode-font-family);
-    font-weight: var(--vscode-font-weight);
-    font-size: var(--vscode-font-size);
+.search-panel button.active {
+    background-color: var(--vscode-editor-findMatchHighlightBackground);
+    color: var(--vscode-editor-findMatchHighlightForeground);
 }
-
 
 button {
     cursor: pointer;

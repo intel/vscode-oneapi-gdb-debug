@@ -142,6 +142,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
         const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.css"));
+        const codiconsUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
 
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
@@ -159,25 +160,27 @@ export class SIMDViewProvider implements WebviewViewProvider {
         <html lang="en">
         <head>
             <meta charset="UTF-8">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-            <link href="${styleVSCodeUri}" rel="stylesheet">
-            <link href="${styleMainUri}" rel="stylesheet
+            <link href="${styleVSCodeUri}" rel="stylesheet" />
+            <link href="${styleMainUri}" rel="stylesheet" />
+            <link href="${codiconsUri}" rel="stylesheet" />
 
-            <script type="module" src="${toolkitUri}"></script>
+            <script type="module" src="${toolkitUri}" nonce="${nonce}"></script>
             <title>SIMD Lanes</title>
         </head>
         <body>`;
 
         this.searchPanel = `
         <div class="search-panel">
-            <div class="drag-handle">⋮⋮</div>
+            <div class="drag-handle codicon codicon-gripper"></div>
             <input type="text" id="searchInput" placeholder="Find" />
             <span id="searchCounter">No results</span>
-            <button id="prevBtn">↑</button>
-            <button id="nextBtn">↓</button>
-            <button id="closeBtn">✖</button>
+            <button id="prevBtn" class="codicon codicon-arrow-up"></button>
+            <button id="nextBtn" class="codicon codicon-arrow-down"></button>
+            <button id="toggleHideBtn" class="codicon codicon-filter"></button>
+            <button id="closeBtn" class="codicon codicon-close"></button>
         </div>`;
 
 
@@ -186,7 +189,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
         </html>`;
 
         this.simdView = `
-        <table id='simd-view'><tbody><tr><th class="thread-id">Target ID [Thread ID]</th><th>Location</th><th class="workgroup tooltip"><div class="overflow-wrapper">Work-group (x,y,z)</div><span class="tooltiptext">Work-group (x,y,z)</span></th>
+        <table id='simd-view'><thead><tr><th class="thread-id">Target ID [Thread ID]</th><th>Location</th><th class="workgroup tooltip"><div class="overflow-wrapper">Work-group (x,y,z)</div><span class="tooltiptext">Work-group (x,y,z)</span></th>
         <th class="lanes">SIMD Lanes <span class="tooltip"><span class="info-icon"></span>
         <div class="tooltiptext">
                 <table id="info-color">
@@ -214,6 +217,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
             </div>
         </th>
         </tr>
+        </thead>
+        <tbody>
     `;
 
     }
