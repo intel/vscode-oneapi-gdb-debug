@@ -446,6 +446,11 @@
     "@typescript-eslint/types" "7.10.0"
     eslint-visitor-keys "^3.4.3"
 
+"@vscode/codicons@^0.0.36":
+  version "0.0.36"
+  resolved "https://registry.yarnpkg.com/@vscode/codicons/-/codicons-0.0.36.tgz#ccdabfaef5db596b266644ab85fc25aa701058f0"
+  integrity sha512-wsNOvNMMJ2BY8rC2N2MNBG7yOowV3ov8KlvUE/AiVUlHKTfWsw3OgAOQduX7h0Un6GssKD3aoTVH+TF3DSQwKQ==
+
 "@vscode/debugadapter@^1.65.0":
   version "1.65.0"
   resolved "https://registry.yarnpkg.com/@vscode/debugadapter/-/debugadapter-1.65.0.tgz#1a318aea805a86da8d497f3b80f4506bdb12e866"
