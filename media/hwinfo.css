@@ -23,6 +23,12 @@ body {
     display: flex;
     align-items: center;
     line-height: 22px;
+    justify-content: space-between; /* Justify content between left and right edges */
+}
+
+.left-align {
+    display: flex;
+    align-items: center;
 }
 
 .arrow::before {
@@ -33,7 +39,7 @@ body {
     display: inline-block;
     margin-right: 5px;
     transform: rotate(0deg) scaleY(1.5);
-    color: var( --vscode-foreground);
+    color: var(--vscode-foreground);
     margin-left: 15px;
 }
 
@@ -42,7 +48,7 @@ body {
 }
 
 .collapsible.active .arrow {
-    transform: rotate(90deg) scaleY(1.8);;
+    transform: rotate(90deg) scaleY(1.8);
 }
 
 .content {
@@ -62,4 +68,20 @@ td {
     color: var(--vscode-foreground);
     padding: 0 5px;
     white-space: nowrap;
+}
+
+.current-label::before {
+    content: "CURRENT";
+    border-radius: 2px;
+    box-sizing: border-box;
+    display: inline-block;
+    font-size: .8em;
+    line-height: 1.1em;
+    min-height: 18px;
+    min-width: 18px;
+    padding: 3px 3px;
+    text-align: center;
+    color: #cccccc;
+    background-color: rgba(136, 136, 136, 0.27);
+    font-weight: 400;
 }
