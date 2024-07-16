@@ -11,7 +11,7 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import { SortedDevices } from "../SimdProvider";
+import { Device } from "../SimdProvider";
 import { getNonce } from "./utils";
 
 export class DeviceViewProvider implements WebviewViewProvider {
@@ -115,15 +115,18 @@ export class DeviceViewProvider implements WebviewViewProvider {
         }
     }
 
-    public async setView(sortedDevices: SortedDevices) {
+    public async setView(devices: Device[]) {
         let upd = "";
 
-        for (const [threadGroups, devices] of Object.entries(sortedDevices)) {
-            for (const device of devices) {
-                upd += `<div class="collapsible active">
-                <span class="arrow"></span>
-                <span>[${threadGroups}] ${device.device_name}</span></div>`;
-                const table = `<table class="content">
+        for (const device of devices) {
+            upd += `<div class="collapsible active">
+                <div class="left-align">
+                    <span class="arrow"></span>
+                    <span>[${device.thread_groups}] ${device.device_name}</span>
+                </div>
+                ${device.current ? '<span class="current-label"></span>' : ''}
+            </div>`;
+            const table = `<table class="content">
                     <tr><td>Number: </td>
                     <td>${device.number}</td></tr>
                     <tr><td>Cores: </td>
@@ -138,8 +141,7 @@ export class DeviceViewProvider implements WebviewViewProvider {
                     <td>${device.target_id}</td></tr>
                 </table>`;
 
-                upd += table;
-            }
+            upd += table;
         }
 
         try {

@@ -268,7 +268,6 @@ export class SimdProvider {
 
     }
 
-
     public async fetchDevicesForAll(): Promise<void> {
         await vscode.commands.executeCommand("setContext", "oneapi:haveDevice", true);
         this.deviceViewProvider.waitForViewToBecomeVisible(() => {
@@ -290,7 +289,7 @@ export class SimdProvider {
                             return;
                         }
                         this.deviceViewProvider.waitForViewToBecomeVisible(() => {
-                            this.deviceViewProvider.setView(this.getDeviceNames(devicesInfo.devices));
+                            this.deviceViewProvider.setView(devicesInfo.devices);
                         });
 
                     }
@@ -309,19 +308,6 @@ export class SimdProvider {
         );
     }
 
-    private getDeviceNames(devices: Device[]): SortedDevices {
-        const devicesByGroups: SortedDevices = {};
-
-        for (const device of devices) {
-            if (devicesByGroups[device.thread_groups]) {
-                devicesByGroups[device.thread_groups].push(device);
-            } else {
-                devicesByGroups[device.thread_groups] = [device];
-            }
-        }
-        return devicesByGroups;
-    }
-
     public parseDeviceInfo(evalResult: { result: string }): { devices: Device[] } | undefined {
 
         if (evalResult.result === "void") {
@@ -336,12 +322,17 @@ export class SimdProvider {
         }
 
         let devicesJSON = "";
+        let currentDeviceNumber: number | undefined;
 
         for (const elem of parsedDeviseList) {
             const elemJSON: string[] = elem.split(": ");
 
+            if (elemJSON[0] === "current-device") {
+                currentDeviceNumber = parseInt(elemJSON[1],10);
+            }
+
             if (elemJSON[0] === "devices") {
-                devicesJSON = "{\"" + elemJSON[0] + "\"" + ":" + "[";
+                devicesJSON = "{\"devices\":[";
 
                 const devicesList = elemJSON[1].split(/{([^}]+)}/g).slice(1, -1);
 
@@ -378,6 +369,13 @@ export class SimdProvider {
         if (devicesJSON !== "") {
             try {
                 const jsonObj = JSON.parse(devicesJSON);
+
+                if (currentDeviceNumber !== undefined) {
+                    jsonObj.devices = jsonObj.devices.map((device: Device) => ({
+                        ...device,
+                        current:  Number(device.number) === currentDeviceNumber
+                    }));
+                }
 
                 return jsonObj;
             } catch (e) {
@@ -545,10 +543,7 @@ export interface Device {
     sub_device: number;
     target_id: string;
     vendor_id: string;
-}
-
-export interface SortedDevices {
-    [key: string]: Device[];
+    current: boolean;
 }
 
 export interface Emask {
