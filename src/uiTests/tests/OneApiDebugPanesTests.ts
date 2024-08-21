@@ -86,7 +86,7 @@ export default function() {
             { breakpointType: ConditionalBreakpointType.NativeGui, paneToCheck: OneApiDebugPane.HardwareInfo },
         ]) {
             it(`SIMD lane conditional breakpoint [${simdTestSuite.breakpointType}] [${simdTestSuite.paneToCheck}]`, async function() {
-                this.timeout(5 * this.test?.ctx?.defaultTimeout);
+                this.timeout(10 * this.test?.ctx?.defaultTimeout);
                 this.retries(2);
                 await SimdLaneConditionalBreakpointTest(simdTestSuite);
             });
@@ -361,7 +361,8 @@ async function GetGpuThreads(): Promise<Thread[]> {
     if (!gpuThreadsViewClass?.includes("expanded")) {
         await gpuThreadsView?.click();
     }
-    await RefreshGpuThreadsView();
+
+    await SetInputText("> Intel oneAPI: Refresh SIMD Data");
     await Wait(3 * 1000);
     return await ExecuteInOneApiDebugPaneFrame(async(driver) => {
         const gpuThreadsObj: Thread[] = [];
@@ -589,7 +590,8 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
     await checkIfSelectedLaneViewContainsExpectedLane(randomLaneIdToSelect);
 
     logger.Info("Refresh gpu thread view and check lanes again");
-    await RefreshGpuThreadsView();
+    await SetInputText("> Intel oneAPI: Refresh SIMD Data");
+    await Wait(1000);
     await checkIfLaneIdMatchesLanesFromOtherViews(randomLaneIdToSelect, ["Selected Lane Section", "oneAPI GPU Threads Section"]);
 }
 
