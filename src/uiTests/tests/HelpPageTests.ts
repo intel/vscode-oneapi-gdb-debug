@@ -79,7 +79,7 @@ async function CheckOnlineHelpTest(): Promise<void> {
                 const { status } = await axios.get(link, { httpsAgent: httpsAgent });
 
                 await ProcessStart("pkill -f firefox");
-                const message = `Actual: '${Number(currentCount)}' > '${Number(initCount)}' | Expected: '${Number(currentCount)}' < '${Number(initCount)}'`;
+                const message = `Actual: '${Number(currentCount)}' ${Number(currentCount) > Number(initCount) ? ">" : "<"} '${Number(initCount)}' | Expected: '${Number(currentCount)}' > '${Number(initCount)}'`;
 
                 assert.isAbove(Number(currentCount), Number(initCount), `Online documentation hasn't been opened. ${message}`);
                 logger.Pass(`Online documentation has been opened. ${message}`);

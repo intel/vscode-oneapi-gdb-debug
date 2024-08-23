@@ -184,6 +184,7 @@ async function SimdLaneConditionalBreakpointTest({ breakpointType, paneToCheck }
 
         await SetConditionalBreakpoint(C_BP_61);
         await ContinueDebugging();
+        await Wait(3 * 1000);
         await CheckIfBreakpointConditionHasBeenMet({
             expectedSimdLaneId: simdBreakpoint ? expectedSimdLaneId : undefined,
             expectedThread: expectedThread,
@@ -286,7 +287,8 @@ async function SetConditionalBreakpoint(breakpoint: ConditionalBreakpoint) {
     const textEditor = new TextEditor(new EditorView());
 
     await Wait(1 * 1000);
-    await textEditor.moveCursor(lineNumber, 1);
+    logger.Info(`Go to line: ${lineNumber}`);
+    await SetInputText(`:${lineNumber}`);
     await Wait(1 * 1000);
     switch (breakpoint.type) {
     case ConditionalBreakpointType.SimdGui:
@@ -349,9 +351,9 @@ async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[
 async function ContinueDebugging(): Promise<void> {
     logger.Info("Continue debugging");
     const driver = new Workbench().getDriver();
-    const stopButton = await driver.findElement(By.css("a.action-label.codicon.codicon-debug-continue"));
+    const continueButton = await driver.findElement(By.css("a.action-label.codicon.codicon-debug-continue"));
 
-    await stopButton.click();
+    await continueButton.click();
 }
 
 async function GetGpuThreads(): Promise<Thread[]> {
@@ -496,8 +498,8 @@ async function CheckIfHwInfoViewContainsExpectedInfo() {
     const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
     const expectedDeviceInfo: HwInfo = {Location: "", Number: "", "Sub device": "", ...devices.find(x => x.Name === deviceName)! };
     const currentDeviceInfo: HwInfo = Object.keys(expectedDeviceInfo).reduce((acc, curr) => {
-        // Skip first 7 chars because of '[[i2]] ' pefix
-        acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(7) : hwInfoViewContent.find(x => x.includes(curr))?.split(': ').pop();
+        // Skip first 5 chars because of '[i2] ' pefix
+        acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(5) : hwInfoViewContent.find(x => x.includes(curr))?.split(': ').pop();
         return acc;
     }, {} as HwInfo)
 
