@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ActivityBar, By, DebugConsoleView, DebugView, EditorView, ExtensionsViewSection, InputBox, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
 import { Breakpoint, ConditionalBreakpoint, DebugPane, VsCodeTask } from "./Types";
 import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
 import { LoggerAggregator as logger } from "./Logger";
@@ -130,7 +130,9 @@ export async function SetInputText(command: string, options?: SetInputTextOption
     logger.Info(`Set command palette text to '${command}'`);
     await input.setText(command);
     await Wait(1 * 1000);
-    if (confirmCommand) { await input.confirm(); }
+    if (confirmCommand) {
+        await input.sendKeys(Key.ENTER)
+    }
     return input;
 }
 
@@ -319,11 +321,10 @@ export async function SetBreakpoint({ fileName, lineNumber }: Breakpoint): Promi
     await Wait(1 * 1000);
     await SetInputText(fileName, { input: input });
     logger.Info(`Open text editor with: ${fileName}`);
-    const textEditor = new TextEditor(new EditorView());
 
     await Wait(1 * 1000);
-    logger.Info(`Move cursor to [x: 1, y: ${lineNumber}]`);
-    await textEditor.moveCursor(lineNumber, 1);
+    logger.Info(`Go to line: ${lineNumber}`);
+    await SetInputText(`:${lineNumber}`);
     await Wait(1 * 1000);
     await SetInputText("> Debug: Inline Breakpoint");
     const res = await CheckIfBreakpointHasBeenSet({ fileName, lineNumber });

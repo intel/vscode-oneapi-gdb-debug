@@ -10,26 +10,46 @@ import { install } from "source-map-support";
 import { assert } from "chai";
 import { tests } from "./tests";
 import { Wait, Retry, GetExtensionsSection, UninstallExtension } from "./utils/CommonFunctions";
+import { Hook } from "mocha";
 
 install();
 logger.InitLoggers(new ConsoleLogger());
+const resources = ["../array-transform", "../array-transform/src/array-transform.cpp"];
 
 describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tests", async() => {
     for (const test of Object.values(tests)) {
         test.call(this);
     }
-    
+    afterEach(async function () {
+        await CloseBrowser(this);
+        await LaunchBrowser(this);
+        await Wait(2* 1000);
+        await VSBrowser.instance.openResources(...resources);
+        SetToolBarLocationToDocked();
+    });
     after(async function() {
         await UninstallAllExtensions();
     });
     before(async function() {
         this.defaultTimeout = 60 * 1000;
-        await VSBrowser.instance.openResources("../array-transform", "../array-transform/src/array-transform.cpp");
+        await VSBrowser.instance.openResources(...resources);
         RmSync("../array-transform/.vscode");
         await InstallRequiredExtensions();
         SetToolBarLocationToDocked();
     });
 });
+
+async function CloseBrowser(context: Mocha.Context) {
+    await Wait(1000);
+    const closeHook = (<any>context.test?.parent?.parent)._afterAll[0] as Hook;
+    await Promise.all([closeHook.fn?.call(context, () => {})]);
+}
+
+async function LaunchBrowser(context: Mocha.Context) {
+    await Wait(1000);
+    const before = (<any>context.test?.parent?.parent)._beforeAll[0] as Hook;
+    await Promise.all([before.fn?.call(context, () => {})]);
+}
 
 function SetToolBarLocationToDocked() {
     logger.Info("Set toolbar location to docked");
