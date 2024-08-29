@@ -27,14 +27,10 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         await VSBrowser.instance.openResources(...resources);
         SetToolBarLocationToDocked();
     });
-    after(async function() {
-        await UninstallAllExtensions();
-    });
     before(async function() {
         this.defaultTimeout = 60 * 1000;
         await VSBrowser.instance.openResources(...resources);
         RmSync("../array-transform/.vscode");
-        await InstallRequiredExtensions();
         SetToolBarLocationToDocked();
     });
 });
