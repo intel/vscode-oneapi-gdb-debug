@@ -487,7 +487,9 @@
         "pretest": "npm run compile",
         "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
         "package": "vsce package",
-        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources"
+        "prebasic-ui-tests": "extest install-from-marketplace ms-vscode.cmake-tools ms-vscode.cpptools intel-corporation.oneapi-analysis-configurator intel-corporation.oneapi-samples intel-corporation.oneapi-environment-configurator -s test-resources",
+        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources",
+        "postbasic-ui-tests": "rm -rf ~/.vscode/extensions/"
     },
     "devDependencies": {
         "@types/chai": "^4.3.16",
