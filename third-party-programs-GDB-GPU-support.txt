@@ -9,6 +9,9 @@ Third party programs and their corresponding required notices and/or license ter
    Webview UI Toolkit for Visual Studio Code
    Copyright (c) Microsoft Corporation
 
+   vscode-codicons
+   Copyright (c) Microsoft Corporation
+
 All rights reserved. 
 
 The MIT License (MIT)
