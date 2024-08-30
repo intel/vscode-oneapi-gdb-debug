@@ -29,6 +29,7 @@ export type NotificationPopup = {
     name: string;
     message: string;
     installButton: string;
+    id?: string;
 };
 
 /**
