@@ -4,7 +4,7 @@
  */
 
 import { NotificationType } from "vscode-extension-tester";
-import { GetExtensionsSection, GetNotificationActions, GetNotifications, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait } from "../utils/CommonFunctions";
+import { GetExtensionsSection, GetNotificationActions, GetNotifications, InstallExtension, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { assert } from "chai";
 import { NotificationPopup } from "../utils/Types";
@@ -13,23 +13,36 @@ const expectedNotifications: {[k: string]: NotificationPopup} = {
     env_config: {
         name: "Environment Configurator for Intel® oneAPI Toolkits",
         message : "Please install the \"Environment Configurator for Intel oneAPI Toolkits\" to configure your development environment.",
-        installButton : "Environment Configurator for Intel oneAPI Toolkits"
+        installButton : "Environment Configurator for Intel oneAPI Toolkits",
+        id: "intel-corporation.oneapi-environment-configurator"
     },
     c_cppExt: {
         name: "C/C++",
         message : "No extension for C/C++ was found. Please install it to run Intel oneAPI launch configurations.",
-        installButton : "Install C/C++ Extension"
+        installButton : "Install C/C++ Extension",
+        id: "ms-vscode.cpptools"
     }
 };
 
 export default function() {
     describe("Install extensions from notifications", () => {
         before(async() => {
-            for (const notification of Object.values(expectedNotifications)) {
-                await UninstallExtension(notification.name);
-            }
-            await SetInputText("> Developer: Reload WIndow");
-            await Wait(5 * 1000);
+            try {
+                for (const notification of Object.values(expectedNotifications)) {
+                    UninstallExtension(notification.id as string);
+                }
+                await SetInputText("> Developer: Reload WIndow");
+                await Wait(5 * 1000);
+            } catch(e) { logger.Error(e) }
+        });
+        after(async() => {
+            try {
+                for (const notification of Object.values(expectedNotifications)) {
+                    InstallExtension(notification.id as string);
+                }
+                await SetInputText("> Developer: Reload WIndow");
+                await Wait(5 * 1000);
+            } catch(e) { logger.Error(e) }
         });
         for (const notification of Object.values(expectedNotifications)) {
             it(`Install '${notification.name}' extension`, async function() {

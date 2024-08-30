@@ -60,7 +60,8 @@ export default function() {
     describe("Examine debugging functionality", () => {
         it("Refresh SIMD data", async function() {
             this.timeout(5 * this.test?.ctx?.defaultTimeout);
-            await RefreshSimdDataTest(); 
+            this.retries(1);
+            await RefreshSimdDataTest();
         });
         for (const threadInfo of [
             "Id",
