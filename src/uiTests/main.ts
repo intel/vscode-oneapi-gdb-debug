@@ -9,7 +9,7 @@ import { ConsoleLogger, LoggerAggregator as logger } from "./utils/Logger";
 import { install } from "source-map-support";
 import { assert } from "chai";
 import { tests } from "./tests";
-import { Wait, Retry, GetExtensionsSection, UninstallExtension } from "./utils/CommonFunctions";
+import { Wait, Retry, GetExtensionsSection, UninstallExtension, InstallExtension } from "./utils/CommonFunctions";
 import { Hook } from "mocha";
 
 install();
@@ -26,7 +26,6 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         await Wait(2* 1000);
         await VSBrowser.instance.openResources(...resources);
         SetToolBarLocationToDocked();
-        await InstallRequiredExtensions(["ms-vscode.cpptools", "intel-corporation.oneapi-analysis-configurator"])
     });
     before(async function() {
         this.defaultTimeout = 60 * 1000;
@@ -85,7 +84,7 @@ async function IsExtensionInstalled(extensionName: string): Promise<boolean | un
     }, 10 * 1000);
 }
 
-async function InstallExtension(extensionToInstall: string): Promise<void> {
+async function InstallExtensionViaMarketplace(extensionToInstall: string): Promise<void> {
     await Retry(async() => {
         const extensionsView = await GetExtensionsSection("Installed");
 

@@ -9,6 +9,7 @@ import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
 import { LoggerAggregator as logger } from "./Logger";
 import { assert } from "chai";
 import { FileExistsSync, MkdirSync, WriteFileSync, LoadAndParseJsonFile } from "./FileSystem";
+import { execSync } from "child_process";
 
 type ExtensionSection = "Installed";
 type ViewControlName = "Run" | "Extensions";
@@ -151,7 +152,7 @@ export async function GetDebugView(): Promise<DebugView> {
  * Uninstalls given extension.
  * @param extensionName Extension name to uninstall
  */
-export async function UninstallExtension(extensionName: string): Promise<void> {
+export async function UninstallExtensionViaMarketplace(extensionName: string): Promise<void> {
     let extensionsView: ExtensionsViewSection | undefined;
 
     logger.Info(`Uninstall '${extensionName}' extension`);
@@ -489,6 +490,16 @@ export async function CheckIfBreakpointHasBeenSet({ fileName, lineNumber }: Brea
     assert.notEqual(matches?.length, 0, `Breakpoint '${fileName}:${lineNumber}' has not been set.`);
     logger.Pass(`Breakpoint '${fileName}:${lineNumber}' has been set`);
     return matches?.length !== 0;
+}
+
+export function InstallExtension(id: string) {
+    const output = execSync(`code --install-extension ${id}`);
+    logger.Info(output.toString());
+}
+
+export function UninstallExtension(id: string) {
+    const output = execSync(`code --uninstall-extension ${id}`);
+    logger.Info(output.toString());
 }
 
 /**
