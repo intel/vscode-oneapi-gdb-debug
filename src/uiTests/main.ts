@@ -26,6 +26,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         await Wait(2* 1000);
         await VSBrowser.instance.openResources(...resources);
         SetToolBarLocationToDocked();
+        await InstallRequiredExtensions(["ms-vscode.cpptools", "intel-corporation.oneapi-analysis-configurator"])
     });
     before(async function() {
         this.defaultTimeout = 60 * 1000;
@@ -60,17 +61,8 @@ function SetToolBarLocationToDocked() {
     WriteFileSync(vsCodeSettingsPath, JSON.stringify(settings));
 }
 
-async function InstallRequiredExtensions(): Promise<void> {
-    logger.Info("Check if required extensions are installed");
-    const requiredExtensions = [
-        "Analysis Configurator for Intel Software Developer Tools",
-        "C/C++",
-        "CMake Tools",
-        "Code Sample Browser for Intel Software Developer Tools",
-        "Environment Configurator for Intel Software Developer Tools",
-    ];
-
-    for await (const requiredExtension of requiredExtensions) {
+async function InstallRequiredExtensions(extensions: string[]): Promise<void> {
+    for await (const requiredExtension of extensions) {
         const isExtensionInstalled = await IsExtensionInstalled(requiredExtension);
 
         if (!isExtensionInstalled) {
@@ -90,25 +82,27 @@ async function IsExtensionInstalled(extensionName: string): Promise<boolean | un
 
         logger.Info(isInstalled ? `Extension: '${extensionName}' is installed` : `Extension: '${extensionName}' is not installed`);
         return isInstalled;
-    }, 5 * 1000);
+    }, 10 * 1000);
 }
 
 async function InstallExtension(extensionToInstall: string): Promise<void> {
-    const extensionsView = await GetExtensionsSection("Installed");
+    await Retry(async() => {
+        const extensionsView = await GetExtensionsSection("Installed");
 
-    await extensionsView.clearSearch();
-    const extension = await extensionsView.findItem(extensionToInstall);
+        await extensionsView.clearSearch();
+        const extension = await extensionsView.findItem(extensionToInstall);
 
-    if (await extension?.isInstalled()) {
-        logger.Info(`Extension '${extensionToInstall}' is already installed. SKIP`);
-    }
-    logger.Info(`Install '${extensionToInstall}' extension`);
-    await extension?.install();
-    const installed = await extension?.isInstalled();
+        if (await extension?.isInstalled()) {
+            logger.Info(`Extension '${extensionToInstall}' is already installed. SKIP`);
+        }
+        logger.Info(`Install '${extensionToInstall}' extension`);
+        await extension?.install();
+        const installed = await extension?.isInstalled();
 
-    assert.isTrue(installed, `Installation of '${extensionToInstall}' failed. Actual: ${installed} | Expected: 'true'`);
-    logger.Pass(`Extensions ${extensionToInstall} has been installed. Actual: ${installed} | Expected: 'true'`);
-    await extensionsView.clearSearch();
+        assert.isTrue(installed, `Installation of '${extensionToInstall}' failed. Actual: ${installed} | Expected: 'true'`);
+        logger.Pass(`Extensions ${extensionToInstall} has been installed. Actual: ${installed} | Expected: 'true'`);
+        await extensionsView.clearSearch();
+    }, 60 * 1000);
 }
 
 async function UninstallAllExtensions(): Promise<void> {
