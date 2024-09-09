@@ -23,6 +23,21 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "icons": {
+            "syscheck-icon": {
+              "description": "syscheck icon",
+              "default": {
+                "fontPath": "media/stethoscope-svgrepo-com.woff",
+                "fontCharacter": "\\e900"
+              }
+            }
+          },
+        "viewsWelcome": [
+            {
+                "view": "intelOneAPI.syscheckView",
+                "contents": "[Run](command:intelOneAPI.syscheckView.run)"
+            }
+        ],
         "configuration": [
             {
                 "title": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
@@ -56,6 +71,15 @@
             }
         ],
         "commands": [
+            {
+                "command": "intelOneAPI.syscheckView.run",
+                "title": "Intel oneAPI: Refresh Debugger Healths Checks for oneAPI",
+                "icon": "$(extensions-refresh)"
+            },
+            {
+                "command": "intelOneAPI.syscheckView.focusAndRun",
+                "title": "Intel oneAPI: Focus Debugger Healths Checks and Run"
+            },
             {
                 "command": "intelOneAPI.launchConfigurator.generateLaunchJson",
                 "title": "Intel oneAPI: Generate launch configurations"
@@ -110,7 +134,24 @@
                 }
             }
         ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "intelOneAPI_syscheckView",
+                    "title": "Debugger Healths Checks for oneAPI",
+                    "icon": "media/stethoscope-svgrepo-com.svg"
+                }
+            ]
+        },
         "views": {
+            "intelOneAPI_syscheckView": [
+                {
+                    "id": "intelOneAPI.syscheckView",
+                    "name": "Summary",
+                    "icon": "media/stethoscope-svgrepo-com.svg",
+                    "contextualTitle": "Debugger Healths Checks for oneAPI"
+                }
+            ],
             "debug": [
                 {
                     "id": "intelOneAPI.debug.simdview",
@@ -146,6 +187,11 @@
         },
         "menus": {
             "view/title": [
+                {
+                    "command": "intelOneAPI.syscheckView.run",
+                    "when": "view == intelOneAPI.syscheckView",
+                    "group": "navigation"
+                },
                 {
                     "command": "intelOneAPI.watchPanel.expresionInput",
                     "when": "view == intelOneAPI.watchPanel.simdWatchView",
