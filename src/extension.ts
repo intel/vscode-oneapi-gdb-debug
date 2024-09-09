@@ -14,6 +14,10 @@ import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SelectedLaneViewProvider } from "./viewProviders/selectedLaneViewProvider";
 import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";
 
+import { SyscheckViewProvider } from "./viewProviders/syschecksTreeViewProvider";
+
+
+
 function checkExtensionsConflict() {
     // The function of generating a launcher configuration from an deprecated extension conflicts with the same function from the current one.
     const deprecatedExtension = vscode.extensions.getExtension("intel-corporation.oneapi-launch-configurator");
@@ -27,9 +31,9 @@ function checkExtensionsConflict() {
             vscode.window.showInformationMessage(`${deprExtName} is a deprecated version. This may lead to the unavailability of overlapping functions.`, Update, "Ignore")
                 .then((selection) => {
                     if (selection === Update) {
-                        vscode.commands.executeCommand("workbench.extensions.uninstallExtension", deprecatedExtension.id).then(function() {
+                        vscode.commands.executeCommand("workbench.extensions.uninstallExtension", deprecatedExtension.id).then(function () {
                             vscode.window.showErrorMessage(`Completed uninstalling ${deprExtName} extension.`);
-                            vscode.commands.executeCommand("workbench.extensions.installExtension", "intel-corporation.oneapi-analysis-configurator").then(function() {
+                            vscode.commands.executeCommand("workbench.extensions.installExtension", "intel-corporation.oneapi-analysis-configurator").then(function () {
                                 const actualExtension = vscode.extensions.getExtension("intel-corporation.oneapi-analysis-configurator");
 
                                 if (actualExtension) {
@@ -54,6 +58,35 @@ function checkExtensionsConflict() {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
+
+    const syscheckProvider = new SyscheckViewProvider(context);
+    vscode.window.registerTreeDataProvider("intelOneAPI.syscheckView", syscheckProvider);
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand("intelOneAPI.syscheckView.refresh", () => syscheckProvider.refresh())
+    );
+
+    // Add the status bar item
+    const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    statusBarItem.command = "intelOneAPI.syscheckView.focusAndRun";
+    statusBarItem.text = "$(syscheck-icon)";
+    statusBarItem.tooltip = "Focus on Debugger Healths Checks for oneAPI and Run";
+    statusBarItem.show();
+    context.subscriptions.push(statusBarItem);
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand("intelOneAPI.syscheckView.focusAndRun", async () => {
+            // Focus the Explorer view
+            await vscode.commands.executeCommand("workbench.view.explorer");
+
+            // Reveal the specific tree view
+            await vscode.commands.executeCommand("workbench.view.extension.intelOneAPI_syscheckView");
+
+            // Run the syscheckView command
+            await vscode.commands.executeCommand("intelOneAPI.syscheckView.run");
+        })
+    );
+
     // Checking for outdated versions of extensions in the VS Code environment
     checkExtensionsConflict();
 
