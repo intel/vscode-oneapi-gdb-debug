@@ -36,6 +36,21 @@ Note that you can modify the configuration manually. For example, you may need t
 
 More information about all the `launch.json` features can be found at [Configuring C/C++ debugging](https://code.visualstudio.com/docs/cpp/launch-json-reference).
 
+## Debugger Health Checks for oneAPI
+
+![Debugger Health Checks](/media/healthCheckC.png)
+
+The Debugger Health Checks provide a tool for verifying the setup and functionality of the oneAPI environment and debugger. It allows you to run a series of tests to ensure that key components, such as GPU drivers, environment variables, and debugging tools, are correctly configured.
+
+### How to Use:
+1. Open the Debugger Health Checks panel by clicking on the stethoscope icon in the status bar or pressing Run in the panel.
+
+![Debugger Health Checks](/media/healthCheckR.png)
+
+2. The tests will automatically execute, and results will be displayed in a tree format. Each check will show whether it passed, failed, or requires attention (warning).
+3. Hover over each test result to view additional information about the specific check, including version numbers and recommendations on how to resolve issues.
+
+
 ## Settings
 ### Symbolic indication of SIMD lanes
 In the settings, you can specify an additional designation for active and inactive lanes using any text character. This may be useful for clearer recognition of lane status.
@@ -186,7 +201,7 @@ At this point you should be able to run the extension in the "Extension Developm
 1. This extension is released under the MIT License.
 
 
-2. oneapi-gdb-debug-0.4.2.vsix\extension\media\userHelp\content.json
+2. oneapi-gdb-debug-0.5.0.vsix\extension\media\userHelp\content.json
 
     Copyright (c) 2021-2024 Intel Corporation
 
