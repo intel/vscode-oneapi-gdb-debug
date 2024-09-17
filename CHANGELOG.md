@@ -1,5 +1,15 @@
 # Change Log
 
+##  0.5.0
+
+  - Added Debugger Healths Checks for oneAPI
+
+  - Improved UI panels
+
+  - Improved launch configs
+  
+  - Various bug fixes and performance improvements
+
 ##  0.4.2
 
   - Added SIMD Variable Watch panel
