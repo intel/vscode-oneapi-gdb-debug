@@ -20,7 +20,7 @@ export default function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOnlineHelpTest();
         });
-        it.skip("Check offline help page", async function() {
+        it("Check offline help page", async function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOfflineHelpPageTest();
         });
