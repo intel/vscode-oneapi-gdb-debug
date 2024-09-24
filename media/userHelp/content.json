@@ -113,7 +113,7 @@
                 "commands":[
                     {
                         "name": "maint jit dump [addr] [filename]",
-                        "desription": "cleans the memory by dumping JIT object with specific address to desired filename"
+                        "description": "cleans the memory by dumping JIT object with specific address to desired filename"
                     }
                 ]
             }
