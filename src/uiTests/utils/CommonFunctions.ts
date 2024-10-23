@@ -4,7 +4,7 @@
  */
 
 import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
-import { Breakpoint, ConditionalBreakpoint, DebugPane, VsCodeTask } from "./Types";
+import { Breakpoint, ConditionalBreakpoint, DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
 import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
 import { LoggerAggregator as logger } from "./Logger";
 import { assert } from "chai";
@@ -503,6 +503,48 @@ export function UninstallExtension(id: string) {
 }
 
 /**
+ * 
+ * @param body Function body to execute inside the given frame.
+ * @param frame Name of a frame to look for.
+ * @returns TResult of a provided body.
+ */
+export async function ExecuteInOneApiDebugPaneFrame<TResult>(body: (driver: WebDriver) => Promise<TResult>, frame: OneApiDebugPaneFrameTitle): Promise<TResult> {
+    const outerFrames = await VSBrowser.instance.driver.findElements(By.css("iframe"));
+    let result;
+
+    for (const outerFrame of outerFrames) {
+        result = await ExecuteInIFrame(async driver => {
+            try {
+                const innerFrame = await driver.findElement(By.css("#active-frame"));
+                const frameTitle = await innerFrame.getAttribute("title");
+
+                if (frameTitle !== frame) { return; }
+                return await ExecuteInIFrame(body, innerFrame);
+            } catch {
+                return;
+            }
+        }, outerFrame);
+
+        if (result) {break;}
+    }
+
+    return result as TResult;
+}
+
+/**
+ * 
+ * @param str Core string.
+ * @param startStr Start string.
+ * @param endStr End string.
+ * @returns String between start and end strings.
+ */
+export function GetStringBetweenStrings(str: string, startStr: string, endStr: string) {
+    const pos = str.indexOf(startStr) + startStr.length;
+
+    return str.substring(pos, str.indexOf(endStr, pos));
+}
+
+/**
  * Gets view control.
  * @param viewControl View constrol name to get.
  * @returns View control as ViewControl.
@@ -630,6 +672,13 @@ async function RunTask(taskName: string, expectedOutput: string): Promise<void> 
  */
 async function GenerateLaunchConfigurations(): Promise<string> {
     const launchJsonPath = `${VSCODE_PATH}/launch.json`;
+
+    if (FileExistsSync(launchJsonPath)) {
+        const launchJson = LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath);
+        const configurationName = launchJson.configurations[0].name;
+
+        return configurationName;
+    }
     let input = await SetInputText("> Intel oneAPI: Generate launch configurations");
 
     await Wait(5 * 1000);

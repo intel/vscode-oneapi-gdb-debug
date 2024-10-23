@@ -63,4 +63,9 @@ export type ConditionalBreakpoint = {
  */
 export type DebugPane = "Breakpoints Section" | "Call Stack Section" | `${OneApiDebugPane}`;
 
+/**
+ * OneAPI debug pane titles
+ */
+export type OneApiDebugPaneFrameTitle = "oneAPI GPU Threads" | "Hardware Info" | "Selected Lane";
+
 // #endregion

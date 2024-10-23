@@ -3,37 +3,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { CheckIfBreakpointHasBeenHit, CheckIfBreakpointHasBeenSet, CleanUp, ExecuteInIFrame, GetDebugConsoleOutput, GetDebugPane, GetTerminalOutput,
+import { CheckIfBreakpointHasBeenHit, CheckIfBreakpointHasBeenSet, CleanUp, ExecuteInOneApiDebugPaneFrame, GetDebugConsoleOutput, GetDebugPane, GetStringBetweenStrings, GetTerminalOutput,
     LaunchSequence, RemoveAllBreakpoints, Retry, SetBreakpoint, SetInputText, Wait } from "../utils/CommonFunctions";
-import { By, EditorView, Key, TextEditor, VSBrowser, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
+import { By, EditorView, Key, TextEditor, WebElement, Workbench } from "vscode-extension-tester";
 import { LoggerAggregator as logger } from "../utils/Logger";
-import { ConditionalBreakpoint, ConditionalBreakpointType, OneApiDebugPane } from "../utils/Types";
+import { ConditionalBreakpoint, ConditionalBreakpointType, OneApiDebugPane, OneApiDebugPaneFrameTitle } from "../utils/Types";
 import { assert } from "chai";
 import { DEFAULT_BREAKPOINT } from "../utils/Consts";
+import { GetGpuThreads } from "../utils/OneApiGpuThreads";
+import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
 
-type Thread = {
-    threadId: number;
-    targetId: string;
-    location: string;
-    workGroup: string;
-    simdLanes: SimdLane[];
-};
-type SimdLane = {
-    laneId: number;
-    current: boolean;
-    state: "Active" | "Inactive" | "Hit";
-    details: SimdLaneDetails;
-    indicator: string | undefined;
-    handle: WebElement;
-};
-type SimdLaneDetails =  {
-    lane: number;
-    name: string;
-    threadId: number;
-    executionMask: string;
-    hitLanesMask: string;
-    length: number;
-};
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
 type HwInfo = {
@@ -325,13 +304,6 @@ async function SetConditionalBreakpoint(breakpoint: ConditionalBreakpoint) {
     return result;
 }
 
-function GetStringBetweenStrings(str: string, startStr: string, endStr: string) {
-    const pos = str.indexOf(startStr) + startStr.length;
-
-    return str.substring(pos, str.indexOf(endStr, pos));
-}
-
-type OneApiDebugPaneFrameTitle = "oneAPI GPU Threads" | "Hardware Info" | "Selected Lane";
 async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[]> {
     const selectors: { [Prop in OneApiDebugPane]: { selector: By; frameTitle: OneApiDebugPaneFrameTitle }} = {
         "oneAPI GPU Threads Section": { selector: By.id("simd-view"), frameTitle: "oneAPI GPU Threads" },
@@ -355,84 +327,6 @@ async function ContinueDebugging(): Promise<void> {
     const continueButton = await driver.findElement(By.css("a.action-label.codicon.codicon-debug-continue"));
 
     await continueButton.click();
-}
-
-async function GetGpuThreads(): Promise<Thread[]> {
-    const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
-    const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
-
-    if (!gpuThreadsViewClass?.includes("expanded")) {
-        await gpuThreadsView?.click();
-    }
-
-    await SetInputText("> Intel oneAPI: Refresh SIMD Data");
-    await Wait(3 * 1000);
-    return await ExecuteInOneApiDebugPaneFrame(async(driver) => {
-        const gpuThreadsObj: Thread[] = [];
-        const gpuThreads = await driver.findElement(By.id("simd-view"));
-        const gpuThreadsRows = await gpuThreads.findElements(By.css("#simd-view > tbody > tr"));
-
-        for (const row of gpuThreadsRows) {
-            const rowData = await row.findElements(By.css("td"));
-            const rowParsed = [];
-            const simdLanes: SimdLane[] = [];
-
-            for (const data of rowData) {
-                let cellGroup: WebElement | undefined = undefined;
-
-                try { cellGroup = await data.findElement(By.className("cell-group")); }
-                catch { /* empty */ }
-
-                if (cellGroup) {
-                    const lanes = await cellGroup.findElements(By.css("div"));
-
-                    for (const lane of lanes) {
-                        const laneId = await lane.getAttribute("id");
-                        const laneClass = await lane.getAttribute("class");
-                        const simdDetails = JSON.parse(laneId) as SimdLaneDetails;
-                        const current = laneClass.includes("current");
-                        const active = laneClass.includes("colored");
-                        const hit = laneClass.includes("hitCell");
-                        const script = "return window.getComputedStyle(arguments[0],'::before').getPropertyValue('content')";
-                        const driver = new Workbench().getDriver();
-                        const indicator = await driver.executeScript(script, lane) as string;
-
-                        simdLanes.push({
-                            laneId: simdDetails.lane,
-                            current: current,
-                            state: hit ? "Hit" : active ? "Active" : "Inactive",
-                            details: simdDetails,
-                            indicator: indicator.replace(/"/g, ""),
-                            handle: lane
-                        });
-                        continue;
-                    }
-                }
-                let location: string | undefined;
-
-                const rowClass = await data.getAttribute("class");
-
-                if (rowClass === "simdtooltip") {
-                    try { location = await (await data.findElement(By.css("span"))).getAttribute("innerHTML");}
-                    catch { /* empty */ }
-                }
-                const rowDataText = await data.getText();
-                const index = rowData.indexOf(data);
-
-                if (index === 0 ) { rowParsed.push(GetStringBetweenStrings(rowDataText, "[", "]")); }
-                if (index !== 4 ) { rowParsed.push(location || rowDataText); }
-            }
-            gpuThreadsObj.push({
-                threadId: parseInt(rowParsed[0]),
-                targetId: rowParsed[1],
-                location: rowParsed[2].replace(/\s/g, ""),
-                workGroup: rowParsed[3],
-                simdLanes: simdLanes
-            });
-        }
-
-        return gpuThreadsObj;
-    }, "oneAPI GPU Threads");
 }
 
 async function RefreshGpuThreadsView(): Promise<void> {
@@ -611,29 +505,6 @@ async function SetSimdLaneFromGui(laneToSet: number): Promise<void> {
             logger.Error(e);
         }
     }, "oneAPI GPU Threads");
-}
-
-async function ExecuteInOneApiDebugPaneFrame<TResult>(body: (driver: WebDriver) => Promise<TResult>, frame: OneApiDebugPaneFrameTitle): Promise<TResult> {
-    const outerFrames = await VSBrowser.instance.driver.findElements(By.css("iframe"));
-    let result;
-
-    for (const outerFrame of outerFrames) {
-        result = await ExecuteInIFrame(async driver => {
-            try {
-                const innerFrame = await driver.findElement(By.css("#active-frame"));
-                const frameTitle = await innerFrame.getAttribute("title");
-
-                if (frameTitle !== frame) { return; }
-                return await ExecuteInIFrame(body, innerFrame);
-            } catch {
-                return;
-            }
-        }, outerFrame);
-
-        if (result) {break;}
-    }
-
-    return result as TResult;
 }
 
 async function GetCallStackInfo(): Promise<string> {
