@@ -3,7 +3,7 @@
     "displayName": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
     "description": "An extension to expose additional features of GPU debugging with GDB for Intel® oneAPI.",
     "publisher": "intel-corporation",
-    "version": "0.4.2",
+    "version": "0.5.0",
     "license": "MIT",
     "icon": "media/oneapi-logo.png",
     "keywords": [
@@ -13,7 +13,7 @@
         "gdb"
     ],
     "engines": {
-        "vscode": "^1.89.0"
+        "vscode": "^1.93.0"
     },
     "categories": [
         "Other"
@@ -23,6 +23,21 @@
     ],
     "main": "./out/extension.js",
     "contributes": {
+        "icons": {
+            "syscheck-icon": {
+                "description": "syscheck icon",
+                "default": {
+                    "fontPath": "media/stethoscope-svgrepo-com.woff",
+                    "fontCharacter": "\\e900"
+                }
+            }
+        },
+        "viewsWelcome": [
+            {
+                "view": "intelOneAPI.syscheckView",
+                "contents": "[Run](command:intelOneAPI.syscheckView.run)"
+            }
+        ],
         "configuration": [
             {
                 "title": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
@@ -56,6 +71,15 @@
             }
         ],
         "commands": [
+            {
+                "command": "intelOneAPI.syscheckView.run",
+                "title": "Intel oneAPI: Refresh Debugger Healths Checks for oneAPI",
+                "icon": "$(extensions-refresh)"
+            },
+            {
+                "command": "intelOneAPI.syscheckView.focusAndRun",
+                "title": "Intel oneAPI: Focus Debugger Healths Checks and Run"
+            },
             {
                 "command": "intelOneAPI.launchConfigurator.generateLaunchJson",
                 "title": "Intel oneAPI: Generate launch configurations"
@@ -110,7 +134,24 @@
                 }
             }
         ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "intelOneAPI_syscheckView",
+                    "title": "Debugger Healths Checks for oneAPI",
+                    "icon": "media/stethoscope-svgrepo-com.svg"
+                }
+            ]
+        },
         "views": {
+            "intelOneAPI_syscheckView": [
+                {
+                    "id": "intelOneAPI.syscheckView",
+                    "name": "Summary",
+                    "icon": "media/stethoscope-svgrepo-com.svg",
+                    "contextualTitle": "Debugger Healths Checks for oneAPI"
+                }
+            ],
             "debug": [
                 {
                     "id": "intelOneAPI.debug.simdview",
@@ -146,6 +187,11 @@
         },
         "menus": {
             "view/title": [
+                {
+                    "command": "intelOneAPI.syscheckView.run",
+                    "when": "view == intelOneAPI.syscheckView",
+                    "group": "navigation"
+                },
                 {
                     "command": "intelOneAPI.watchPanel.expresionInput",
                     "when": "view == intelOneAPI.watchPanel.simdWatchView",
@@ -438,40 +484,48 @@
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile",
-        "lint": "eslint -c .eslintrc.js --fix --ext .ts ./",
+        "lint": "eslint -c eslint.config.mjs --fix ./",
         "package": "vsce package",
-        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources"
+        "get-vscode": "extest get-vscode -s test-resources",
+        "prebasic-ui-tests": "yarn run get-vscode && extest install-from-marketplace ms-vscode.cmake-tools ms-vscode.cpptools intel-corporation.oneapi-analysis-configurator intel-corporation.oneapi-samples intel-corporation.oneapi-environment-configurator -s test-resources",
+        "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources",
+        "postbasic-ui-tests": "rm -rf ~/.vscode/extensions/"
     },
     "devDependencies": {
-        "@types/chai": "^4.3.16",
+        "@eslint/js": "^9.13.0",
+        "@stylistic/eslint-plugin-ts": "^2.9.0",
+        "@types/chai": "^4.3.19",
         "@types/glob": "^8.1.0",
-        "@types/mocha": "^10.0.6",
-        "@types/node": "^20.12.12",
+        "@types/mocha": "^10.0.8",
+        "@types/node": "^22.5.5",
         "@types/source-map-support": "^0.5.10",
-        "@types/vscode": "^1.89.0",
-        "@typescript-eslint/eslint-plugin": "^7.10.0",
-        "@typescript-eslint/parser": "^7.10.0",
+        "@types/vscode": "^1.93.0",
+        "@typescript-eslint/eslint-plugin": "^8.6.0",
+        "@typescript-eslint/parser": "^8.6.0",
         "@vscode/test-electron": "^2.3.10",
-        "@vscode/vsce": "^2.26.1",
-        "axios": "^1.7.2",
-        "chai": "^5.1.1",
-        "eslint": "^9.3.0",
-        "mocha": "^10.4.0",
+        "@vscode/vsce": "^3.1.0",
+        "axios": "^1.7.7",
+        "chai": "4.4.1",
+        "eslint": "^9.13.0",
+        "globals": "^15.11.0",
+        "mocha": "^10.7.3",
         "mocha-junit-reporter": "^2.2.1",
         "mocha-multi-reporters": "^1.5.1",
         "react": "^18.3.1",
         "source-map-support": "^0.5.21",
-        "type-fest": "^4.18.2",
-        "typescript": "^5.4.5",
-        "vscode-extension-tester": "^8.2.0"
+        "type-fest": "^4.26.1",
+        "typescript": "^5.6.2",
+        "typescript-eslint": "^8.11.0",
+        "vscode-extension-tester": "^8.7.0"
     },
     "repository": {
         "type": "git",
         "url": "https://github.com/intel/vscode-oneapi-gdb-debug.git"
     },
     "dependencies": {
-        "@vscode/debugadapter": "^1.65.0",
-        "@vscode/debugprotocol": "^1.65.0",
+        "@vscode/codicons": "^0.0.36",
+        "@vscode/debugadapter": "^1.67.0",
+        "@vscode/debugprotocol": "^1.67.0",
         "@vscode/webview-ui-toolkit": "^1.4.0"
     }
 }
