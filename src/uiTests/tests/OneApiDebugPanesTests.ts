@@ -3,27 +3,29 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { CheckIfBreakpointHasBeenHit, CheckIfBreakpointHasBeenSet, CleanUp, ExecuteInOneApiDebugPaneFrame, GetDebugConsoleOutput, GetDebugPane, GetStringBetweenStrings, GetTerminalOutput,
-    LaunchSequence, RemoveAllBreakpoints, Retry, SetBreakpoint, SetInputText, Wait } from "../utils/CommonFunctions";
-import { By, EditorView, Key, TextEditor, WebElement, Workbench } from "vscode-extension-tester";
-import { LoggerAggregator as logger } from "../utils/Logger";
-import { ConditionalBreakpoint, ConditionalBreakpointType, OneApiDebugPane, OneApiDebugPaneFrameTitle } from "../utils/Types";
-import { assert } from "chai";
-import { DEFAULT_BREAKPOINT } from "../utils/Consts";
-import { GetGpuThreads } from "../utils/OneApiGpuThreads";
+import { CheckIfBreakpointHasBeenHit, CleanUp, ExecuteInOneApiDebugPaneFrame, GetDebugConsoleOutput, GetDebugPane, GetRandomInt, GetStringBetweenStrings, GetTerminalOutput,
+    LaunchSequence, Retry, SetBreakpoint, SetInputText, Wait } from "../utils/CommonFunctions";
+import { CheckIfBreakpointConditionHasBeenMet, ContinueDebugging, RemoveAllBreakpoints, SetConditionalBreakpoint } from "../utils/Debugging/Debugging";
+import { GetGpuThreads, GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
+import { ConditionalBreakpointType, ConditionalBreakpoint } from "../utils/Debugging/Types";
+import { OneApiDebugPane, OneApiDebugPaneFrameTitle } from "../utils/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
+import { LoggerAggregator as logger } from "../utils/Logger";
+import { By, WebElement } from "vscode-extension-tester";
+import { DEFAULT_BREAKPOINT } from "../utils/Consts";
+import { assert } from "chai";
 
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
 type HwInfo = {
-    [key: string]: string | undefined | number,
-    Name: string,
-    Cores: number | string,
-    Location?: string,
-    Number?: number | string,
-    "Sub device"?: string,
-    "Vendor ID": string,
-    "Target ID": string
+    [key: string]: string | undefined | number;
+    Name: string;
+    Cores: number | string;
+    Location?: string;
+    Number?: number | string;
+    "Sub device"?: string;
+    "Vendor ID": string;
+    "Target ID": string;
 }
 
 const devices: HwInfo[] = [
@@ -48,7 +50,7 @@ export default function() {
         ] as ThreadProperty[]) {
             it(`Check threads ${threadInfo}`, async function() {
                 this.timeout(5 * this.test?.ctx?.defaultTimeout);
-                await ValidateOneApiGpuThreadsTest(threadInfo); 
+                await ValidateOneApiGpuThreadsTest(threadInfo);
             });
         }
         for (const simdTestSuite of [
@@ -201,50 +203,6 @@ async function SimdLaneConditionalBreakpointTest({ breakpointType, paneToCheck }
 
 //#endregion
 
-async function GetExceptionPopupMessage(): Promise<string | undefined> {
-    return await Retry(async() => {
-        const exceptionPopup = await new Workbench().getDriver().findElement(By.className("zone-widget-container exception-widget"));
-
-        assert.notEqual(exceptionPopup, undefined, "Cannot find 'breakpoint hit' exception popup");
-        return await exceptionPopup.findElement(By.className("description")).getText();
-    }, 10 * 1000);
-}
-
-async function CheckIfBreakpointConditionHasBeenMet(options: {
-    expectedSimdLaneId?: number;
-    expectedThread: Thread;
-    breakpoint: ConditionalBreakpoint;
-}): Promise<void> {
-    const { expectedSimdLaneId, expectedThread, breakpoint } = options;
-    const currentThread = await GetCurrentThread() as Thread;
-    const breakpointSignature = expectedSimdLaneId ? await (async() => {
-        const signature = GetStringBetweenStrings(await GetExceptionPopupMessage() as string, "Hit ", " at");
-
-        return `${(signature as string)[0].toUpperCase()}${(signature as string).slice(1)}`;
-    })() : undefined;
-    const consoleOutput = await GetDebugConsoleOutput();
-    const lastBreakpointHit = consoleOutput.join("\n").match(/Thread.*hit.*with SIMD lane.*at.*/gm)?.pop() as string;
-    const lastLaneSwitch = consoleOutput.join("\n").match(/\[Switching to thread \d+.\d+:\d+ \([A-Z]* \d+.\d+.\d+.\d+ lane \d+\)]/gm)?.pop() as string;
-    const targetIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "(", ")]");
-    const threadIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "thread ", "(");
-    const laneIdDebugConsole = GetStringBetweenStrings(lastLaneSwitch, "lane ", ")]");
-
-    assert.isTrue([currentThread.targetId, targetIdDebugConsole].every(x => x === expectedThread.targetId) &&
-    lastBreakpointHit.includes(threadIdDebugConsole) &&
-    currentThread.threadId === expectedThread.threadId &&
-    currentThread.location === `${breakpoint.fileName}:${breakpoint.lineNumber}` &&
-    (currentThread.simdLanes.find(x => x.laneId === Number(laneIdDebugConsole)) as SimdLane).current &&
-    expectedSimdLaneId ? currentThread.simdLanes.find(x => x.current)?.laneId === expectedSimdLaneId : true &&
-    expectedSimdLaneId ? lastBreakpointHit.includes(breakpointSignature as string) : true);
-    logger.Pass("Condition has been met");
-}
-
-async function GetCurrentThread(): Promise<Thread | undefined> {
-    const threads = await GetGpuThreads();
-
-    return threads.find(x => x.simdLanes.find(x => x.current));
-}
-
 async function GetBreakpointCondition(breakpointType: ConditionalBreakpointType): Promise<[string, number, Thread]> {
     const gpuThreadsExceptCurrent = (await GetGpuThreads()).filter(x => !x.simdLanes.find(x => x.current));
     const threadToSetBpOn = gpuThreadsExceptCurrent[GetRandomInt(0, gpuThreadsExceptCurrent.length)];
@@ -257,51 +215,6 @@ async function GetBreakpointCondition(breakpointType: ConditionalBreakpointType)
     };
 
     return [conditions[breakpointType], simdLaneId, threadToSetBpOn];
-}
-
-async function SetConditionalBreakpoint(breakpoint: ConditionalBreakpoint) {
-    const [fileName, lineNumber] = [breakpoint.fileName, breakpoint.lineNumber];
-
-    await SetInputText(fileName, { input: await SetInputText("> Go to File...") });
-    await Wait(1 * 1000);
-    const textEditor = new TextEditor(new EditorView());
-
-    await Wait(1 * 1000);
-    logger.Info(`Go to line: ${lineNumber}`);
-    await SetInputText(`:${lineNumber}`);
-    await Wait(1 * 1000);
-    switch (breakpoint.type) {
-    case ConditionalBreakpointType.SimdGui:
-    case ConditionalBreakpointType.NativeGui:
-        await Retry(async() => {
-            await PerformContextMenuAction(
-                await GetLineNumberWebElement(breakpoint.lineNumber) as WebElement, "Add Conditional Breakpoint...");
-            await (await GetConditionalBreakpointExpressionInput())?.sendKeys(breakpoint.condition, Key.ENTER);
-        }, 30 * 1000);
-        break;
-    case ConditionalBreakpointType.SimdCommand:
-        const input = await SetInputText("> Intel oneAPI: Add SIMD lane conditional breakpoint");
-
-        await SetInputText(breakpoint.condition, { input: input });
-        break;
-    case ConditionalBreakpointType.NativeCommand:
-        await Retry(async() => {
-            await SetInputText("> Debug: Add Conditional Breakpoint...");
-            await (await GetConditionalBreakpointExpressionInput())?.sendKeys(breakpoint.condition, Key.ENTER);
-        }, 30 * 1000);
-        break;
-    default:
-        const exception = new Error(`Unknown 'ConditionalBreakpointTypes' member of ${breakpoint.type}`);
-
-        logger.Error(exception);
-        throw exception;
-    }
-    await textEditor.click();
-    await Wait(1 * 1000);
-    const result = await CheckIfBreakpointHasBeenSet(breakpoint);
-
-    logger.Info(`Breakpoint at line ${lineNumber} has been ${result ? "set" : "removed"}`);
-    return result;
 }
 
 async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[]> {
@@ -321,14 +234,7 @@ async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[
     return result as string[];
 }
 
-async function ContinueDebugging(): Promise<void> {
-    logger.Info("Continue debugging");
-    const driver = new Workbench().getDriver();
-    const continueButton = await driver.findElement(By.css("a.action-label.codicon.codicon-debug-continue"));
-
-    await continueButton.click();
-}
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function RefreshGpuThreadsView(): Promise<void> {
     logger.Info("Refresh gpu threads view");
     const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section") as WebElement;
@@ -346,57 +252,16 @@ async function RefreshGpuThreadsView(): Promise<void> {
     }
 }
 
-function GetRandomInt(min: number, max: number): number {
-    return Math.floor(Math.random() * (max - min) + min);
-}
-
-async function GetLineNumberWebElement(lineNumber: number) {
-    const textEditor = new TextEditor();
-    const lineNumbers = await textEditor.findElements(By.className("line-numbers lh-odd"));
-
-    return await (async() => {
-        for (const line of lineNumbers) {
-            const elementText = await line.getText();
-
-            if (elementText === `${lineNumber}`) { return line; }
-        }
-    })();
-}
-
-async function PerformContextMenuAction(element: WebElement, action: string) {
-    const driver = new Workbench().getDriver();
-
-    await driver.actions({ async: true, bridge: undefined }).contextClick(element).perform();
-    const actions = await driver.findElements(By.className("action-label"));
-
-    for (const menuAction of actions) {
-        const text = await menuAction.getText();
-
-        if (text === action) {
-            menuAction.click();
-            await Wait(3 * 1000);
-            break;
-        }
-    }
-}
-
-async function GetConditionalBreakpointExpressionInput() {
-    const conditionExpressionInputBox = await new Workbench().getDriver().findElement(By.css("div.inputContainer > div > div > textarea.inputarea.monaco-mouse-cursor-text"));
-
-    if (!conditionExpressionInputBox) { throw new Error("Cannot find conditional BP expression input box"); }
-    return conditionExpressionInputBox;
-}
-
 async function CheckIfHwInfoViewContainsExpectedInfo() {
     const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
     const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
     const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
-    const expectedDeviceInfo: HwInfo = {Location: "", Number: "", "Sub device": "", ...devices.find(x => x.Name === deviceName)! };
+    const expectedDeviceInfo: HwInfo = { Location: "", Number: "", "Sub device": "", ...devices.find(x => x.Name === deviceName)! };
     const currentDeviceInfo: HwInfo = Object.keys(expectedDeviceInfo).reduce((acc, curr) => {
         // Skip first 5 chars because of '[i2] ' pefix
-        acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(5) : hwInfoViewContent.find(x => x.includes(curr))?.split(': ').pop();
+        acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(5) : hwInfoViewContent.find(x => x.includes(curr))?.split(": ").pop();
         return acc;
-    }, {} as HwInfo)
+    }, {} as HwInfo);
 
     assert.isTrue(
         currentDeviceInfo.Name === expectedDeviceInfo.Name &&
