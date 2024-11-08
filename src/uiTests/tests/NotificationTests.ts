@@ -33,7 +33,7 @@ export default function() {
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
-            } catch(e) { logger.Error(e) }
+            } catch(e) { logger.Error(e); }
         });
         after(async() => {
             try {
@@ -42,7 +42,7 @@ export default function() {
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
-            } catch(e) { logger.Error(e) }
+            } catch(e) { logger.Error(e); }
         });
         for (const notification of Object.values(expectedNotifications)) {
             it(`Install '${notification.name}' extension`, async function() {
