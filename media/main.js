@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-(function() {
+(function () {
     // Get access to the VS Code API from within the webview context
     const vscode = acquireVsCodeApi();
 
@@ -25,18 +25,24 @@
 
         setVSCodeMessageListener();
         setupSearchPanel();
-        const searchPanel = document.querySelector(".search-panel");
-        const dragHandle = document.querySelector(".drag-handle");
+        setupFilterPanel();
 
-        makeElementDraggable(searchPanel, dragHandle);
+        const searchPanel = document.querySelector(".search-panel");
+        const filterPanel = document.querySelector(".filter-panel");
+        const searchDragHandle = searchPanel.querySelector(".drag-handle");
+        const filterDragHandle = filterPanel.querySelector(".drag-handle");
+
+        makeElementDraggable(searchPanel, searchDragHandle);
+        makeElementDraggable(filterPanel, filterDragHandle);
+
         var elements = document.getElementsByClassName("one");
 
-        for (let element of elements){
+        for (let element of elements) {
             const basic = document.getElementById(element.id);
-    
-            basic.addEventListener("click", function(){changeLane(element.id);});
 
-            if(basic.classList.contains("current")) {
+            basic.addEventListener("click", function () { changeLane(element.id); });
+
+            if (basic.classList.contains("current")) {
                 basic.scrollIntoView({ behavior: "auto", block: "center", inline: "start" });
             }
         }
@@ -45,9 +51,9 @@
         var i;
 
         for (i = 0; i < coll.length; i++) {
-            coll[i].addEventListener("click", function() {
+            coll[i].addEventListener("click", function () {
                 var content = this.nextElementSibling;
-                
+
                 if (this.classList.contains("active")) {
                     content.style.display = "none";
                 } else {
@@ -103,27 +109,369 @@
         highlightResults(); // Perform the search highlighting
     }
 
+    function showFilterPanel() {
+        const filterPanel = document.querySelector(".filter-panel");
+        filterPanel.style.display = "flex";
+
+        // Retrieve ThreadFilter from localStorage (default to empty object if not present)
+        const storedFilter = JSON.parse(localStorage.getItem("ThreadFilter")) || {};
+
+        // 1) Restore main filter input
+        document.getElementById("filterInput").value = storedFilter.filter || "";
+
+        // 2) Restore threadValue
+        const threadInput = document.getElementById("threadInput");
+        const threadSelectedValue = document.getElementById("threadSelectedValue");
+        restoreDropdownAndInput(
+            storedFilter.threadValue,
+            "--selected-lanes",              // default if empty
+            "All",               // label if it's -all
+            "threadDropdownMenu",
+            "threadDropdownContainer",
+            threadSelectedValue,
+            threadInput
+        );
+
+        // 3) Restore laneValue
+        const laneInput = document.getElementById("laneInput");
+        const laneSelectedValue = document.getElementById("laneSelectedValue");
+        restoreDropdownAndInput(
+            storedFilter.laneValue,
+            "--selected-lanes",               // default if empty
+            "Selected",                // label if it's -all
+            "laneDropdownMenu",
+            "laneDropdownContainer",
+            laneSelectedValue,
+            laneInput
+        );
+
+        // 4) Restore local/global/workGroup
+        document.getElementById("localWorkItemInput").value = storedFilter.localWorkItemValue || "";
+        document.getElementById("globalWorkItemInput").value = storedFilter.globalWorkItemValue || "";
+        document.getElementById("workGroupInput").value = storedFilter.workGroupValue || "";
+
+        // Finally, focus the main filter text
+        document.getElementById("filterInput").focus();
+    }
+
+    /**
+* Restores a dropdown/input pair based on the stored value.
+* @param {string} value - The stored field value (e.g., "--selected-lanes", "3,5,7", etc.)
+* @param {string} defaultValue - The fallback if `value` is empty (usually "--selected-lanes")
+* @param {string} defaultLabel - The label to show if we interpret this as the default (e.g. "All")
+* @param {string} menuId - The ID of the dropdown menu element (e.g. "laneDropdownMenu")
+* @param {string} containerId - The ID of the container for that dropdown (e.g. "laneDropdownContainer")
+* @param {HTMLElement} selectedValueEl - The <span> or <div> that shows the selected label
+* @param {HTMLInputElement} inputEl - The text input for custom values
+*/
+    function restoreDropdownAndInput(
+        value,
+        defaultValue,
+        defaultLabel,
+        menuId,
+        containerId,
+        selectedValueEl,
+        inputEl
+    ) {
+        const menu = document.getElementById(menuId);
+        const container = document.getElementById(containerId);
+
+        // Clear any previously selected dropdown option
+        if (menu) {
+            const previouslySelected = menu.querySelector(".dropdown-option.selected");
+            if (previouslySelected) {
+                previouslySelected.classList.remove("selected");
+            }
+        }
+
+        // If nothing stored, or the user had an empty string, treat as default
+        if (!value || value.trim() === "") {
+            selectedValueEl.textContent = defaultLabel;
+            inputEl.value = defaultValue;
+            inputEl.style.display = "none";
+            selectOptionInMenu(menu, defaultValue);
+            return;
+        }
+
+        // Check if it's the special flags
+        if (value === "--selected-lanes" || value === "--all-lanes") {
+            // For example, if threadValue === "--selected-lanes", we show "All"
+            // If laneValue === "--all-lanes", we might show "All Lanes"
+            const label = (value === "--all-lanes") ? "All Lanes" : defaultLabel;
+            selectedValueEl.textContent = label;
+            inputEl.value = value;
+            inputEl.style.display = "none";
+            selectOptionInMenu(menu, value);
+            return;
+        }
+
+        // If we get here, it's presumably a custom numeric or star/range (e.g., "3,5,7", "*", "2.129" etc.)
+        selectedValueEl.textContent = value; // or "Custom" if you prefer
+        inputEl.value = value;
+        inputEl.style.display = "block"; // let the user see and edit
+        selectOptionInMenu(menu, "custom");
+
+        // Hide the default .dropdown-selected container so only input is visible
+        if (container) {
+            const dropdownSelected = container.querySelector(".dropdown-selected");
+            if (dropdownSelected) {
+                dropdownSelected.style.display = "none";
+            }
+        }
+    }
+
+    /**
+     * Finds the dropdown-option in `menu` with data-value == desiredValue
+     * and marks it as selected.
+     */
+    function selectOptionInMenu(menu, desiredValue) {
+        if (!menu) return;
+        const option = menu.querySelector(`.dropdown-option[data-value="${desiredValue}"]`);
+        if (option) {
+            option.classList.add("selected");
+        }
+    }
+
+
+    function initializeLaneDropdown() {
+        const laneDropdownMenu = document.getElementById("laneDropdownMenu");
+        if (!laneDropdownMenu) {
+            console.error("#laneDropdownMenu not found.");
+            return;
+        }
+
+        laneDropdownMenu.addEventListener("click", (event) => {
+            const option = event.target.closest(".dropdown-option");
+            if (option) {
+                document.querySelectorAll("#laneDropdownMenu .dropdown-option").forEach((opt) => opt.classList.remove("selected"));
+                option.classList.add("selected");
+
+                const value = option.getAttribute("data-value");
+                if (value === "custom") {
+                    const laneInput = document.getElementById("laneInput");
+                    laneInput.style.display = "block";
+                    laneInput.focus();
+                } else {
+                    document.getElementById("laneInput").style.display = "none";
+                    document.getElementById("laneInput").value = "";
+                }
+
+                document.getElementById("laneSelectedValue").textContent = option.textContent;
+            }
+        });
+    }
+
+    function isNonEmptyFilter(filterObj) {
+        return (
+          // 1) Main filter text must be non-empty
+          (filterObj.filter && filterObj.filter.trim() !== "") ||
+      
+          // 2) threadValue must be defined, not empty, and not "--selected-lanes"
+          (filterObj.threadValue &&
+           filterObj.threadValue.trim() !== "" &&
+           filterObj.threadValue.trim() !== "--selected-lanes") ||
+      
+          // 3) laneValue must be defined, not empty, and not "--selected-lanes"
+          (filterObj.laneValue &&
+           filterObj.laneValue.trim() !== "" &&
+           filterObj.laneValue.trim() !== "--selected-lanes" &&
+           filterObj.laneValue.trim() !== "--all-lanes") ||
+      
+          // 4) localWorkItemValue, globalWorkItemValue, workGroupValue:
+          //    any must be defined and not empty
+          (filterObj.localWorkItemValue &&
+           filterObj.localWorkItemValue.trim() !== "") ||
+      
+          (filterObj.globalWorkItemValue &&
+           filterObj.globalWorkItemValue.trim() !== "") ||
+      
+          (filterObj.workGroupValue &&
+           filterObj.workGroupValue.trim() !== "")
+        );
+      }
+      
+
     function setVSCodeMessageListener() {
         window.addEventListener("message", (event) => {
             const command = event.data.command;
             const data = JSON.parse(event.data.payload);
 
             switch (command) {
-            case "change":
-                displayNewData(data.newLanes);
-                break;
-            case "changeLane":
-                updateLane(data.id, data.previousLane, data.viewType);
-                break;
-            case "triggerSearch":
-                performSearch();
-                break;
-            default:
-                break;
+                case "change":
+                    displayNewData(data.newLanes);
+                    break;
+                case "changeLane":
+                    updateLane(data.id, data.previousLane, data.viewType);
+                    break;
+                case "triggerSearch":
+                    performSearch();
+                    break;
+                case "triggerFilter":
+                    showFilterPanel();
+                    break;
+                default:
+                    break;
             }
         });
     }
+
+    function setupFilterPanel() {
+        document.getElementById("helpBtn").addEventListener("click", () => openFilterHelp());
+        document.getElementById("applyFilterBtn").addEventListener("click", () => applyFilter());
+        document.getElementById("clearBtn").addEventListener("click", () => clearFilter());
+        document.getElementById("closeFilterBtn").addEventListener("click", () => closeFilterPanel());
+
+        document.getElementById("threadInput").value = "";
+        document.getElementById("laneInput").value = "";
+        document.getElementById("localWorkItemInput").value = "";
+        document.getElementById("globalWorkItemInput").value = "";
+        document.getElementById("workGroupInput").value = "";
+
+        // Initialize dropdowns
+        initializeCustomDropdown('threadDropdownContainer', 'threadDropdownMenu', 'threadInput', 'threadDropdownToggle', 'threadSelectedValue');
+        initializeCustomDropdown('laneDropdownContainer', 'laneDropdownMenu', 'laneInput', 'laneDropdownToggle', 'laneSelectedValue');
+        initializeLaneDropdown();
+
+        document.querySelector(".filter-panel").style.display = "none";
+    }
+
+    function openFilterHelp() {
+        vscode.postMessage({
+            command: "openFilterHelp",
+            payload: undefined
+        });
+    }
+
+    function applyFilter() {
+        const filterText = document.getElementById("filterInput").value.trim();
+        const threadValue = document.getElementById("threadInput").value.trim() || "--selected-lanes";
+        const localWorkItemValue = document.getElementById("localWorkItemInput").value.trim() || "";
+        const globalWorkItemValue = document.getElementById("globalWorkItemInput").value.trim() || "";
+        const workGroupValue = document.getElementById("workGroupInput").value.trim() || "";
+
+        const laneInputElement = document.getElementById("laneInput");
+        let laneValue = laneInputElement.value.trim();
+
+        if (!laneValue) {
+            const selectedDropdownOption = document.querySelector("#laneDropdownMenu .dropdown-option.selected");
+            laneValue = selectedDropdownOption ? selectedDropdownOption.getAttribute("data-value") : "--selected-lanes";
+        }
+
+
+        const filterData = {
+            filter: filterText,
+            threadValue,
+            laneValue: laneValue,
+            localWorkItemValue,
+            globalWorkItemValue,
+            workGroupValue,
+        };
+
+        localStorage.setItem("ThreadFilter", JSON.stringify(filterData));
+
+        vscode.postMessage({
+            command: "applyFilter",
+            payload: JSON.stringify(filterData)
+        });
+    }
+
+    function clearFilter() {
+        // Clear the saved filter
+        localStorage.removeItem("ThreadFilter");
     
+        // Reset all input values to default
+        document.getElementById("filterInput").value = "";
+        document.getElementById("threadInput").value = "";
+        document.getElementById("laneInput").value = "";
+        document.getElementById("localWorkItemInput").value = "";
+        document.getElementById("globalWorkItemInput").value = "";
+        document.getElementById("workGroupInput").value = "";
+    
+        // Reset the displayed labels for thread & lane
+        document.getElementById("threadSelectedValue").textContent = "All";
+        document.getElementById("laneSelectedValue").textContent = "Selected";
+    
+        // Hide the custom text fields if they were shown
+        document.getElementById("threadInput").style.display = "none";
+        document.getElementById("laneInput").style.display = "none";
+    
+        // Make sure the standard .dropdown-selected container is visible
+        const threadDropdownContainer = document.getElementById("threadDropdownContainer");
+        if (threadDropdownContainer) {
+            const dropSelected = threadDropdownContainer.querySelector(".dropdown-selected");
+            if (dropSelected) {
+                dropSelected.style.display = "flex";
+            }
+        }
+        const laneDropdownContainer = document.getElementById("laneDropdownContainer");
+        if (laneDropdownContainer) {
+            const dropSelected = laneDropdownContainer.querySelector(".dropdown-selected");
+            if (dropSelected) {
+                dropSelected.style.display = "flex";
+            }
+        }
+    
+        // Clear any `.selected` options in the dropdown menus
+        const laneDropdownMenu = document.getElementById("laneDropdownMenu");
+        if (laneDropdownMenu) {
+            const selectedOption = laneDropdownMenu.querySelector(".dropdown-option.selected");
+            if (selectedOption) {
+                selectedOption.classList.remove("selected");
+            }
+        }
+        const threadDropdownMenu = document.getElementById("threadDropdownMenu");
+        if (threadDropdownMenu) {
+            const selectedOption = threadDropdownMenu.querySelector(".dropdown-option.selected");
+            if (selectedOption) {
+                selectedOption.classList.remove("selected");
+            }
+        }
+    }
+    
+
+    function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId) {
+        const container = document.getElementById(containerId);
+        const menu = document.getElementById(menuId);
+        const input = document.getElementById(inputId);
+        const toggle = document.getElementById(toggleId);
+        const selectedValue = document.getElementById(selectedValueId);
+
+        // Toggle dropdown menu
+        toggle.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Handle dropdown option click
+        menu.addEventListener('click', (e) => {
+            const option = e.target.closest('.dropdown-option');
+            if (!option) return;
+
+            const value = option.dataset.value;
+            if (value === 'custom') {
+                menu.style.display = 'none';
+                container.querySelector('.dropdown-selected').style.display = 'none';
+                input.style.display = 'block';
+                input.focus();
+            } else {
+                selectedValue.textContent = option.textContent;
+                menu.style.display = 'none';
+            }
+        });
+
+        // Handle custom input blur
+        input.addEventListener('blur', () => {
+            if (input.value.trim() !== '') {
+                selectedValue.textContent = input.value.trim();
+            }
+            input.style.display = 'none';
+            container.querySelector('.dropdown-selected').style.display = 'flex';
+        });
+    }
+
+    function closeFilterPanel() {
+        document.querySelector(".filter-panel").style.display = "none";
+    }
+
     let currentIndex = 0; // To keep track of the current focused element
     let matches = []; // To store matching elements
 
@@ -176,7 +524,7 @@
 
         // Recursive function to process each element and its child nodes without creating nested spans
         function highlightTextInNode(node, keyword) {
-            if (!node || !keyword) {return;}
+            if (!node || !keyword) { return; }
 
             // Escape special characters in the keyword for regex
             const escapedKeyword = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -212,7 +560,7 @@
 
             // After processing, update the matches array
             matches = Array.from(container.querySelectorAll(".highlight"));
-            if (matches.length > 0) {navigateResults();}
+            if (matches.length > 0) { navigateResults(); }
         }
 
 
@@ -222,7 +570,7 @@
     }
 
     function navigateResults(direction) {
-        if (matches.length === 0) {return;}
+        if (matches.length === 0) { return; }
 
         // Clear current match styling
         if (matches[currentIndex]) {
@@ -248,7 +596,7 @@
         } else if (direction === "prev") {
             currentIndex = (currentIndex - 1 + matches.length) % matches.length;
         } else {
-        // If the function is called without a specific direction, start from the first element
+            // If the function is called without a specific direction, start from the first element
             currentIndex = 0;
         }
         matches[currentIndex].classList.add("current-match");
@@ -272,7 +620,7 @@
     }
 
     function clearHighlights() {
-    // Query all elements with the 'highlight' or 'current-match' class within the container
+        // Query all elements with the 'highlight' or 'current-match' class within the container
         const highlightedElements = document.querySelectorAll(".highlight, .current-match");
 
         highlightedElements.forEach(el => {
@@ -350,26 +698,109 @@
     }
 
     function makeElementDraggable(element, handle) {
-        let offsetX = 0, offsetY = 0, drag = false;
-
+        let offsetX = 0,
+            offsetY = 0,
+            drag = false;
+        let handleOffsetX = 0,
+            handleOffsetY = 0,
+            handleWidth = 0,
+            handleHeight = 0;
+        const margin = 10; // Extra margin to ensure complete visibility beyond scrollbars
+    
         handle.onmousedown = (e) => {
             drag = true;
-            offsetX = e.clientX - element.getBoundingClientRect().left;
-            offsetY = e.clientY - element.getBoundingClientRect().top;
+            const elementRect = element.getBoundingClientRect();
+            const handleRect = handle.getBoundingClientRect();
+    
+            // Calculate the offset from the mouse position to the element's top-left
+            offsetX = e.clientX - elementRect.left;
+            offsetY = e.clientY - elementRect.top;
+    
+            // Determine the handle's position and size relative to the element
+            handleOffsetX = handleRect.left - elementRect.left;
+            handleOffsetY = handleRect.top - elementRect.top;
+            handleWidth = handleRect.width;
+            handleHeight = handleRect.height;
+    
             document.onmousemove = onMouseMove;
             document.onmouseup = () => {
                 drag = false;
                 document.onmousemove = document.onmouseup = null;
             };
         };
-
+    
         function onMouseMove(e) {
-            if (!drag) {return;}
-            element.style.left = `${e.clientX - offsetX}px`;
-            element.style.top = `${e.clientY - offsetY}px`;
+            if (!drag) return;
+    
+            // Proposed new position for the element
+            let candidateLeft = e.clientX - offsetX;
+            let candidateTop = e.clientY - offsetY;
+    
+            // Get viewport dimensions (excluding scrollbars)
+            const viewportWidth = document.documentElement.clientWidth;
+            const viewportHeight = document.documentElement.clientHeight;
+    
+            // Calculate the absolute position of the .drag-handle relative to the viewport
+            let handleLeftAbsolute = candidateLeft + handleOffsetX;
+            let handleTopAbsolute = candidateTop + handleOffsetY;
+    
+            // Constrain horizontally with margin so that the entire handle is visible
+            if (handleLeftAbsolute < margin) {
+                candidateLeft = margin - handleOffsetX;
+            } else if (handleLeftAbsolute + handleWidth > viewportWidth - margin) {
+                candidateLeft = viewportWidth - margin - handleWidth - handleOffsetX;
+            }
+    
+            // Constrain vertically with margin so that the entire handle is visible
+            if (handleTopAbsolute < margin) {
+                candidateTop = margin - handleOffsetY;
+            } else if (handleTopAbsolute + handleHeight > viewportHeight - margin) {
+                candidateTop = viewportHeight - margin - handleHeight - handleOffsetY;
+            }
+    
+            element.style.left = `${candidateLeft}px`;
+            element.style.top = `${candidateTop}px`;
         }
+    
+        // Adjust element's position when the window is resized
+        function adjustPosition() {
+            // Get the current element position from its inline style or computed position
+            let candidateLeft = parseFloat(element.style.left) || element.getBoundingClientRect().left;
+            let candidateTop = parseFloat(element.style.top) || element.getBoundingClientRect().top;
+    
+            // Recalculate the handle's offset relative to the element
+            const elementRect = element.getBoundingClientRect();
+            const handleRect = handle.getBoundingClientRect();
+            const currentHandleOffsetX = handleRect.left - elementRect.left;
+            const currentHandleOffsetY = handleRect.top - elementRect.top;
+            const currentHandleWidth = handleRect.width;
+            const currentHandleHeight = handleRect.height;
+    
+            const viewportWidth = document.documentElement.clientWidth;
+            const viewportHeight = document.documentElement.clientHeight;
+    
+            let handleLeftAbsolute = candidateLeft + currentHandleOffsetX;
+            let handleTopAbsolute = candidateTop + currentHandleOffsetY;
+    
+            if (handleLeftAbsolute < margin) {
+                candidateLeft = margin - currentHandleOffsetX;
+            } else if (handleLeftAbsolute + currentHandleWidth > viewportWidth - margin) {
+                candidateLeft = viewportWidth - margin - currentHandleWidth - currentHandleOffsetX;
+            }
+    
+            if (handleTopAbsolute < margin) {
+                candidateTop = margin - currentHandleOffsetY;
+            } else if (handleTopAbsolute + currentHandleHeight > viewportHeight - margin) {
+                candidateTop = viewportHeight - margin - currentHandleHeight - currentHandleOffsetY;
+            }
+    
+            element.style.left = `${candidateLeft}px`;
+            element.style.top = `${candidateTop}px`;
+        }
+    
+        // Listen for window resize events to adjust the element's position
+        window.addEventListener("resize", adjustPosition);
     }
-
 
     function displayNewData(newLanes) {
         document.getElementById("simd-view").innerHTML = newLanes;
@@ -386,6 +817,7 @@
 
                 previousLane.classList.remove("current");
                 previousLane.innerHTML = activeSymbol;
-            }}
+            }
+        }
     }
 }());

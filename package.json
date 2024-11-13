@@ -148,6 +148,16 @@
                 "command": "intelOneAPI.debug.triggerSearch",
                 "title": "Intel oneAPI: Find in GPU Threads",
                 "icon": "$(search)"
+            },
+            {
+                "command": "intelOneAPI.debug.triggerFilterOn",
+                "title": "Intel oneAPI: GPU thread filter",
+                "icon": "$(filter-filled)"
+            },
+            {
+                "command": "intelOneAPI.debug.triggerFilterOff",
+                "title": "Intel oneAPI: GPU thread filter",
+                "icon": "$(filter)"
             }
         ],
         "taskDefinitions": [
@@ -261,6 +271,18 @@
                     "command": "intelOneAPI.debug.triggerSearch",
                     "when": "view == intelOneAPI.debug.simdview",
                     "group": "navigation"
+                },
+                {
+                    "command": "intelOneAPI.debug.triggerFilterOn",
+                    "when": "(view == intelOneAPI.debug.simdview) && (oneapi:filterActive == true)",
+                    "group": "navigation",
+                    "icon": "$(filter)"
+                },
+                {
+                    "command": "intelOneAPI.debug.triggerFilterOff",
+                    "when": "(view == intelOneAPI.debug.simdview) && (oneapi:filterActive == false)",
+                    "group": "navigation",
+                    "icon": "$(filter-filled)"
                 }
             ],
             "editor/context": [

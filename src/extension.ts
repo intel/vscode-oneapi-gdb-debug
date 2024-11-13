@@ -97,6 +97,7 @@ function checkExtensionsConflict() {
 export function activate(context: vscode.ExtensionContext): void {
     const schedulerLocking = new SchedulerLocking(context);
 
+    context.globalState.update("ThreadFilter", undefined);
     const syscheckProvider = new SyscheckViewProvider(context);
     vscode.window.registerTreeDataProvider("intelOneAPI.syscheckView", syscheckProvider);
 
@@ -161,7 +162,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(selectedLaneViewDisposable);
 
-    const simdViewProvider = new SIMDViewProvider(context.extensionUri, threadInfoViewProvider, selectedLaneViewProvider);
+    const simdViewProvider = new SIMDViewProvider(context, threadInfoViewProvider, selectedLaneViewProvider);
     const simdViewDisposable = vscode.window.registerWebviewViewProvider(
         SIMDViewProvider.viewType,
         simdViewProvider

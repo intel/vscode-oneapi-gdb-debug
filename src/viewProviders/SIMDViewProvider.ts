@@ -13,10 +13,12 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
+import * as vscode from "vscode";
 import { CurrentThread, Emask, getThread } from "../SimdProvider";
 import { ThreadInfoViewProvider } from "./threadInfoViewProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
+import { Filter } from "../SimdProvider";
 
 enum ViewState {
     COLORS,
@@ -28,11 +30,12 @@ export class SIMDViewProvider implements WebviewViewProvider {
     public _view!: WebviewView;
     private waitingIntervalId: ReturnType<typeof setInterval> | undefined = undefined;
     private _masks!: Emask[];
-    private _currentThread: CurrentThread | undefined
+    private _currentThread: CurrentThread | undefined;
 
     private htmlStart = "";
     private htmlEnd = "";
     private searchPanel = "";
+    private filterPanel = "";
     private simdView = "";
     private viewState = ViewState.COLORS;
 
@@ -55,7 +58,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
         }
     }
 
-    constructor(private readonly _extensionUri: Uri,
+    constructor(
+        private context: vscode.ExtensionContext,
         private threadInfoViewProvider: ThreadInfoViewProvider,
         private selectedLaneViewProvider: SelectedLaneViewProvider) { }
 
@@ -104,7 +108,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
             enableScripts: true,
 
             localResourceRoots: [
-                this._extensionUri
+                this.context.extensionUri
             ]
         };
 
@@ -137,17 +141,41 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
     }
 
-    private setInitialPageContent(webview: Webview) {
-        const scriptUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.js"));
 
-        const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "vscode.css"));
-        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, "media", "main.css"));
-        const codiconsUri = webview.asWebviewUri(Uri.joinPath(this._extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
+    public async triggerFilter() {
+        await window.withProgress(
+            { location: { viewId: "intelOneAPI.debug.simdview" } },
+            async () => {
+                try {
+                    this._view.webview.postMessage({
+                        command: "triggerFilter",
+                        payload: JSON.stringify("triggerFilter")
+                    });
+                } catch (error) {
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                        // Handle errors in gdb requests: display error message in panel
+                        if (error instanceof Error) {
+                            this.threadInfoViewProvider.setErrorView(error.message);
+                        } else {
+                            this.threadInfoViewProvider.setErrorView(String(error));
+                        }
+                    });
+                }
+            }
+        );
+    }
+
+    private setInitialPageContent(webview: Webview) {
+        const scriptUri = webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "media", "main.js"));
+
+        const styleVSCodeUri = webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "media", "vscode.css"));
+        const styleMainUri = webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "media", "main.css"));
+        const codiconsUri = webview.asWebviewUri(Uri.joinPath(this.context.extensionUri, "node_modules", "@vscode/codicons", "dist", "codicon.css"));
 
         // Use a nonce to only allow a specific script to be run.
         const nonce = getNonce();
 
-        const toolkitUri = this.getUri(webview, this._extensionUri, [
+        const toolkitUri = this.getUri(webview, this.context.extensionUri, [
             "node_modules",
             "@vscode",
             "webview-ui-toolkit",
@@ -179,10 +207,68 @@ export class SIMDViewProvider implements WebviewViewProvider {
             <span id="searchCounter">No results</span>
             <button id="prevBtn" class="codicon codicon-arrow-up"></button>
             <button id="nextBtn" class="codicon codicon-arrow-down"></button>
-            <button id="toggleHideBtn" class="codicon codicon-filter"></button>
+            <button id="toggleHideBtn" class="codicon codicon-search-fuzzy"></button>
             <button id="closeBtn" class="codicon codicon-close"></button>
         </div>`;
 
+        this.filterPanel = `
+        <div class="filter-panel">
+            <!-- First Row: Drag Handle, Thread and Lane Section, Help, Apply and Close Buttons -->
+            <div class="control-row">
+                <div class="drag-handle codicon codicon-gripper"></div>
+                <label for="threadInput">Thread:</label>
+                <div class="custom-dropdown" id="threadDropdownContainer">
+                    <div class="dropdown-selected">
+                        <button id="threadDropdownToggle" class="codicon codicon-chevron-down"></button>
+                        <span id="threadSelectedValue">All</span>
+                    </div>
+                    <div class="dropdown-menu" id="threadDropdownMenu" style="display: none;">
+                        <div class="dropdown-option" data-value="all">All</div>
+                        <div class="dropdown-option" data-value="custom">Custom range...</div>
+                    </div>
+                    <input type="text" id="threadInput" class="dropdown-input" placeholder="Enter custom thread range" style="display: none;" />
+                </div>
+                <label for="laneInput">Lane:</label>
+                <div class="custom-dropdown" id="laneDropdownContainer">
+                    <div class="dropdown-selected">
+                        <button id="laneDropdownToggle" class="codicon codicon-chevron-down"></button>
+                        <span id="laneSelectedValue">Selected</span>
+                    </div>
+                    <div class="dropdown-menu" id="laneDropdownMenu" style="display: none;">
+                        <div class="dropdown-option" data-value="--selected-lanes">Selected</div>
+                        <div class="dropdown-option" data-value="--all-lanes">All Lanes</div>
+                        <div class="dropdown-option" data-value="custom">Custom lane range...</div>
+                    </div>
+                    <input type="text" id="laneInput" class="dropdown-input" placeholder="Enter custom lane" style="display: none;" />
+                </div>
+                <button id="helpBtn" class="codicon codicon-question"></button>
+                <button id="applyFilterBtn" class="codicon codicon-check"></button>
+                <button id="clearBtn" class="codicon codicon-clear-selected-lanes"></button>
+                <button id="closeFilterBtn" class="codicon codicon-close"></button>
+            </div>
+
+            <!-- Second Row: WorkGroup Work-item Global ID and Work-item Local ID -->
+            <div class="control-row" style="display: flex; gap: 10px; align-items: center;">
+                <div style="flex: 1;">
+                    <label for="workGroupInput">Work-group:</label>
+                    <input type="text" id="workGroupInput" placeholder="E.g., 1-5,2-*" />
+                    </div>
+                <div style="flex: 1;">
+                    <label for="globalWorkItemInput">Work-item Global ID:</label>
+                <input type="text" id="globalWorkItemInput" placeholder="E.g., 1,2,3 or *" />
+                </div>
+                <div style="flex: 1;">
+                    <label for="localWorkItemInput">Work-item Local ID:</label>
+                <input type="text" id="localWorkItemInput" placeholder="E.g., 1,2,3 or *" />
+                </div>
+            </div>
+    
+            <!-- Third Row: Filter Input -->
+            <div class="control-row">
+                <label for="filterInput">Filter Expression:</label>
+                <input type="text" id="filterInput" placeholder="Expression for selection" />
+            </div>
+        </div>`;
 
         this.htmlEnd = `<script nonce="${nonce}" src="${scriptUri}"></script>
         </body>
@@ -270,7 +356,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private async getThreadsView(masks: Emask[], currentThread?: CurrentThread) {
-        let upd = this.searchPanel + this.simdView;
+        let upd = this.filterPanel + this.searchPanel + this.simdView;
         const currentLaneTable = "";
 
         for (const m of masks) {
@@ -434,6 +520,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                                     }
 
                                     let metBPConditions: boolean | undefined = undefined;
+
                                     if (parsedMessage.hitLanesMask !== undefined) {
 
                                         metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
@@ -465,7 +552,68 @@ export class SIMDViewProvider implements WebviewViewProvider {
                         );
                     }
                     break;
+                case "applyFilter":
+                    {
+                        const parsedMessage = JSON.parse(message.payload);
 
+                        const filter: Filter = {
+                            filter: parsedMessage.filter,
+                            threadValue: parsedMessage.threadValue,
+                            laneValue: parsedMessage.laneValue,
+                            localWorkItemValue: parsedMessage.localWorkItemValue,
+                            globalWorkItemValue: parsedMessage.globalWorkItemValue,
+                            workGroupValue: parsedMessage.workGroupValue
+                        };
+
+                        await this.context.globalState.update("ThreadFilter", filter);
+                        await vscode.commands.executeCommand("intelOneAPI.debug.fetchSIMDInfo");
+                    }
+                    break;
+                    case "openFilterHelp": {
+                        vscode.window.showInformationMessage(
+        `Thread filter options allows to filter the range of thread or lanes and also
+then further filter from the selection using expression options given below. Here is the overview
+of these options:
+
+Select range of threads using available options. The option "all" shows all threads
+and other option "custom range" allows to enter range for consecutive list of threads. E.g. 1-5
+
+Similarly lanes can be filtered from one of these options, "all" i.e. all lanes of each thread,
+"selected" i.e. default selected range of each thread and lastly custom range of lanes can be selected
+e.g. 1-3 i.e. all 1 to 3 lanes of each stopped thread.
+
+The selected range of threads and lanes can be further filtered using the combination of these GPU
+application fields "Work-item Local Id" / "Workitem Global Id" / "Work-Group Id". All these options take
+input in x,y,z format.
+
+To skip any of x/y/z either use "*" or leave the place empty for respective value.
+E.g. "y" can be skipped by entering value "x,*,z" or "x,,z"
+
+To enter range with maximum and minimum value of x/y/z, "*" can be used in place of end range for any
+of these.
+
+E.g. "x" can be filtered for all values where x>=100 using input value "100" or for range of values
+100-* to filter all values where x>=100
+
+In addition to above filter options more advance C/C++ expressions can be added using gdb-oneapi
+convenience or program variables can be used for filter using "Custom Expression" text box.
+
+Examples using convenience variables:
+    1) To filter all threads with Id above 150: $_thread>150
+    2) To filter all threads with workitem_local_id convenience variable
+        first index > 0: $_workitem_local_id[0]>0
+    3) Both (1) & (2) can be used together by using logical operator:
+        $_thread>150 && $_workitem_local_id[0]>0
+
+Example using program variables:
+    1) To filter all threads with variable "x" value greater than 100 but less than 200: x > 100 && x<200
+`,
+                            { modal: true }
+                        );
+                    }
+                    break;
+                    
+                    
                 default:
                     break;
             }

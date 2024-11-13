@@ -6,6 +6,8 @@
 "use strict";
 import * as vscode from "vscode";
 import { parse } from "path";
+import { buildFilterCommand } from "./buildCommandFunction";
+
 import { DebugProtocol } from "@vscode/debugprotocol";
 import { SIMDWatchProvider } from "./SimdWatchProvider";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
@@ -122,6 +124,36 @@ export class SimdProvider {
     private threadsInfoArray: ThreadInfo[] = [];
     private _showInactiveThreads: boolean | undefined;
     private _globalCurrentThread!: number;
+    private _filter: Filter | undefined;
+
+    public get filter(): Filter | undefined {
+        return this._filter;
+    }
+
+    public set filter(rawFilter: unknown) {
+        if (this.isValidFilter(rawFilter)) {
+            this._filter = rawFilter as Filter;
+        } else {
+            this._filter = undefined;
+        }
+    }
+
+    private isValidFilter(rawFilter: unknown): rawFilter is Filter {
+        if (typeof rawFilter !== "object" || rawFilter === null) {
+            return false;
+        }
+
+        const filter = rawFilter as Partial<Filter>;
+
+        return (
+            typeof filter.filter === "string" &&
+            typeof filter.threadValue === "string" &&
+            typeof filter.laneValue === "string" &&
+            typeof filter.localWorkItemValue === "string" &&
+            typeof filter.globalWorkItemValue === "string" &&
+            typeof filter.workGroupValue === "string"
+        );
+    }
 
     public set showInactiveThreads(flag: boolean | undefined) {
         this._showInactiveThreads = false;
@@ -150,12 +182,21 @@ export class SimdProvider {
             return;
         }));
 
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerFilterOn", async () => {
+            this.simdViewProvider.triggerFilter();
+            return;
+        }));
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerFilterOff", async () => {
+            this.simdViewProvider.triggerFilter();
+            return;
+        }));
+
         //We need to test if multi debug sessions get affected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
             vscode.commands.executeCommand('setContext', 'schedulerLockingReady', false);
             vscode.commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
-
+            vscode.commands.executeCommand("setContext", "oneapi:filterActive", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveDevice", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveSelected", false);
@@ -166,7 +207,6 @@ export class SimdProvider {
         context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
             this.simdBreakpointsHandler(e);
         }));
-
     }
 
     set threadsInfo(value: ThreadInfo[]) {
@@ -177,13 +217,17 @@ export class SimdProvider {
         return this.threadsInfoArray;
     }
 
-
     public async fetchEMaskForAll(globalCurrentThread: number): Promise<void> {
         // We need to maintain the global current thread because sometimes
         // the call may not contain a new threadID, for instance during manual updates.
         if (globalCurrentThread) {
             this._globalCurrentThread = globalCurrentThread;
         }
+        this.filter = await this.context.globalState.get<unknown>("ThreadFilter");
+
+        // Build a custom query if available
+        const query = buildFilterCommand(this.filter);
+
         await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
         this.simdViewProvider.waitForViewToBecomeVisible(() => {
             this.simdViewProvider.setLoadingView();
@@ -197,94 +241,98 @@ export class SimdProvider {
                     async () => {
                         try {
                             const session = vscode.debug.activeDebugSession;
-
-                            if (session) {
-                                await session.customRequest("threads");
-                                vscode.commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
-                                vscode.commands.executeCommand('setContext', 'schedulerLockingReady', true);
-                                const evalResult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
-
-                                if (evalResult.result === "void") {
-                                    return;
-                                }
-                                const masks: Emask[] = [];
-
-                                if (!/arch=intelgt/.test(evalResult.result)) {
-                                    return;
-                                }
-                                const allThreads: string = evalResult.result.match(/\{id=\d+.*\}/g);
-                                const threadsById = allThreads.toString().split("{id=");
-                                const threadsArray = [];
-
-                                if (!threadsById) {
-                                    return;
-                                }
-
-                                if (this._showInactiveThreads) {
-                                    const threadsToAdd = allThreads.toString().split("{id=").filter(thread => thread.trim() !== "");
-
-                                    threadsArray.push(...threadsToAdd);
-                                }
-                                else {
-                                    for (const match of threadsById) {
-                                        if (!/arch=intelgt/.test(match)) {
-                                            continue;
-                                        }
-                                        threadsArray.push(match);
-                                    }
-                                }
-
-                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                threadsArray.forEach((t: string) => {
-                                    const threadProperties = t.split(",");
-                                    const propertiesObject = Object.fromEntries(threadProperties.map((property: string) => {
-                                        const split = property.split("=");
-
-                                        return [split[0], split[1]];
-                                    }));
-                                    const threadWorkgroupIndex = threadProperties.findIndex((property) => property.includes("thread-workgroup"));
-                                    const threadWorkgroup = threadProperties.slice(threadWorkgroupIndex, threadWorkgroupIndex + 3).join(",").split("=")[1];
-                                    const parsedThreadWorkgroup = threadWorkgroup;
-
-
-                                    masks.push({
-                                        fullname: propertiesObject.fullname,
-                                        file: propertiesObject.file,
-                                        line: propertiesObject.line,
-                                        targetId: this.threadsInfoArray[masks.length]?.name || propertiesObject["name"],
-                                        threadId: parseInt(threadProperties[0], 10),
-                                        executionMask: propertiesObject["execution-mask"],
-                                        hitLanesMask: propertiesObject["hit-lanes-mask"],
-                                        length: parseInt(propertiesObject["simd-width"], 10),
-                                        threadWorkgroup: parsedThreadWorkgroup,
-                                    });
-                                });
-                                if (!masks.length) {
-                                    return;
-                                }
-                                const currentThread = await getThread(this._globalCurrentThread);
-
-                                this.simdViewProvider.waitForViewToBecomeVisible(() => {
-                                    this.simdViewProvider.setView(masks, currentThread);
-                                });
-                                this.findAndAddSimdBreakPoints();
+                            if (!session) {
+                                return;
                             }
+                            if (query) {
+                                vscode.commands.executeCommand("setContext", "oneapi:filterActive", true);
+                            } else {
+                                vscode.commands.executeCommand("setContext", "oneapi:filterActive", false);
+                            }
+                            // If query exists, we use it, otherwise default
+                            const filter = query ?? `-exec -thread-filter --selected-lanes${this._showInactiveThreads ? " --unavailable" : ""}`;
+
+                            // Evaluate the filter in gdb
+                            await session.customRequest("threads");
+                            const evalResult = await session.customRequest("evaluate", {
+                                expression: filter,
+                                context: "repl",
+                            });
+
+                            // Parse out threads/masks if evalResult is not "void".
+                            // But we won't return early if it *is* "void."
+                            const masks: Emask[] = [];
+                            if (evalResult.result !== "void") {
+                                // Attempt to extract thread info from the gdb output
+                                const allThreads = evalResult.result.match(/\{id=\d+.*\}/g);
+                                if (allThreads) {
+                                    const threadsById = allThreads.toString().split("{id=");
+                                    const threadsArray: string[] = [];
+
+                                    // Filter out any that don't match expected ZE data
+                                    for (const match of threadsById) {
+                                        if (/ZE/.test(match)) {
+                                            threadsArray.push(match);
+                                        }
+                                    }
+
+                                    threadsArray.forEach((t: string) => {
+                                        const threadProperties = t.split(",");
+                                        const propertiesObject = Object.fromEntries(
+                                            threadProperties.map((property: string) => {
+                                                const split = property.split("=");
+                                                return [split[0], split[1]];
+                                            })
+                                        );
+
+                                        const threadWorkgroupIndex = threadProperties.findIndex((property) =>
+                                            property.includes("thread-workgroup")
+                                        );
+                                        const threadWorkgroup = threadProperties
+                                            .slice(threadWorkgroupIndex, threadWorkgroupIndex + 3)
+                                            .join(",")
+                                            .split("=")[1];
+
+                                        masks.push({
+                                            fullname: propertiesObject.fullname,
+                                            file: propertiesObject.file,
+                                            line: propertiesObject.line,
+                                            targetId: this.threadsInfoArray[masks.length]?.name || propertiesObject["name"],
+                                            threadId: parseInt(threadProperties[0], 10),
+                                            executionMask: propertiesObject["execution-mask"],
+                                            hitLanesMask: propertiesObject["hit-lanes-mask"],
+                                            length: parseInt(propertiesObject["simd-width"], 10),
+                                            threadWorkgroup: threadWorkgroup,
+                                        });
+                                    });
+                                }
+                            }
+
+                            // Regardless of whether evalResult was "void" or masks is empty,
+                            // we fetch the current thread and update the view.
+                            const currentThread = await getThread(this._globalCurrentThread);
+
+                            this.simdViewProvider.waitForViewToBecomeVisible(() => {
+                                // If masks is empty, setView will display an empty set or handle it gracefully.
+                                this.simdViewProvider.setView(masks, currentThread);
+                            });
+
+                            // Also always call findAndAddSimdBreakPoints
+                            this.findAndAddSimdBreakPoints();
                         } catch (error) {
                             this.simdViewProvider.waitForViewToBecomeVisible(() => {
-                                // Handle errors in gdb requests: display error message in panel
+                                // Display error message in panel
                                 if (error instanceof Error) {
                                     this.simdViewProvider.setErrorView(error.message);
                                 } else {
                                     this.simdViewProvider.setErrorView(String(error));
                                 }
                             });
-
                         }
                     }
                 )
             )
         );
-
     }
 
     public async fetchDevicesForAll(): Promise<void> {
@@ -347,7 +395,7 @@ export class SimdProvider {
             const elemJSON: string[] = elem.split(": ");
 
             if (elemJSON[0] === "current-device") {
-                currentDeviceNumber = parseInt(elemJSON[1],10);
+                currentDeviceNumber = parseInt(elemJSON[1], 10);
             }
 
             if (elemJSON[0] === "devices") {
@@ -392,7 +440,7 @@ export class SimdProvider {
                 if (currentDeviceNumber !== undefined) {
                     jsonObj.devices = jsonObj.devices.map((device: Device) => ({
                         ...device,
-                        current:  Number(device.number) === currentDeviceNumber
+                        current: Number(device.number) === currentDeviceNumber
                     }));
                 }
 
@@ -806,6 +854,15 @@ export interface Device {
     sub_device: number;
     target_id: string;
     vendor_id: string;
+}
+
+export interface Filter {
+    filter: string;
+    threadValue?: string;
+    laneValue?: string;
+    localWorkItemValue?: string;
+    globalWorkItemValue?: string;
+    workGroupValue?: string;
 }
 
 export interface Device {
