@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, Setting, SettingsEditor, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
 import { FileExistsSync, MkdirSync, WriteFileSync, LoadAndParseJsonFile, ReadFileSync } from "./FileSystem";
 import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
 import { DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
@@ -600,6 +600,52 @@ export function ChangeVsCodeSettings(setting: string, newValue: string) {
 
     settings[setting] = newValue;
     WriteFileSync(vsCodeSettingsPath, JSON.stringify(settings));
+}
+
+/**
+ * Replaces given string with new string in given file.
+ * @param replaceString String to replace.
+ * @param withString String to use as a replacement.
+ * @param resources File where to find a replaceString
+ */
+export function ReplaceStringInFile(replaceString: string, withString: string, file: string): boolean {
+    if (!FileExistsSync(file)) {
+        return false;
+    }
+
+    const arrayTransform = ReadFileSync(file, "utf-8");
+
+    let arraytransformLines = arrayTransform.split("\n");
+
+    arraytransformLines = arraytransformLines.map(x => x.includes(replaceString) ? withString : x);
+    WriteFileSync(file, arraytransformLines.join("\n"));
+
+    return true;
+}
+
+/**
+ * Gets setting by its id.
+ * @param id Setting id.
+ * @param settingsEditor Settings page object.
+ * @returns Setting object.
+ */
+export async function GetSettingById(id: string, settingsEditor?: SettingsEditor): Promise<Setting> {
+    logger.Info(`Get setting by id: '${id}'`);
+    settingsEditor = settingsEditor ?? await new Workbench().openSettings();
+    return await settingsEditor.findSettingByID(id);
+}
+
+/**
+ * Sets given value to given setting id.
+ * @param settingId Setting id.
+ * @param newValue Value to be set.
+ * @param settingsEditor Settings page object.
+ */
+export async function SetSettingValue(settingId: string, newValue: string, settingsEditor?: SettingsEditor) {
+    const ACTIVE_LANE_SYMBOL = await GetSettingById(settingId, settingsEditor);
+
+    logger.Info(`Set '${settingId}' to '${newValue}'`);
+    await ACTIVE_LANE_SYMBOL.setValue(newValue);
 }
 
 /**
