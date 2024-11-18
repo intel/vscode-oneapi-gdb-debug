@@ -4,7 +4,7 @@
  */
 
 import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
-import { FileExistsSync, MkdirSync, WriteFileSync, LoadAndParseJsonFile } from "./FileSystem";
+import { FileExistsSync, MkdirSync, WriteFileSync, LoadAndParseJsonFile, ReadFileSync } from "./FileSystem";
 import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
 import { DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
 import { Breakpoint, ConditionalBreakpoint } from "./Debugging/Types";
@@ -582,6 +582,24 @@ export async function GetExceptionPopupMessage(): Promise<string | undefined> {
         assert.notEqual(exceptionPopup, undefined, "Cannot find 'breakpoint hit' exception popup");
         return await exceptionPopup.findElement(By.className("description")).getText();
     }, 10 * 1000);
+}
+
+/**
+ * Changes given setting to a given value.
+ * @param setting Setting to change.
+ * @param newValue New value to be set.
+ */
+export function ChangeVsCodeSettings(setting: string, newValue: string) {
+    logger.Info(`Change VsCode setting '${setting}' to '${newValue}'`);
+    const vsCodeSettingsPath = "test-resources/settings/User/settings.json";
+
+    if (!FileExistsSync(vsCodeSettingsPath)) {
+        WriteFileSync(vsCodeSettingsPath, "{}");
+    }
+    const settings = JSON.parse(ReadFileSync(vsCodeSettingsPath, "utf-8"));
+
+    settings[setting] = newValue;
+    WriteFileSync(vsCodeSettingsPath, JSON.stringify(settings));
 }
 
 /**
