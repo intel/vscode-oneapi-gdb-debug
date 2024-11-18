@@ -37,6 +37,7 @@ export async function GetGpuThreads(): Promise<Thread[]> {
                     const lanes = await cellGroup.findElements(By.css("div"));
 
                     for (const lane of lanes) {
+                        const customSymbol = await lane.getText();
                         const laneId = await lane.getAttribute("id");
                         const laneClass = await lane.getAttribute("class");
                         const simdDetails = JSON.parse(laneId) as SimdLaneDetails;
@@ -53,7 +54,8 @@ export async function GetGpuThreads(): Promise<Thread[]> {
                             state: hit ? "Hit" : active ? "Active" : "Inactive",
                             details: simdDetails,
                             indicator: indicator.replace(/"/g, ""),
-                            handle: lane
+                            handle: lane,
+                            customSymbol: customSymbol
                         });
                         continue;
                     }

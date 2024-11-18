@@ -26,6 +26,7 @@ export type SimdLane = {
     details: SimdLaneDetails;
     indicator: string | undefined;
     handle: WebElement;
+    customSymbol: string;
 };
 
 /**
