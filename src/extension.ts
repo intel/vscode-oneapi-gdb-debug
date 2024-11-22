@@ -13,7 +13,7 @@ import { ThreadInfoViewProvider } from "./viewProviders/threadInfoViewProvider"
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SelectedLaneViewProvider } from "./viewProviders/selectedLaneViewProvider";
 import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";
-
+import { SchedulerLocking } from "./SchedulerLocking";
 import { SyscheckViewProvider } from "./viewProviders/syschecksTreeViewProvider";
 
 
@@ -58,6 +58,7 @@ function checkExtensionsConflict() {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function activate(context: vscode.ExtensionContext): void {
+    const schedulerLocking = new SchedulerLocking(context);
 
     const syscheckProvider = new SyscheckViewProvider(context);
     vscode.window.registerTreeDataProvider("intelOneAPI.syscheckView", syscheckProvider);

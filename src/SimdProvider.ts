@@ -139,6 +139,9 @@ export class SimdProvider {
         //We need to test if multi debug sessions get affected by this, we might need to initialize multiple instances of this object :/
         context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
+            vscode.commands.executeCommand('setContext', 'schedulerLockingReady', false);
+            vscode.commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
+
             vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveDevice", false);
             vscode.commands.executeCommand("setContext", "oneapi:haveSelected", false);
@@ -183,6 +186,8 @@ export class SimdProvider {
 
                             if (session) {
                                 await session.customRequest("threads");
+                                vscode.commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
+                                vscode.commands.executeCommand('setContext', 'schedulerLockingReady', true);
                                 const evalResult = await session.customRequest("evaluate", { expression: "-exec -thread-info", context: "repl" });
 
                                 if (evalResult.result === "void") {
