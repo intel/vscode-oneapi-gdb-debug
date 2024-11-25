@@ -11,29 +11,30 @@ export class SchedulerLocking {
         context.subscriptions.push(this.schedulerStatusBarItem);
 
         // Register commands
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.schedulerLockingContinueOff', () => {
-            this.toggleSchedulerLocking('continue');
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.schedulerLockingContinueOff", () => {
+            this.toggleSchedulerLocking("continue");
         }));
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.schedulerLockingContinueOn', () => {
-            this.toggleSchedulerLocking('continue');
-        }));
-
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.schedulerLockingStepOff', () => {
-            this.toggleSchedulerLocking('step');
-        }));
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.schedulerLockingStepOn', () => {
-            this.toggleSchedulerLocking('step');
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.schedulerLockingContinueOn", () => {
+            this.toggleSchedulerLocking("continue");
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand('intelOneAPI.schedulerLockingStatusBarRefresh', () => {
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.schedulerLockingStepOff", () => {
+            this.toggleSchedulerLocking("step");
+        }));
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.schedulerLockingStepOn", () => {
+            this.toggleSchedulerLocking("step");
+        }));
+
+        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.schedulerLockingStatusBarRefresh", () => {
             this.updateStatusBarMessage();
         }));
     }
 
-    private async toggleSchedulerLocking(option: 'continue' | 'step') {
+    private async toggleSchedulerLocking(option: "continue" | "step") {
         try {
-            const currentStatus = this.schedulerLockingStates[option] ?? 'off';
-            const newStatus = currentStatus === 'on' ? 'off' : 'on';
+            const currentStatus = this.schedulerLockingStates[option] ?? "off";
+            const newStatus = currentStatus === "on" ? "off" : "on";
+
             await this.sendExecCommand(`set scheduler-locking ${option} ${newStatus}`);
             this.schedulerLockingStates[option] = newStatus;
             this.updateStatusBarMessage();
@@ -44,15 +45,17 @@ export class SchedulerLocking {
 
     private async sendExecCommand(command: string): Promise<string> {
         const session = vscode.debug.activeDebugSession;
+
         if (!session) {
-            throw new Error('No active debug session');
+            throw new Error("No active debug session");
         }
         await session.customRequest("threads");
         try {
-            const result = await session.customRequest('evaluate', {
+            const result = await session.customRequest("evaluate", {
                 expression: `-exec ${command}`,
-                context: 'repl'
+                context: "repl"
             });
+
             return result.result;
         } catch (error) {
             console.error(`Error sending command '-exec ${command}':`, error);
@@ -62,6 +65,7 @@ export class SchedulerLocking {
 
     private async updateStatusBarMessage() {
         const states = await this.getSchedulerLockingState();
+
         if (states) {
             this.schedulerLockingStates = states;
             this.updateStatusBarDisplay();
@@ -73,63 +77,78 @@ export class SchedulerLocking {
 
     private async getSchedulerLockingState(): Promise<{ [option: string]: string } | null> {
         try {
-            const output = await this.sendExecCommand('show scheduler-locking');
-            const lines = output.split('\n');
+            const output = await this.sendExecCommand("show scheduler-locking");
             const states: { [option: string]: string } = {};
 
-            for (const line of lines) {
-                const match = line.match(/scheduler-locking (\w+):\s+"(\w+)"/);
-                if (match) {
-                    states[match[1]] = match[2];
-                }
+            // Define a global regex to match all scheduler-locking options
+            const regex = /scheduler-locking\s+([\w\s]+):\s+"(\w+)"/g;
+            let match: RegExpExecArray | null;
+
+            // Iterate over all matches in the output
+            // eslint-disable-next-line no-cond-assign
+            while ((match = regex.exec(output)) !== null) {
+                const option = match[1].trim(); // e.g., 'replay continue'
+                const state = match[2].trim();  // e.g., 'on' or 'off'
+
+                states[option] = state;
             }
 
             return states;
         } catch (error) {
-            if ((error as Error).message.includes('Unable to perform this action because the process is running')) {
+            if ((error as Error).message.includes("Unable to perform this action because the process is running")) {
                 this.schedulerStatusBarItem.hide();
             } else {
-                console.error('Error getting scheduler-locking state:', error);
+                console.error("Error getting scheduler-locking state:", error);
             }
             return null;
         }
     }
+
 
     private updateStatusBarDisplay() {
         const activeOptions: string[] = [];
         const states = this.schedulerLockingStates;
         let backgroundColor: vscode.ThemeColor | undefined;
 
-        if (states['step'] === 'on') {
-            activeOptions.push('step');
-            vscode.commands.executeCommand('setContext', 'schedulerLockingStepOn', true);
+        if (states["step"] === "on") {
+            activeOptions.push("step");
+            vscode.commands.executeCommand("setContext", "schedulerLockingStepOn", true);
         } else {
-            vscode.commands.executeCommand('setContext', 'schedulerLockingStepOn', false);
+            vscode.commands.executeCommand("setContext", "schedulerLockingStepOn", false);
         }
 
-        if (states['continue'] === 'on') {
-            activeOptions.push('continue');
-            vscode.commands.executeCommand('setContext', 'schedulerLockingContinueOn', true);
+        if (states["continue"] === "on") {
+            activeOptions.push("continue");
+            vscode.commands.executeCommand("setContext", "schedulerLockingContinueOn", true);
         } else {
-            vscode.commands.executeCommand('setContext', 'schedulerLockingContinueOn', false);
+            vscode.commands.executeCommand("setContext", "schedulerLockingContinueOn", false);
         }
 
         if (activeOptions.length > 0) {
-            this.schedulerStatusBarItem.text = `$(lock) Scheduler-locking: ${activeOptions.join(', ')}`;
+            this.schedulerStatusBarItem.text = `$(lock) Scheduler-locking: ${activeOptions.join(", ")}`;
 
             // Set background color based on the combination
-            if (states['step'] === 'on' && states['continue'] === 'on') {
+            if (states["step"] === "on" && states["continue"] === "on") {
                 // Both are on
-                backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
-            } else if (states['step'] === 'on') {
+                backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+            } else if (states["step"] === "on") {
                 // Only 'step' is on
-                backgroundColor = new vscode.ThemeColor('statusBarItem.hoverForeground');
-            } else if (states['continue'] === 'on') {
+                backgroundColor = new vscode.ThemeColor("statusBarItem.hoverForeground");
+            } else if (states["continue"] === "on") {
                 // Only 'continue' is on
-                backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+                backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
             }
 
             this.schedulerStatusBarItem.backgroundColor = backgroundColor;
+        
+            // Build the tooltip with all states
+            const tooltipLines = Object.entries(states).map(
+                ([option, state]) => `${option}: ${state}`
+            );
+            const tooltipText = tooltipLines.join("\n");
+
+            this.schedulerStatusBarItem.tooltip = tooltipText;
+
             this.schedulerStatusBarItem.show();
         } else {
             this.schedulerStatusBarItem.hide();
