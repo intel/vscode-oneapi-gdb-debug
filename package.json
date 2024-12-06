@@ -66,6 +66,9 @@
                         "type": "boolean",
                         "description": "%capabilities.DISABLE_ONEAPI_ENV_NOTIFICATION.description%",
                         "default": false
+                    },
+                    "intelOneAPI.help.launchJson": {
+                        "markdownDescription": "Refer to the [launch.json documentation](https://code.visualstudio.com/docs/cpp/launch-json-reference) for configuration details."
                     }
                 }
             }
