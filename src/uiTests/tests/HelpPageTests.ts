@@ -11,7 +11,7 @@ import { exec } from "child_process";
 import { assert } from "chai";
 import * as util from "util";
 import axios from "axios";
-import { LoadAndParseJsonFile } from "../utils/FileSystem";
+import { FileSystem as fs } from "../utils/FileSystem";
 import { HttpsProxyAgent } from "https-proxy-agent";
 
 export default function() {
@@ -103,7 +103,7 @@ async function CheckOfflineHelpPageTest(): Promise<void> {
     try {
         logger.Info("Check offline help page");
         await SetInputText("> Intel oneAPI: List gdb-oneapi debugger unique commands (help)");
-        const offlineHelpReference = LoadAndParseJsonFile("media/userHelp/content.json");//JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
+        const offlineHelpReference = await fs.LoadAndParseJsonFile("media/userHelp/content.json", { remotePath: false });//JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
 
         logger.Info("Get all nested values");
         const values = GetAllNestedValues(offlineHelpReference);
