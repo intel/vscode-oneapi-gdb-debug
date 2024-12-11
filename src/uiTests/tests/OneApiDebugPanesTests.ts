@@ -4,11 +4,11 @@
  */
 
 import { CheckIfBreakpointHasBeenHit, CleanUp, ExecuteInOneApiDebugPaneFrame, GetDebugConsoleOutput, GetDebugPane, GetRandomInt, GetStringBetweenStrings, GetTerminalOutput,
-    LaunchSequence, Retry, SetBreakpoint, SetInputText, Wait } from "../utils/CommonFunctions";
+    LaunchSequence, MapTestOptions, Retry, SetBreakpoint, SetInputText, Wait } from "../utils/CommonFunctions";
 import { CheckIfBreakpointConditionHasBeenMet, ContinueDebugging, RemoveAllBreakpoints, SetConditionalBreakpoint } from "../utils/Debugging/Debugging";
 import { GetGpuThreads, GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
 import { ConditionalBreakpointType, ConditionalBreakpoint } from "../utils/Debugging/Types";
-import { OneApiDebugPane, OneApiDebugPaneFrameTitle } from "../utils/Types";
+import { OneApiDebugPane, OneApiDebugPaneFrameTitle, TestOptions } from "../utils/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { By, WebElement } from "vscode-extension-tester";
@@ -19,12 +19,12 @@ import { HwInfo } from "../utils/HardwareInfo/Types";
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
 
-export default function() {
-    describe("Examine debugging functionality", () => {
+export default function(options: TestOptions) {
+    describe(`Examine ${options.remoteTests ? "remote " : ""}debugging functionality`, () => {
         it("Refresh SIMD data", async function() {
             this.timeout(5 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
-            await RefreshSimdDataTest();
+            await RefreshSimdDataTest(options);
         });
         for (const threadInfo of [
             "Id",
@@ -32,7 +32,7 @@ export default function() {
         ] as ThreadProperty[]) {
             it(`Check threads ${threadInfo}`, async function() {
                 this.timeout(5 * this.test?.ctx?.defaultTimeout);
-                await ValidateOneApiGpuThreadsTest(threadInfo);
+                await ValidateOneApiGpuThreadsTest(threadInfo, options);
             });
         }
         for (const simdTestSuite of [
@@ -52,7 +52,7 @@ export default function() {
             it(`SIMD lane conditional breakpoint [${simdTestSuite.breakpointType}] [${simdTestSuite.paneToCheck}]`, async function() {
                 this.timeout(10 * this.test?.ctx?.defaultTimeout);
                 this.retries(2);
-                await SimdLaneConditionalBreakpointTest(simdTestSuite);
+                await SimdLaneConditionalBreakpointTest(simdTestSuite, options);
             });
         }
     });
@@ -60,10 +60,10 @@ export default function() {
 
 //#region Tests
 
-async function RefreshSimdDataTest(): Promise<void> {
+async function RefreshSimdDataTest(options: TestOptions): Promise<void> {
     logger.Info("Refresh SIMD data");
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await SetInputText("> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);
 
@@ -97,10 +97,10 @@ async function RefreshSimdDataTest(): Promise<void> {
     }
 }
 
-async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperty): Promise<void> {
+async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperty, options: TestOptions): Promise<void> {
     logger.Info(`Validate OneAPI GPU Threads - Check threads ${threadProperty.toString()}`);
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await SetInputText("> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);
         const threadsNumber = (await GetGpuThreads()).length;
@@ -134,12 +134,12 @@ async function ValidateOneApiGpuThreadsTest(threadProperty: ThreadProperty): Pro
     }
 }
 
-async function SimdLaneConditionalBreakpointTest({ breakpointType, paneToCheck }: { breakpointType: ConditionalBreakpointType; paneToCheck: OneApiDebugPane } ): Promise<void> {
+async function SimdLaneConditionalBreakpointTest({ breakpointType, paneToCheck }: { breakpointType: ConditionalBreakpointType; paneToCheck: OneApiDebugPane }, options: TestOptions ): Promise<void> {
     logger.Info(`SimdLaneConditionalBreakpointTest | { breakpointType: '${breakpointType}'; paneToCheck: '${paneToCheck}' }`);
     const simdBreakpoint = breakpointType === "SimdCommand" || breakpointType === "SimdGui";
 
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await RemoveAllBreakpoints();
         await SetInputText("> Intel oneAPI: Refresh SIMD Data");
         await Wait(3 * 1000);

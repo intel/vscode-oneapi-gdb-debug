@@ -4,41 +4,42 @@
  */
 
 import { RemoveAllBreakpoints, SetConditionalBreakpoint, ContinueDebugging, CheckIfBreakpointConditionHasBeenMet } from "../utils/Debugging/Debugging";
-import { GetRandomInt, LaunchSequence, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
+import { GetRandomInt, LaunchSequence, MapTestOptions, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
 import { GetGpuThreads, GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
 import { ConditionalBreakpoint, ConditionalBreakpointType } from "../utils/Debugging/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
-import { REMOTE_DEBUGGING, TEST_DIR } from "../utils/Consts";
+import { TEST_DIR } from "../utils/Consts";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { By, Workbench } from "vscode-extension-tester";
 import { assert } from "chai";
+import { TestOptions } from "../utils/Types";
 
-export default function() {
-    describe("Validate 'OneAPI GPU Threads' pane", () => {
+export default function(options: TestOptions) {
+    describe(`Validate 'OneAPI GPU Threads' pane${options.remoteTests ? " while remote debugging" : ""}`, () => {
         it("Check if 'TargetID' is available", async function() {
             this.timeout(3 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
-            await CheckTargetIdTest();
+            await CheckTargetIdTest(options);
         });
         it.skip("Check if current SIMD lane indicator has red background", async function() {
             this.timeout(10 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
-            await CheckCurrentLaneIndicatorTest();
+            await CheckCurrentLaneIndicatorTest(options);
         });
         it("Check SIMD lanes symbols", async function() {
             this.timeout(4 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
-            await CheckSimdLaneSymbols();
+            await CheckSimdLaneSymbols(options);
         });
     });
 }
 
 //#region Tests
 
-async function CheckTargetIdTest(): Promise<void> {
+async function CheckTargetIdTest(options: TestOptions): Promise<void> {
     logger.Info("Check 'TargetID' Test");
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await Wait(3 * 1000);
 
         const gpuThreads = await GetGpuThreads();
@@ -55,12 +56,12 @@ async function CheckTargetIdTest(): Promise<void> {
     }
 }
 
-async function CheckCurrentLaneIndicatorTest(): Promise<void> {
+async function CheckCurrentLaneIndicatorTest(options: TestOptions): Promise<void> {
     logger.Info("Check if current lane indicator is present on red background square test");
     type SimdBreakpoint = { bp: ConditionalBreakpoint; thread: Thread | undefined; laneId: number }
 
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await Wait(3 * 1000);
         await RemoveAllBreakpoints();
         const allThreads = await GetGpuThreads();
@@ -117,17 +118,18 @@ async function CheckCurrentLaneIndicatorTest(): Promise<void> {
     }
 }
 
-async function CheckSimdLaneSymbols(): Promise<void> {
+async function CheckSimdLaneSymbols(options: TestOptions): Promise<void> {
     logger.Info("Check if SIMD lane symbols are displayed");
     const indicator = "🠶";
     const activeLaneSymbol = "A";
     const inactiveLaneSymbol = "I";
     const path = `${TEST_DIR}/array-transform.cpp`;
+    const fsoptions = MapTestOptions(options);
 
     try {
         // Change array length to '65' to spawn inactive lanes "constexpr size_t length = .*"
-        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 65;", path, REMOTE_DEBUGGING);
-        await LaunchSequence();
+        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 65;", path, fsoptions);
+        await LaunchSequence(MapTestOptions(options));
         await Wait(3 * 1000);
         const allThreads = await GetGpuThreads();
         const currentThread = await GetCurrentThread(allThreads) as Thread;
@@ -167,7 +169,7 @@ async function CheckSimdLaneSymbols(): Promise<void> {
         logger.Error(e);
         throw e;
     } finally {
-        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 64;", path, REMOTE_DEBUGGING);
+        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 64;", path, fsoptions);
     }
 }
 

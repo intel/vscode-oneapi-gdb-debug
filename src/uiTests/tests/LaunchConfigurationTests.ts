@@ -4,15 +4,16 @@
  */
 
 import { CheckIfTaskWasExecuted, ClearInputText,LaunchSequence,
+    MapTestOptions,
     SelectQuickPick, SetInputText, StopDebugging } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
-import { VsCodeTask } from "../utils/Types";
+import { TestOptions, VsCodeTask } from "../utils/Types";
 import { Workbench } from "vscode-extension-tester";
-import { REMOTE_DEBUGGING, TASKS_JSON_PATH } from "../utils/Consts";
+import { TASKS_JSON_PATH } from "../utils/Consts";
 import { assert } from "chai";
-import { FileSystem as fs } from "../utils/FileSystem";
+import { LoadAndParseJsonFile } from "../utils/FileSystem";
 
-export default function() {
+export default function(options: TestOptions) {
     describe("Generate launch configurations", () => {
         for (const task of [
             "run",
@@ -20,14 +21,14 @@ export default function() {
             "run-gpu",
             "run-fpga"
         ]) {
-            it(`Generate '${task}' task`, async function() {
+            (options.remoteTests ? it.skip : it)(`Generate '${task}' task`, async function() {
                 this.timeout(this.test?.ctx?.defaultTimeout);
                 await GenerateTaskTest(task);
             });
         }
-        it("Generate 'Debug' launch configuration", async function() {
-            this.timeout(this.test?.ctx?.defaultTimeout * 2); // 2 minutes
-            await GenerateDebugLaunchConfigurationTest(); 
+        it(`Generate 'Debug' launch configuration${options.remoteTests ? " on remote target machine" : ""}`, async function() {
+            this.timeout(this.test?.ctx?.defaultTimeout);
+            await GenerateDebugLaunchConfigurationTest(options); 
         });
     });
 }
@@ -45,7 +46,7 @@ async function GenerateTaskTest(taskName: string): Promise<void> {
         input = await SelectQuickPick("Select a new target", input);
         input = await SelectQuickPick(taskName, input);
         await SelectQuickPick("Close", input);
-        const tasks = (await fs.LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH, { remotePath: REMOTE_DEBUGGING })).tasks;
+        const tasks = (await LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH, { remotePath: false })).tasks;
         const runCpuTask = tasks.find(task => task.label === taskName) as VsCodeTask;
 
         assert.exists(runCpuTask, `'${taskName}' task doesn't exists!`);
@@ -62,10 +63,10 @@ async function GenerateTaskTest(taskName: string): Promise<void> {
     }
 }
 
-async function GenerateDebugLaunchConfigurationTest(): Promise<void> {
+async function GenerateDebugLaunchConfigurationTest(options: TestOptions): Promise<void> {
     logger.Info("Generate debug launch configuration");
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options));
         await StopDebugging();
         await CheckIfTaskWasExecuted("postTask", "simple postTask");
     } catch (e) {

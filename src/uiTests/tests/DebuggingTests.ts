@@ -4,36 +4,37 @@
  */
 
 import { assert } from "chai";
-import { GetDebugConsoleOutput, GetStringBetweenStrings, GetTerminalOutput, LaunchSequence, Wait } from "../utils/CommonFunctions";
-import { DEVICES, REMOTE_DEBUGGING, TEST_DIR } from "../utils/Consts";
-import { FileSystem as fs } from "../utils/FileSystem";
+import { GetDebugConsoleOutput, GetStringBetweenStrings, GetTerminalOutput, LaunchSequence, MapTestOptions, Wait } from "../utils/CommonFunctions";
+import { DEVICES, TEST_DIR } from "../utils/Consts";
 import { HwInfo } from "../utils/HardwareInfo/Types";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { ContinueDebugging } from "../utils/Debugging/Debugging";
 import { GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
+import { TestOptions } from "../utils/Types";
+import { ReadFileAsync } from "../utils/FileSystem";
 
-export default function() {
+export default function(options: TestOptions) {
     describe("Debugging tests", () => {
         it("Can hit breakpoint as many times as expected", async function() {
-            this.timeout(10 * this.test?.ctx?.defaultTimeout);
-            await CanHitBreakpointAsManyTimesAsExpectedTest();
+            this.timeout(this.test?.ctx?.defaultTimeout);
+            await CanHitBreakpointAsManyTimesAsExpectedTest(options);
         });
     });
 }
 
 //#region Tests
 
-async function CanHitBreakpointAsManyTimesAsExpectedTest(): Promise<void> {
+async function CanHitBreakpointAsManyTimesAsExpectedTest(options?: TestOptions): Promise<void> {
     logger.Info("Check if BP has been hit exact amount of times as expexted");
     try {
-        await LaunchSequence();
+        await LaunchSequence(MapTestOptions(options as TestOptions));
         await Wait(3 * 1000);
         const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"));
         const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
         const currentDevice = DEVICES.find(d => d.Name === deviceName) as HwInfo;
         
         const path = `${TEST_DIR}/src/array-transform.cpp`;
-        const file = await fs.ReadFileAsync(path, "utf-8", { remotePath: REMOTE_DEBUGGING });
+        const file = await ReadFileAsync(path, "utf-8", MapTestOptions(options as TestOptions));
         const line = file.split("\n").find(l => l.includes("constexpr size_t length"));
         const simdNumber = line?.split("=")[1].trim().slice(0, -1);
         const expectedThreadCount = Math.ceil(Number(simdNumber) / currentDevice?.SimdWidth);
