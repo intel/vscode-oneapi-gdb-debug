@@ -5,8 +5,9 @@
 
 import { readdirSync } from "fs";
 import { join } from "path";
+import { TestOptions } from "../utils/Types";
 
-const tests: (()=>void)[] = [];
+const tests: ((options: TestOptions)=>void)[] = [];
 
 readdirSync(__dirname)
     .filter(file => file !== "index.js")

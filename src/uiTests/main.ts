@@ -4,46 +4,59 @@
  */
 
 import { ConsoleLogger, LoggerAggregator as logger } from "./utils/Logger";
-import { Wait, ChangeVsCodeSettings, SetInputText, Retry, GetNotifications } from "./utils/CommonFunctions";
+import { Wait, ChangeLocalVsCodeSettings, SetInputText, Retry, GetNotifications, MapTestOptions } from "./utils/CommonFunctions";
 import { InputBox, NotificationType, StatusBar } from "vscode-extension-tester";
 import { install } from "source-map-support";
 import { tests } from "./tests";
 import { Hook } from "mocha";
 import { NodeSSH } from "node-ssh";
-import { FileSystem as fs } from "./utils/FileSystem";
-import { REMOTE_DEBUGGING, TEST_DIR } from "./utils/Consts";
+import { REMOTE_DEBUGGING, REMOTE_HOST, REMOTE_PASS, REMOTE_USER, TEST_DIR } from "./utils/Consts";
+import { RmAsync } from "./utils/FileSystem";
+import { TestOptions } from "./utils/Types";
 
 install();
 logger.InitLoggers(new ConsoleLogger());
 
-describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tests", async() => {
+describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tests", async function() {
     let firstRun = true;
+    let testOptions: TestOptions = { remoteTests: false };
+    const initTests = async(options: TestOptions) => {
+        for (const test of Object.values(tests)) {
+            test.call(this, options);
+        }
+    };
 
-    for (const test of Object.values(tests)) {
-        test.call(this);
-    }
+    it("placeholder");
     beforeEach(async function() {
-        if (REMOTE_DEBUGGING) {
+        if (testOptions.remoteTests) {
             if (!firstRun) {
                 const input = await SetInputText("> Remote-SSH: Connect Current Window to Host...");
                 
                 await Wait(2000);
-                await SetInputText(`${this.remoteUser}@${this.remoteIp}`, { input: input });
-
-                // sshpass -p gta ssh -n -o StrictHostKeyChecking=accept-new gta@10.123.221.144
+                await SetInputText(`${testOptions.remoteUser}@${testOptions.remoteHost}`, { input: input });
+                await Wait(2000);
+                const inpt = new InputBox();
+    
+                await inpt.setText("gta");
+                await inpt.confirm();
+                // sshpass -p gta ssh -n -o StrictHostKeyChecking=accept-new gta@10.123.221.50
                 // sshpass -p gta ssh-copy-id -i ~/.ssh/id_ed25519.pub 10.123.221.50
-                await WaitForConnection(this.remoteIp, this.defaultTimeout);
+                await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
             }
 
             const fileInput = await SetInputText("> File: Open Folder...");
 
             await SetInputText(TEST_DIR, { input: fileInput });
             await Wait(2000);
-            const inpt = new InputBox();
 
-            await inpt.setText("gta");
-            await inpt.confirm();
-            await WaitForConnection(this.remoteIp, this.defaultTimeout);
+            if (firstRun) {
+                const inpt = new InputBox();
+
+                await inpt.setText("gta");
+                await inpt.confirm();
+            }
+            await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
+            await SetInputText("", {});
         }
         firstRun = false;
     });
@@ -54,39 +67,43 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
     });
     before(async function() {
         this.defaultTimeout = 3 * 60 * 1000;
+        testOptions = REMOTE_DEBUGGING ? {
+            remoteTests: true,
+            remoteUser: REMOTE_USER as string,
+            remotePass: REMOTE_PASS as string,
+            remoteHost: REMOTE_HOST as string, 
+            ssh: await new NodeSSH().connect({
+                host: REMOTE_HOST,
+                username: REMOTE_USER,
+                password: REMOTE_PASS })
+        } : { remoteTests: false };
 
-        if (REMOTE_DEBUGGING) {
-            this.remoteUser = process.env.REMOTE_USR ?? (() => { throw new Error("'REMOTE_USR' env variable is not set!"); })();
-            this.remoteIp = process.env.REMOTE_IP ?? (() => { throw new Error("'REMOTE_IP' env variable is not set!"); })();
-            fs.Init(await new NodeSSH().connect({
-                host: this.remoteIp,
-                username: this.remoteUser,
-                password: "gta" }));
+        await initTests(testOptions);
+        if (testOptions.remoteTests) {
 
             const settings = {
                 "security.workspace.trust.untrustedFiles": "open",
                 "security.workspace.trust.enabled": false,
                 "remote.SSH.useLocalServer": false,
                 "remote.SSH.connectTimeout": this.defaultTimeout / 1000,
-                "remote.SSH.remotePlatform": { [this.remoteIp]: "linux" }
+                "remote.SSH.remotePlatform": { [testOptions.remoteHost]: "linux" }
             };
 
             for (const [key, value] of Object.entries(settings)) {
-                await ChangeVsCodeSettings(key, value);
+                await ChangeLocalVsCodeSettings(key, value);
             }
-
-            await fs.RmAsync(`/home/${this.remoteUser}/.vscode-server/`, { remotePath: true });
+            await RmAsync(`/home/${testOptions.remoteUser}/.vscode-server/`, MapTestOptions(testOptions));
             const input = await SetInputText("> Remote-SSH: Connect Current Window to Host...");
 
             await Wait(2000);
-            await SetInputText(`${this.remoteUser}@${this.remoteIp}`, { input: input });
+            await SetInputText(`${testOptions.remoteUser}@${testOptions.remoteHost}`, { input: input });
             await Wait(3000);
             const inpt = new InputBox();
 
             await inpt.setText("gta");
             await inpt.confirm();
-            await WaitForConnection(this.remoteIp, this.defaultTimeout);
-            await SetInputText(`> Remote: Install Local Extensions in 'SSH: ${this.remoteIp}'...`);
+            await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
+            await SetInputText(`> Remote: Install Local Extensions in 'SSH: ${testOptions.remoteHost}'...`);
             await Wait(2000);
             const inpt2 = new InputBox();
 
@@ -108,9 +125,8 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
             // fs = FileSystem.GetInstance();
         }
 
-        await fs.RmAsync(`${TEST_DIR}/.vscode`, { remotePath: true });
-        await ChangeVsCodeSettings("debug.toolBarLocation", "docked");
-        // Install extensions on remote
+        await RmAsync(`${TEST_DIR}/.vscode`, MapTestOptions(testOptions));
+        await ChangeLocalVsCodeSettings("debug.toolBarLocation", "docked");
     });
 });
 
