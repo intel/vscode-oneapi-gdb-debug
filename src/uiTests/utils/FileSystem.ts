@@ -101,7 +101,7 @@ export async function RmAsync(path: string, options: FsOptions): Promise<void> {
 async function Exec<T>(remote: (client: NodeSSH) => Promise<T>, local: () => Promise<T>, options: FsOptions): Promise<T> {
     if (options?.remotePath) {
         if (!options.ssh) { throw new Error("remotePath was set to true but sshClient is undefined!"); }
-        return await remote(options.ssh);
+        return await remote(await options.ssh);
     } else {
         return await local();
     }

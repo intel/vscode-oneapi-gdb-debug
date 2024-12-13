@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, Setting, SettingsEditor, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
+import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, Setting, SettingsEditor, SideBarView, StatusBar, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
 import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
-import { DebugPane, FsOptions, OneApiDebugPaneFrameTitle, TestOptions, VsCodeTask } from "./Types";
+import { CustomExtensionSection, DebugPane, ExtensionSection, FsOptions, OneApiDebugPaneFrameTitle, TestOptions, VsCodeTask } from "./Types";
 import { Breakpoint, ConditionalBreakpoint } from "./Debugging/Types";
 import { RemoveAllBreakpoints } from "./Debugging/Debugging";
 import { LoggerAggregator as logger } from "./Logger";
@@ -13,7 +13,6 @@ import { execSync } from "child_process";
 import { assert } from "chai";
 import { FileExistsAsync, LoadAndParseJsonFile, MkdirAsync, ReadFileAsync, WriteFileAsync } from "./FileSystem";
 
-type ExtensionSection = "Installed";
 type ViewControlName = "Run" | "Extensions";
 type SetInputTextOptions = {
     input?: QuickOpenBox | InputBox | undefined;
@@ -73,6 +72,7 @@ export async function GetExtensionsSection(sectionName: ExtensionSection): Promi
     const extensionsSideBarView = await extensionsViewControl?.openView() as SideBarView;
     const extensionsViewContent = extensionsSideBarView.getContent();
     const availableSections = await extensionsViewContent.getSections();
+    const customSectionName: string | undefined = (sectionName as CustomExtensionSection).customName;
     let sectionToReturn;
 
     for await (const section of availableSections) {
@@ -85,8 +85,11 @@ export async function GetExtensionsSection(sectionName: ExtensionSection): Promi
         }
 
         logger.Info(title);
-        if (title === sectionName) {
+        if (customSectionName ? title === customSectionName : title === sectionName) {
+            await Retry(async() => await (section as ExtensionsViewSection).expand(), 5000);
             sectionToReturn = section;
+        } else {
+            await Retry(async() => await (section as ExtensionsViewSection).collapse(), 5000);
         }
     }
     return sectionToReturn as ExtensionsViewSection;
@@ -487,7 +490,7 @@ export async function InstallExtension(id: string, options: TestOptions) {
     let output: string = "";
 
     if (options.remoteTests) {
-        await options.ssh.execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
+        await (await options.ssh).execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
             onStdout: (chunk) => output = chunk.toString(),
             onStderr: (chunk) => output = chunk.toString(),
         });
@@ -502,7 +505,7 @@ export async function UninstallExtension(id: string, options: TestOptions) {
     let output: string = "";
 
     if (options.remoteTests) {
-        await options.ssh.execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
+        await (await options.ssh).execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
             onStdout: (chunk) => output = chunk.toString(),
             onStderr: (chunk) => output = chunk.toString(),
         });
@@ -666,6 +669,17 @@ export function MapTestOptions(options: TestOptions): FsOptions {
         remotePath: options.remoteTests,
         ssh: options.ssh,
     } : { remotePath: false };
+}
+
+export async function WaitForConnection(ip: string, timeout: number) {
+    await Retry(async() => {
+        const statusbar = new StatusBar();
+        const status = await statusbar.getItem(`remote  SSH: ${ip}`);
+
+        if (status) { return; }
+        await Wait(5 * 1000);
+        throw new Error();
+    }, timeout, true);
 }
 
 /**
