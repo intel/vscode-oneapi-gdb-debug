@@ -35,25 +35,45 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
     }
 
     beforeEach(async function() {
+        await ChangeLocalVsCodeSettings("debug.toolBarLocation", "docked");
+
         if (!testOptions.remoteTests) {
             return;
         }
+        const settings = {
+            "security.workspace.trust.untrustedFiles": "open",
+            "security.workspace.trust.enabled": false,
+            "remote.SSH.useLocalServer": false,
+            "remote.SSH.connectTimeout": this.defaultTimeout / 1000,
+            "remote.SSH.remotePlatform": { [testOptions.remoteHost]: "linux" }
+        };
 
+        for (const [key, value] of Object.entries(settings)) {
+            await ChangeLocalVsCodeSettings(key, value);
+        }
         if (!firstRun) {
             await ConnectToRemote(testOptions);
             await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
         }
 
-        const fileInput = await SetInputText("> File: Open Folder...");
-
-        await SetInputText(TEST_DIR as string, { input: fileInput });
+        let fileInput = await SetInputText("> File: Open Folder...");
         await Wait(2000);
+        fileInput =  await SetInputText(TEST_DIR as string, { input: fileInput });
+        await Wait(2000);
+        try {
+            if (await fileInput.getQuickPicks()) {
+                await fileInput.confirm();
+                await Wait(2000);
+            }
+        } catch {}
 
         if (firstRun) {
             await SetInputText(testOptions.remotePass, { input: new InputBox() });
         }
         await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
-        await SetInputText("", {});
+        try {
+            await SetInputText("", {});
+        } catch {}
         firstRun = false;
     });
     afterEach(async function() {
@@ -64,18 +84,6 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
     before(async function() {
         this.defaultTimeout = 3 * 60 * 1000;
         if (testOptions.remoteTests) {
-
-            const settings = {
-                "security.workspace.trust.untrustedFiles": "open",
-                "security.workspace.trust.enabled": false,
-                "remote.SSH.useLocalServer": false,
-                "remote.SSH.connectTimeout": this.defaultTimeout / 1000,
-                "remote.SSH.remotePlatform": { [testOptions.remoteHost]: "linux" }
-            };
-
-            for (const [key, value] of Object.entries(settings)) {
-                await ChangeLocalVsCodeSettings(key, value);
-            }
             await RmAsync(`/home/${testOptions.remoteUser}/.vscode-server/`, MapTestOptions(testOptions));
             await ConnectToRemote(testOptions);
             await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
@@ -86,7 +94,6 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
 
         await RmAsync(`${TEST_DIR}/.vscode`, MapTestOptions(testOptions));
         await RmAsync(`${TEST_DIR}/build`, MapTestOptions(testOptions));
-        await ChangeLocalVsCodeSettings("debug.toolBarLocation", "docked");
     });
     after(async function() {
         if (!testOptions.remoteTests) {

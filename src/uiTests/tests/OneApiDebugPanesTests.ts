@@ -73,8 +73,16 @@ async function RefreshSimdDataTest(options: TestOptions): Promise<void> {
         const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
         const gpuThreads = await GetGpuThreads();
         const currentgpuThread = gpuThreads.find(x => x.simdLanes.find(y => y.current))?.threadId;
-        const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
-        const selectedLaneViewContent = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+        const hwInfoViewContent = await Retry(async() => {
+            const temp = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
+            if (!temp) throw new Error();
+            return temp;
+        }, 10 * 1000) as string[];
+        const selectedLaneViewContent = await Retry(async() => {
+            const temp = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+            if (!temp) throw new Error();
+            return temp;
+        }, 10 * 1000) as string[];
         const bpinfo = await GetCallStackInfo();
         const currentThreadId = Number(GetStringBetweenStrings(bpinfo, "[", "]"));
         const currentThreadLane = GetStringBetweenStrings(consoleOutput, "lane ", ")]");
