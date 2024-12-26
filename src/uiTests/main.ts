@@ -38,6 +38,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         await ChangeLocalVsCodeSettings("debug.toolBarLocation", "docked");
 
         if (!testOptions.remoteTests) {
+            await VSBrowser.instance.openResources(TEST_DIR);
             return;
         }
         const settings = {
