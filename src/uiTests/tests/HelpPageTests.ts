@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ExecuteInIFrame, GetNotificationActions, GetNotifications, SetInputText, TakeNotificationAction, Wait } from "../utils/CommonFunctions";
+import { ExecuteInIFrame, GetNotificationActions, GetNotifications, Retry, SetInputText, TakeNotificationAction, Wait } from "../utils/CommonFunctions";
 import { By, EditorView, NotificationType, Workbench } from "vscode-extension-tester";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { NotificationPopup, TestOptions } from "../utils/Types";
@@ -107,15 +107,14 @@ async function CheckOfflineHelpPageTest(): Promise<void> {
 
         logger.Info("Get all nested values");
         const values = GetAllNestedValues(offlineHelpReference);
-        let offlineHelpBody: string = "";
-
-        await ExecuteInIFrame(async() => {
-            await ExecuteInIFrame(async(driver) => {
-                logger.Info("Get page source");
-                offlineHelpBody = await driver.getPageSource();
-                logger.Info("Got page source");
+        const offlineHelpBody = await Retry(async() => {
+            return await ExecuteInIFrame(async() => {
+                return await ExecuteInIFrame(async(driver) => {
+                    return await driver.getPageSource();
+                });
             });
-        });
+        }, 5 * 1000);
+
         for (const value of values) {
             const parsed = value.replace(/\s>\s+/g, " &gt; ").replace("<oneapiExt>", "<span class=\"oneapi-ext\">").replace("</oneapiExt>", "</span>").replace("</br>", "<br>");
 
