@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Lock body -->
+  <rect x="6" y="14" width="53" height="45" rx="6" ry="6" fill="none" stroke="#75beff" stroke-width="5"/>
+  <!-- Lock shackle -->
+  <path d="M18,15 a15,13 1 0,1 30,0" fill="none" stroke="#75beff" stroke-width="5"/>
+   <!-- Step Over Arrow (centered in the lock) -->
+  <path d="M16 35 Q35 20, 50 35" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Arrowhead -->
+  <path d="M50 36 L50 25" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 36 L40 38" fill="none" stroke="#000" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Outline for the arrow -->
+  <path d="M16 35 Q35 20, 50 35" fill="none" stroke="#007ACC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 36 L50 25" fill="none" stroke="#007ACC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50 36 L40 38" fill="none" stroke="#007ACC" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <circle cx="33" cy="49" r="7" fill="#007ACC" stroke="#000000"/>
+
+</svg>

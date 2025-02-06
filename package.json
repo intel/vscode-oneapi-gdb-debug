@@ -81,22 +81,22 @@
             {
                 "command": "intelOneAPI.schedulerLockingContinueOff",
                 "title": "Scheduler-Locking Continue",
-                "icon": "$(unlock)"
+                "icon": "media/scheduler-locking-continue_off.svg"
             },
             {
                 "command": "intelOneAPI.schedulerLockingContinueOn",
                 "title": "Scheduler-Locking Continue",
-                "icon": "$(lock)"
+                "icon": "media/scheduler-locking-continue_on.svg"
             },
             {
                 "command": "intelOneAPI.schedulerLockingStepOff",
                 "title": "Scheduler-Locking Step",
-                "icon": "$(unlock)"
+                "icon": "media/scheduler-locking-step_off.svg"
             },
             {
                 "command": "intelOneAPI.schedulerLockingStepOn",
                 "title": "Scheduler-Locking Step",
-                "icon": "$(lock)"
+                "icon": "media/scheduler-locking-step_on.svg"
             },
             {
                 "command": "intelOneAPI.syscheckView.run",
