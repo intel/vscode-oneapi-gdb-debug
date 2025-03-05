@@ -8,7 +8,7 @@ additional features of GPU debugging with GDB for Intel® oneAPI toolkits.
 To learn more about using extensions with oneAPI, see [Using Visual Studio Code with Intel® oneAPI Toolkits](https://www.intel.com/content/www/us/en/develop/documentation/using-vs-code-with-intel-oneapi/top.html).
 
 ## Get started
-Start using this VS Code extension with guide [Get Started with Intel® Distribution for GDB* on Linux* OS Host](https://www.intel.com/content/www/us/en/develop/documentation/get-started-with-debugging-dpcpp-linux/top.html).
+Start using this VS Code extension with guide [Get Started with Intel® Distribution for GDB* on Linux* OS Host](https://www.intel.com/content/www/us/en/docs/distribution-for-gdb/get-started-guide-linux/2025-1/overview.html).
 
 ## Prepare Launch Configuration
 Note that this feature is only available for the Linux* target platform.
