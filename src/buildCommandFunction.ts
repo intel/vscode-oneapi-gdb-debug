@@ -9,6 +9,7 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
     }
 
     const mainQuery = buildQueryString(filter).trim();
+
     if (!mainQuery && !filter.filter) {
         return undefined;
     }
@@ -17,10 +18,11 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
         // If mainQuery contains "&&", we assume there are coordinate conditions => keep "&&".
         // Otherwise, place the user filter with a space.
         const separator = mainQuery.includes("&&") ? " && " : " ";
-        return `-exec -thread-filter ${mainQuery}${separator}(${filter.filter})`;
+
+        return `-exec -thread-filter --s ${mainQuery}${separator}(${filter.filter})`;
     }
 
-    return `-exec -thread-filter ${mainQuery}`;
+    return `-exec -thread-filter --s ${mainQuery}`;
 }
 
 
@@ -31,6 +33,7 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
 function buildQueryString(filter: Filter): string {
     // Check special flags: -all / --all-lanes
     const finalFlag = checkSpecialFlags(filter.threadValue, filter.laneValue);
+
     if (finalFlag) {
         // If we have a special flag, skip normal parsing but still consider any coordinate conditions
         const extraConditions = buildCoordinateConditions(filter);
@@ -40,6 +43,7 @@ function buildQueryString(filter: Filter): string {
         // 3) There's also no user-defined filter
         // => We want no filter at all, so return ""
         const userHasNoFilter = !(filter.filter && filter.filter.trim());
+
         if (!extraConditions && userHasNoFilter && (finalFlag === "--selected-lanes" || finalFlag === "--all-lanes")) {
             // Return empty => leads to undefined in buildFilterCommand
             return "";
@@ -68,6 +72,7 @@ function buildQueryString(filter: Filter): string {
 
     // Build coordinate conditions
     const extraConditions = buildCoordinateConditions(filter);
+
     if (extraConditions) {
         // Join with a space instead of &&
         if (result) {
@@ -152,6 +157,7 @@ function formatRange(value: string): string {
     }
     // Split on commas and join with spaces
     const parts = value.split(",").map((part) => part.trim());
+
     return parts.join(" ");
 }
 
@@ -164,6 +170,7 @@ function buildCoordinateConditions(filter: Filter): string {
 
     if (filter.localWorkItemValue) {
         const local = parseCoordinates(filter.localWorkItemValue, "$_workitem_local_id");
+
         if (local) {
             conditions.push(local);
         }
@@ -171,6 +178,7 @@ function buildCoordinateConditions(filter: Filter): string {
 
     if (filter.globalWorkItemValue) {
         const global = parseCoordinates(filter.globalWorkItemValue, "$_workitem_global_id");
+
         if (global) {
             conditions.push(global);
         }
@@ -178,6 +186,7 @@ function buildCoordinateConditions(filter: Filter): string {
 
     if (filter.workGroupValue) {
         const group = parseCoordinates(filter.workGroupValue, "$_thread_workgroup");
+
         if (group) {
             conditions.push(group);
         }
@@ -213,10 +222,12 @@ function parseCoordinates(input: string, variable: string): string {
         if (value.includes("-")) {
             // e.g.: "1-3" => expand to (x==1) || (x==2) || (x==3)
             const numericMatches = expandRange(value);
+
             if (numericMatches.length > 0) {
                 const orClause = numericMatches
                     .map((num) => `(${variable}[${index}] == ${num})`)
                     .join(" || ");
+
                 dimensionChecks.push(`(${orClause})`);
             }
         } else {
@@ -242,6 +253,7 @@ function expandRange(rangeStr: string): string[] {
     }
 
     const result: string[] = [];
+
     for (let i = start; i <= end; i++) {
         result.push(i.toString());
     }

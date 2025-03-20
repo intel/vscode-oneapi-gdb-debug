@@ -9,7 +9,7 @@ import { DebuggerCommandsPanel, getWebviewOptions, UserHelp } from "./UserHelp";
 import { SimdProvider } from "./SimdProvider";
 import { SIMDWatchProvider } from "./SimdWatchProvider";
 import { SIMDViewProvider } from "./viewProviders/SIMDViewProvider";
-import { ThreadInfoViewProvider } from "./viewProviders/threadInfoViewProvider"
+import { ThreadInfoViewProvider } from "./viewProviders/threadInfoViewProvider";
 import { DeviceViewProvider } from "./viewProviders/deviceViewProvider";
 import { SelectedLaneViewProvider } from "./viewProviders/selectedLaneViewProvider";
 import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";
@@ -68,9 +68,9 @@ function checkExtensionsConflict() {
             vscode.window.showInformationMessage(`${deprExtName} is a deprecated version. This may lead to the unavailability of overlapping functions.`, Update, "Ignore")
                 .then((selection) => {
                     if (selection === Update) {
-                        vscode.commands.executeCommand("workbench.extensions.uninstallExtension", deprecatedExtension.id).then(function () {
+                        vscode.commands.executeCommand("workbench.extensions.uninstallExtension", deprecatedExtension.id).then(function() {
                             vscode.window.showErrorMessage(`Completed uninstalling ${deprExtName} extension.`);
-                            vscode.commands.executeCommand("workbench.extensions.installExtension", "intel-corporation.oneapi-analysis-configurator").then(function () {
+                            vscode.commands.executeCommand("workbench.extensions.installExtension", "intel-corporation.oneapi-analysis-configurator").then(function() {
                                 const actualExtension = vscode.extensions.getExtension("intel-corporation.oneapi-analysis-configurator");
 
                                 if (actualExtension) {
@@ -93,12 +93,14 @@ function checkExtensionsConflict() {
     }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export function activate(context: vscode.ExtensionContext): void {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const schedulerLocking = new SchedulerLocking(context);
 
     context.globalState.update("ThreadFilter", undefined);
     const syscheckProvider = new SyscheckViewProvider(context);
+
     vscode.window.registerTreeDataProvider("intelOneAPI.syscheckView", syscheckProvider);
 
     context.subscriptions.push(
@@ -107,6 +109,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
     // Add the status bar item
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+
     statusBarItem.command = "intelOneAPI.syscheckView.focusAndRun";
     statusBarItem.text = "$(syscheck-icon)";
     statusBarItem.tooltip = "Focus on Debugger Healths Checks for oneAPI and Run";
@@ -114,7 +117,7 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(statusBarItem);
 
     context.subscriptions.push(
-        vscode.commands.registerCommand("intelOneAPI.syscheckView.focusAndRun", async () => {
+        vscode.commands.registerCommand("intelOneAPI.syscheckView.focusAndRun", async() => {
             // Focus the Explorer view
             await vscode.commands.executeCommand("workbench.view.explorer");
 
@@ -141,7 +144,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(simdWatchViewDisposable);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const simdWatchProvider = new SIMDWatchProvider(context, simdWatchViewProvider);
     const threadInfoViewProvider = new ThreadInfoViewProvider(context.extensionUri);
     const threadInfoViewDisposable = vscode.window.registerWebviewViewProvider(
@@ -190,7 +192,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
     context.subscriptions.push(deviceViewDisposable);
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider, simdWatchProvider);
 
     simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
