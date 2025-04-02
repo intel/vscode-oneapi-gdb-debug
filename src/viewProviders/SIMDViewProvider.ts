@@ -6,6 +6,7 @@
 import {
     commands,
     CancellationToken,
+    ExtensionContext,
     Uri,
     window,
     Webview,
@@ -13,7 +14,6 @@ import {
     WebviewViewProvider,
     WebviewViewResolveContext,
 } from "vscode";
-import * as vscode from "vscode";
 import { CurrentThread, Emask, getThread } from "../SimdProvider";
 import { ThreadInfoViewProvider } from "./threadInfoViewProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
@@ -59,7 +59,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     constructor(
-        private context: vscode.ExtensionContext,
+        private context: ExtensionContext,
         private threadInfoViewProvider: ThreadInfoViewProvider,
         private selectedLaneViewProvider: SelectedLaneViewProvider) { }
 
@@ -120,7 +120,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
 
         await window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
-            async () => {
+            async() => {
                 try {
                     this._view.webview.postMessage({
                         command: "triggerSearch",
@@ -145,7 +145,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
     public async triggerFilter() {
         await window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
-            async () => {
+            async() => {
                 try {
                     this._view.webview.postMessage({
                         command: "triggerFilter",
@@ -465,113 +465,113 @@ export class SIMDViewProvider implements WebviewViewProvider {
     }
 
     private async _setWebviewMessageListener(webviewView: WebviewView) {
-        webviewView.webview.onDidReceiveMessage(async (message: { command: string; payload: string }) => {
+        webviewView.webview.onDidReceiveMessage(async(message: { command: string; payload: string }) => {
             const command = message.command;
 
             switch (command) {
-                case "change":
-                    {
-                        this.waitForViewToBecomeVisible(() => {
-                            this.setLoadingView();
-                        });
-                        await this.setLoadingView();
-                        try {
-                            await window.withProgress(
-                                { location: { viewId: "intelOneAPI.debug.simdview" } },
-                                () => this.updateView(this._masks)
-                            );
-                        } catch (error) {
-                            this.waitForViewToBecomeVisible(() => {
-                                // Handle errors in gdb requests: display error message in panel
-                                if (error instanceof Error) {
-                                    this.setErrorView(error.message);
-                                } else {
-                                    this.setErrorView(String(error));
-                                }
-                            });
-                        }
-                    }
-                    break;
-
-                case "changeLane":
-                    {
-                        await commands.executeCommand("setContext", "oneapi:haveSelected", true);
-                        this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                            this.selectedLaneViewProvider.setLoadingView();
-                        });
-                        this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
-                            this.threadInfoViewProvider.setLoadingView();
-                        });
+            case "change":
+                {
+                    this.waitForViewToBecomeVisible(() => {
+                        this.setLoadingView();
+                    });
+                    await this.setLoadingView();
+                    try {
                         await window.withProgress(
-                            { location: { viewId: ThreadInfoViewProvider.viewType } },
-                            async () => {
-                                try {
-                                    webviewView.webview.postMessage({
-                                        command: "changeLane",
-                                        payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
-                                    });
-                                    this.chosenLaneId = message.payload;
-                                    const parsedMessage = JSON.parse(message.payload);
-                                    const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane, 10));
-
-                                    if (!currentThread) {
-                                        await commands.executeCommand("setContext", "oneapi:haveSelected", false);
-                                        return;
-                                    }
-
-                                    let metBPConditions: boolean | undefined = undefined;
-
-                                    if (parsedMessage.hitLanesMask !== undefined) {
-
-                                        metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
-                                    }
-
-                                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
-                                        this.threadInfoViewProvider.setView(currentThread, parsedMessage.hitLanesMask, parsedMessage.length, metBPConditions);
-                                    });
-                                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                        this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, metBPConditions);
-                                    });
-
-                                    if (!this._currentThread || this._currentThread.threadId !== currentThread.threadId) {
-                                        this._currentThread = currentThread;
-                                        commands.executeCommand("intelOneAPI.watchPanel.fetchSimdWatchPanel");
-                                    }
-                                } catch (error) {
-                                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
-                                        // Handle errors in gdb requests: display error message in panel
-                                        if (error instanceof Error) {
-                                            this.selectedLaneViewProvider.setErrorView(error.message);
-                                        } else {
-                                            this.selectedLaneViewProvider.setErrorView(String(error));
-                                        }
-                                    }
-                                    );
-                                }
-                            }
+                            { location: { viewId: "intelOneAPI.debug.simdview" } },
+                            () => this.updateView(this._masks)
                         );
+                    } catch (error) {
+                        this.waitForViewToBecomeVisible(() => {
+                            // Handle errors in gdb requests: display error message in panel
+                            if (error instanceof Error) {
+                                this.setErrorView(error.message);
+                            } else {
+                                this.setErrorView(String(error));
+                            }
+                        });
                     }
-                    break;
-                case "applyFilter":
-                    {
-                        const parsedMessage = JSON.parse(message.payload);
+                }
+                break;
 
-                        const filter: Filter = {
-                            filter: parsedMessage.filter,
-                            threadValue: parsedMessage.threadValue,
-                            laneValue: parsedMessage.laneValue,
-                            localWorkItemValue: parsedMessage.localWorkItemValue,
-                            globalWorkItemValue: parsedMessage.globalWorkItemValue,
-                            workGroupValue: parsedMessage.workGroupValue
-                        };
+            case "changeLane":
+                {
+                    await commands.executeCommand("setContext", "oneapi:haveSelected", true);
+                    this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                        this.selectedLaneViewProvider.setLoadingView();
+                    });
+                    this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                        this.threadInfoViewProvider.setLoadingView();
+                    });
+                    await window.withProgress(
+                        { location: { viewId: ThreadInfoViewProvider.viewType } },
+                        async() => {
+                            try {
+                                webviewView.webview.postMessage({
+                                    command: "changeLane",
+                                    payload: JSON.stringify({ id: message.payload, previousLane: this.chosenLaneId, viewType: this._activeLaneSymbol }),
+                                });
+                                this.chosenLaneId = message.payload;
+                                const parsedMessage = JSON.parse(message.payload);
+                                const currentThread = await getThread(parseInt(parsedMessage.threadId, 10), parseInt(parsedMessage.lane, 10));
 
-                        await this.context.globalState.update("ThreadFilter", filter);
-                        await vscode.commands.executeCommand("intelOneAPI.debug.fetchSIMDInfo");
-                    }
-                    break;
-                    case "openFilterHelp": {
-                        vscode.window.showInformationMessage(
-        `Thread filter options allows to filter the range of thread or lanes and also
+                                if (!currentThread) {
+                                    await commands.executeCommand("setContext", "oneapi:haveSelected", false);
+                                    return;
+                                }
+
+                                let metBPConditions: boolean | undefined = undefined;
+
+                                if (parsedMessage.hitLanesMask !== undefined) {
+
+                                    metBPConditions = parsedMessage.hitLanesMask !== "undefined" ? true : false;
+                                }
+
+                                this.threadInfoViewProvider.waitForViewToBecomeVisible(() => {
+                                    this.threadInfoViewProvider.setView(currentThread, parsedMessage.hitLanesMask, parsedMessage.length, metBPConditions);
+                                });
+                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                    this.selectedLaneViewProvider.setView(currentThread, parsedMessage.executionMask, metBPConditions);
+                                });
+
+                                if (!this._currentThread || this._currentThread.threadId !== currentThread.threadId) {
+                                    this._currentThread = currentThread;
+                                    commands.executeCommand("intelOneAPI.watchPanel.fetchSimdWatchPanel");
+                                }
+                            } catch (error) {
+                                this.selectedLaneViewProvider.waitForViewToBecomeVisible(() => {
+                                    // Handle errors in gdb requests: display error message in panel
+                                    if (error instanceof Error) {
+                                        this.selectedLaneViewProvider.setErrorView(error.message);
+                                    } else {
+                                        this.selectedLaneViewProvider.setErrorView(String(error));
+                                    }
+                                }
+                                );
+                            }
+                        }
+                    );
+                }
+                break;
+            case "applyFilter":
+                {
+                    const parsedMessage = JSON.parse(message.payload);
+
+                    const filter: Filter = {
+                        filter: parsedMessage.filter,
+                        threadValue: parsedMessage.threadValue,
+                        laneValue: parsedMessage.laneValue,
+                        localWorkItemValue: parsedMessage.localWorkItemValue,
+                        globalWorkItemValue: parsedMessage.globalWorkItemValue,
+                        workGroupValue: parsedMessage.workGroupValue
+                    };
+
+                    await this.context.globalState.update("ThreadFilter", filter);
+                    await commands.executeCommand("intelOneAPI.debug.fetchSIMDInfo");
+                }
+                break;
+            case "openFilterHelp": {
+                window.showInformationMessage(
+                    `Thread filter options allows to filter the range of thread or lanes and also
 then further filter from the selection using expression options given below. Here is the overview
 of these options:
 
@@ -608,14 +608,14 @@ Examples using convenience variables:
 Example using program variables:
     1) To filter all threads with variable "x" value greater than 100 but less than 200: x > 100 && x<200
 `,
-                            { modal: true }
-                        );
-                    }
-                    break;
+                    { modal: true }
+                );
+            }
+                break;
                     
                     
-                default:
-                    break;
+            default:
+                break;
             }
         });
         webviewView.onDidChangeVisibility(() => {
