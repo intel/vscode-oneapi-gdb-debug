@@ -13,12 +13,16 @@ on:
 jobs:
   build-extensions:
     runs-on: [self-hosted, linux]
-    container: node:20-buster
+    container: node:23-bookworm-slim
     steps:
       - name: Check out repository code
         uses: actions/checkout@v2
+      - name: Enable corepack
+        run: corepack enable 
+      - name: yarn version
+        run: yarn -v && node -v
       - name: Build the package
-        run: yarn install  && yarn package
+        run: yarn install  && yarn run package
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
