@@ -530,7 +530,7 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile",
         "lint": "eslint -c eslint.config.mjs --fix ./",
-        "package": "vsce package",
+        "package": "vsce package --no-yarn",
         "get-vscode": "extest get-vscode -s test-resources",
         "prebasic-ui-tests": "yarn run get-vscode && extest install-from-marketplace ms-vscode.cmake-tools ms-vscode.cpptools intel-corporation.oneapi-analysis-configurator intel-corporation.oneapi-samples intel-corporation.oneapi-environment-configurator ms-vscode-remote.remote-ssh -s test-resources",
         "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources",
@@ -574,5 +574,6 @@
         "@vscode/debugadapter": "^1.67.0",
         "@vscode/debugprotocol": "^1.67.0",
         "@vscode/webview-ui-toolkit": "^1.4.0"
-    }
+    },
+    "packageManager": "yarn@4.6.0"
 }
