@@ -15,6 +15,10 @@ export enum OneApiDebugPane {
 
 // #region Types
 
+export type FsOptions = {
+    remotePath: boolean;
+}
+
 /**
  * Represents the notification popup.
  */
