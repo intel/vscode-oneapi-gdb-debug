@@ -243,7 +243,11 @@ async function RefreshGpuThreadsView(): Promise<void> {
 }
 
 async function CheckIfHwInfoViewContainsExpectedInfo() {
-    const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
+    const hwInfoViewContent = await Retry(async() => {
+        const temp = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
+        if (temp.length <= 0) {throw new Error();}
+        return temp;
+    }, 10 * 1000) as string[];
     const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
     const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
     const expectedDeviceInfo: HwInfo = { Location: "", Number: "", "Sub device": "", ...DEVICES.find(x => x.Name === deviceName)! };
