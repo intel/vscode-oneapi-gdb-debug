@@ -75,6 +75,30 @@
         ],
         "commands": [
             {
+                "command": "intelOneAPI.schedulerLockingStatusBarRefresh",
+                "title": "Scheduler-Locking Status Bar Refresh"
+            },
+            {
+                "command": "intelOneAPI.schedulerLockingContinueOff",
+                "title": "Scheduler-Locking Continue",
+                "icon": "$(unlock)"
+            },
+            {
+                "command": "intelOneAPI.schedulerLockingContinueOn",
+                "title": "Scheduler-Locking Continue",
+                "icon": "$(lock)"
+            },
+            {
+                "command": "intelOneAPI.schedulerLockingStepOff",
+                "title": "Scheduler-Locking Step",
+                "icon": "$(unlock)"
+            },
+            {
+                "command": "intelOneAPI.schedulerLockingStepOn",
+                "title": "Scheduler-Locking Step",
+                "icon": "$(lock)"
+            },
+            {
                 "command": "intelOneAPI.syscheckView.run",
                 "title": "Intel oneAPI: Refresh Debugger Healths Checks for oneAPI",
                 "icon": "$(extensions-refresh)"
@@ -189,6 +213,24 @@
             ]
         },
         "menus": {
+            "debug/toolBar": [
+                {
+                    "command": "intelOneAPI.schedulerLockingContinueOff",
+                    "when": "(schedulerLockingReady == true) && (schedulerLockingContinueOn == false) && (debugType == 'cppdbg')"
+                },
+                {
+                    "command": "intelOneAPI.schedulerLockingContinueOn",
+                    "when": "(schedulerLockingReady == true) && (schedulerLockingContinueOn == true) && (debugType == 'cppdbg')"
+                },
+                {
+                    "command": "intelOneAPI.schedulerLockingStepOff",
+                    "when": "(schedulerLockingReady == true) && (schedulerLockingStepOn == false) && (debugType == 'cppdbg')"
+                },
+                {
+                    "command": "intelOneAPI.schedulerLockingStepOn",
+                    "when": "(schedulerLockingReady == true) && (schedulerLockingStepOn == true) && (debugType == 'cppdbg')"
+                }
+            ],
             "view/title": [
                 {
                     "command": "intelOneAPI.syscheckView.run",
