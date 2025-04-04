@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2021-2025 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 "use strict";
 import * as vscode from "vscode";
 
