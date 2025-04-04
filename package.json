@@ -487,7 +487,7 @@
         "lint": "eslint -c eslint.config.mjs --fix ./",
         "package": "vsce package",
         "get-vscode": "extest get-vscode -s test-resources",
-        "prebasic-ui-tests": "yarn run get-vscode && extest install-from-marketplace ms-vscode.cmake-tools ms-vscode.cpptools intel-corporation.oneapi-analysis-configurator intel-corporation.oneapi-samples intel-corporation.oneapi-environment-configurator -s test-resources",
+        "prebasic-ui-tests": "yarn run get-vscode && extest install-from-marketplace ms-vscode.cmake-tools ms-vscode.cpptools intel-corporation.oneapi-analysis-configurator intel-corporation.oneapi-samples intel-corporation.oneapi-environment-configurator ms-vscode-remote.remote-ssh -s test-resources",
         "basic-ui-tests": "extest setup-and-run \"out/uiTests/main.js\" -m \"src/uiTests/configs/.mocharc-debug.js\" -s test-resources",
         "postbasic-ui-tests": "rm -rf ~/.vscode/extensions/"
     },
@@ -499,6 +499,7 @@
         "@types/mocha": "^10.0.8",
         "@types/node": "^22.5.5",
         "@types/source-map-support": "^0.5.10",
+        "@types/ssh2": "^1.15.1",
         "@types/vscode": "^1.93.0",
         "@typescript-eslint/eslint-plugin": "^8.6.0",
         "@typescript-eslint/parser": "^8.6.0",
@@ -526,6 +527,7 @@
         "@vscode/codicons": "^0.0.36",
         "@vscode/debugadapter": "^1.67.0",
         "@vscode/debugprotocol": "^1.67.0",
-        "@vscode/webview-ui-toolkit": "^1.4.0"
+        "@vscode/webview-ui-toolkit": "^1.4.0",
+        "node-ssh": "^13.2.0"
     }
 }
