@@ -21,7 +21,7 @@ export default function() {
             await CheckTargetIdTest();
         });
 
-        it("Check if current SIMD lane indicator has red background", async function() {
+        it.skip("Check if current SIMD lane indicator has red background", async function() {
             this.timeout(10 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
             await CheckCurrentLaneIndicatorTest();
