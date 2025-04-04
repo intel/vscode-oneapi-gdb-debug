@@ -5,13 +5,6 @@
 
 // #region Enums
 
-export enum ConditionalBreakpointType {
-    SimdCommand = "SimdCommand",
-    SimdGui = "SimdGui",
-    NativeCommand = "NativeCommand",
-    NativeGui = "NativeGui",
-}
-
 export enum OneApiDebugPane {
     OneApiGpuThreads = "oneAPI GPU Threads Section",
     HardwareInfo = "Hardware Info Section",
@@ -41,22 +34,6 @@ export type VsCodeTask = {
     type: string;
     problemMatcher?: [];
 };
-
-/**
- * Breakpoint template.
- */
-export type Breakpoint = {
-    fileName: string;
-    lineNumber: number;
-};
-
-/**
- * Conditional breakpoint template.
- */
-export type ConditionalBreakpoint = {
-    type: ConditionalBreakpointType;
-    condition: string;
-} & Breakpoint;
 
 /**
  * Possible debug panes.
