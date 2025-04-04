@@ -7,7 +7,7 @@ import { NotificationType } from "vscode-extension-tester";
 import { GetExtensionsSection, GetNotificationActions, GetNotifications, InstallExtension, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { assert } from "chai";
-import { NotificationPopup } from "../utils/Types";
+import { NotificationPopup, TestOptions } from "../utils/Types";
 
 const expectedNotifications: {[k: string]: NotificationPopup} = {
     env_config: {
@@ -24,12 +24,12 @@ const expectedNotifications: {[k: string]: NotificationPopup} = {
     }
 };
 
-export default function() {
-    describe("Install extensions from notifications", () => {
+export default function(options: TestOptions) {
+    describe(`Install extensions from notifications${options.remoteTests ? " on remote target" : ""}`, () => {
         before(async() => {
             try {
                 for (const notification of Object.values(expectedNotifications)) {
-                    UninstallExtension(notification.id as string);
+                    UninstallExtension(notification.id as string, options);
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
@@ -38,7 +38,7 @@ export default function() {
         after(async() => {
             try {
                 for (const notification of Object.values(expectedNotifications)) {
-                    InstallExtension(notification.id as string);
+                    InstallExtension(notification.id as string, options);
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
