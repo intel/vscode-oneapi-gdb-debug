@@ -4,14 +4,14 @@
  */
 
 import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, Setting, SettingsEditor, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
-import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT, REMOTE_DEBUGGING } from "./Consts";
-import { DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
+import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
+import { DebugPane, FsOptions, OneApiDebugPaneFrameTitle, TestOptions, VsCodeTask } from "./Types";
 import { Breakpoint, ConditionalBreakpoint } from "./Debugging/Types";
 import { RemoveAllBreakpoints } from "./Debugging/Debugging";
 import { LoggerAggregator as logger } from "./Logger";
-import { FileSystem as fs } from "./FileSystem";
 import { execSync } from "child_process";
 import { assert } from "chai";
+import { FileExistsAsync, LoadAndParseJsonFile, MkdirAsync, ReadFileAsync, WriteFileAsync } from "./FileSystem";
 
 type ExtensionSection = "Installed";
 type ViewControlName = "Run" | "Extensions";
@@ -250,24 +250,24 @@ export async function ExecuteInIFrame<TResult>(body: (driver: WebDriver) => Prom
 /**
  * Prepares environment and launches debugging session.
  */
-export async function LaunchSequence(): Promise<void> {
-    await CreateCCppPropertiesFile();
+export async function LaunchSequence(options: FsOptions): Promise<void> {
+    await CreateCCppPropertiesFile(options);
     await InitDefaultEnvironment();
     await AddTask({
         "label": "preTask",
         "command": "source /opt/intel/oneapi/setvars.sh --force && mkdir -p build && cd build && cmake .. && make && echo simple preTask",
         "type": "shell",
         "problemMatcher": []
-    });
+    }, options);
     await AddTask({
         "label": "postTask",
         "command": "echo simple postTask",
         "type": "shell"
-    });
+    }, options);
     await RunTask("preTask", "[100%] Built target array-transform");
     await RemoveAllBreakpoints();
     await SetBreakpoint(DEFAULT_BREAKPOINT);
-    await StartDebugging();
+    await StartDebugging(options);
     await CheckIfBreakpointHasBeenHit(DEFAULT_BREAKPOINT);
     await CheckIfTaskWasExecuted("preTask", "simple preTask");
 }
@@ -339,8 +339,8 @@ export async function SetBreakpoint({ fileName, lineNumber }: Breakpoint): Promi
 /**
  * Starts debugging session.
  */
-export async function StartDebugging(): Promise<void> {
-    const configurationName = await GenerateLaunchConfigurations();
+export async function StartDebugging(options: FsOptions): Promise<void> {
+    const configurationName = await GenerateLaunchConfigurations(options);
 
     await Retry(async() => {
         await Wait(5 * 1000);
@@ -482,15 +482,33 @@ export async function CheckIfBreakpointHasBeenSet({ fileName, lineNumber }: Brea
     return matches?.length !== 0;
 }
 
-export function InstallExtension(id: string) {
-    const output = execSync(`code --install-extension ${id}`);
+export async function InstallExtension(id: string, options: TestOptions) {
+    const cmd = `--install-extension ${id}`;
+    let output: string = "";
 
+    if (options.remoteTests) {
+        await options.ssh.execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
+            onStdout: (chunk) => output = chunk.toString(),
+            onStderr: (chunk) => output = chunk.toString(),
+        });
+    } else {
+        output = execSync(`$(which code) ${cmd}`).toString();
+    }
     logger.Info(output.toString());
 }
 
-export function UninstallExtension(id: string) {
-    const output = execSync(`code --uninstall-extension ${id}`);
+export async function UninstallExtension(id: string, options: TestOptions) {
+    const cmd = `--uninstall-extension ${id}`;
+    let output: string = "";
 
+    if (options.remoteTests) {
+        await options.ssh.execCommand(`/home/${options.remoteUser}/.vscode-server/cli/servers/*/server/bin/code-server ${cmd}`, {
+            onStdout: (chunk) => output = chunk.toString(),
+            onStderr: (chunk) => output = chunk.toString(),
+        });
+    } else {
+        output = execSync(`$(which code) ${cmd}`).toString();
+    }
     logger.Info(output.toString());
 }
 
@@ -584,17 +602,17 @@ export async function GetExceptionPopupMessage(): Promise<string | undefined> {
  * @param setting Setting to change.
  * @param newValue New value to be set.
  */
-export async function ChangeVsCodeSettings(setting: string, newValue: unknown) {
+export async function ChangeLocalVsCodeSettings(setting: string, newValue: unknown) {
     logger.Info(`Change VsCode setting '${setting}' to '${newValue}'`);
     const vsCodeSettingsPath = "test-resources/settings/User/settings.json";
 
-    if (!await fs.FileExistsAsync(vsCodeSettingsPath, { remotePath: false })) {
-        await fs.WriteFileAsync(vsCodeSettingsPath, "{}", { remotePath: false });
+    if (!await FileExistsAsync(vsCodeSettingsPath, { remotePath: false })) {
+        await WriteFileAsync(vsCodeSettingsPath, "{}", { remotePath: false });
     }
-    const settings = JSON.parse(await fs.ReadFileAsync(vsCodeSettingsPath, "utf-8", { remotePath: false }));
+    const settings = JSON.parse(await ReadFileAsync(vsCodeSettingsPath, "utf-8", { remotePath: false }));
 
     settings[setting] = newValue;
-    await fs.WriteFileAsync(vsCodeSettingsPath, JSON.stringify(settings), { remotePath: false });
+    await WriteFileAsync(vsCodeSettingsPath, JSON.stringify(settings), { remotePath: false });
 }
 
 /**
@@ -603,17 +621,17 @@ export async function ChangeVsCodeSettings(setting: string, newValue: unknown) {
  * @param withString String to use as a replacement.
  * @param resources File where to find a replaceString
  */
-export async function ReplaceStringInFile(replaceString: string, withString: string, file: string, remote: boolean): Promise<boolean> {
-    if (!await fs.FileExistsAsync(file, { remotePath: remote })) {
+export async function ReplaceStringInFile(replaceString: string, withString: string, file: string, options: FsOptions): Promise<boolean> {
+    if (!await FileExistsAsync(file, options)) {
         return false;
     }
 
-    const arrayTransform = await fs.ReadFileAsync(file, "utf-8", { remotePath: remote });
+    const arrayTransform = await ReadFileAsync(file, "utf-8", options);
 
     let arraytransformLines = arrayTransform.split("\n");
 
     arraytransformLines = arraytransformLines.map(x => x.includes(replaceString) ? withString : x);
-    await fs.WriteFileAsync(file, arraytransformLines.join("\n"), { remotePath: remote });
+    await WriteFileAsync(file, arraytransformLines.join("\n"), options);
 
     return true;
 }
@@ -643,14 +661,11 @@ export async function SetSettingValue(settingId: string, newValue: string, setti
     await ACTIVE_LANE_SYMBOL.setValue(newValue);
 }
 
-export async function GetResourcePathFromEnv(remote: boolean): Promise<string | undefined> {
-    const arrayTransformPath = process.env["TEST_RESOURCES"]?.concat("/src/array-transform.cpp");
-
-    if (!await fs.FileExistsAsync(arrayTransformPath ?? "", { remotePath: remote })) {
-        return;
-    }
-    
-    return arrayTransformPath;
+export function MapTestOptions(options: TestOptions): FsOptions {
+    return options.remoteTests ? {
+        remotePath: options.remoteTests,
+        ssh: options.ssh,
+    } : { remotePath: false };
 }
 
 /**
@@ -672,7 +687,7 @@ async function GetViewControl(viewControl: ViewControlName): Promise<ViewControl
 /**
  * Creates c/c++ properties file.
  */
-async function CreateCCppPropertiesFile(): Promise<void> {
+async function CreateCCppPropertiesFile(options: FsOptions): Promise<void> {
     type CcppConfiguration = {
         name: string;
         includePath: [];
@@ -703,18 +718,17 @@ async function CreateCCppPropertiesFile(): Promise<void> {
         "version": 4
     };
     const ccppPropertiesFilePath = `${VSCODE_PATH}/c_cpp_properties.json`;
-    const remote = REMOTE_DEBUGGING;
 
-    if (!await fs.FileExistsAsync(VSCODE_PATH, { remotePath: remote })) {
-        await fs.MkdirAsync(VSCODE_PATH, { remotePath: remote });
+    if (!await FileExistsAsync(VSCODE_PATH, options)) {
+        await MkdirAsync(VSCODE_PATH, options);
     }
-    if (!await fs.FileExistsAsync(ccppPropertiesFilePath, { remotePath: remote })) {
-        await fs.WriteFileAsync(ccppPropertiesFilePath, JSON.stringify(ccppProperties), { remotePath: remote });
+    if (!await FileExistsAsync(ccppPropertiesFilePath, options)) {
+        await WriteFileAsync(ccppPropertiesFilePath, JSON.stringify(ccppProperties), options);
         return;
     }
 
     logger.Info(`Load '${ccppPropertiesFilePath}' file`);
-    const ccppPropertiesFileContent = await fs.LoadAndParseJsonFile<{ configurations: Array<CcppConfiguration> }>(ccppPropertiesFilePath, { remotePath: remote });
+    const ccppPropertiesFileContent = await LoadAndParseJsonFile<{ configurations: Array<CcppConfiguration> }>(ccppPropertiesFilePath, options);
     const exists = ccppPropertiesFileContent.configurations.some((x: CcppConfiguration) => x === ccppProperties.configurations[0]);
 
     if (!exists) {
@@ -727,6 +741,8 @@ async function CreateCCppPropertiesFile(): Promise<void> {
  */
 async function InitDefaultEnvironment(): Promise<void> {
     const input = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+    
+    await input.clear();
     const quickPick = await input.findQuickPick(0);
 
     await Wait(3 * 1000);
@@ -740,22 +756,20 @@ async function InitDefaultEnvironment(): Promise<void> {
  * Adds task to tasks.json
  * @param task Task to add.
  */
-async function AddTask(task: VsCodeTask): Promise<void> {
-    const remote = REMOTE_DEBUGGING;
-
-    if (!await fs.FileExistsAsync(VSCODE_PATH, { remotePath: remote })) {
-        await fs.MkdirAsync(VSCODE_PATH, { remotePath: remote });
+async function AddTask(task: VsCodeTask, options: FsOptions): Promise<void> {
+    if (!await FileExistsAsync(VSCODE_PATH, options)) {
+        await MkdirAsync(VSCODE_PATH, options);
     }
-    if (!await fs.FileExistsAsync(TASKS_JSON_PATH, { remotePath: remote })) {
-        await fs.WriteFileAsync(TASKS_JSON_PATH, JSON.stringify({ "tasks": [] }), { remotePath: remote });
+    if (!await FileExistsAsync(TASKS_JSON_PATH, options)) {
+        await WriteFileAsync(TASKS_JSON_PATH, JSON.stringify({ "tasks": [] }), options);
     }
-    const tasks = (await fs.LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH, { remotePath: remote })).tasks;
+    const tasks = (await LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH, options)).tasks;
     const exists = tasks.some(x => x.label === task.label);
 
     if (!exists) {
         tasks.push(task);
     }
-    await fs.WriteFileAsync(TASKS_JSON_PATH, JSON.stringify({ tasks: tasks }), { remotePath: remote });
+    await WriteFileAsync(TASKS_JSON_PATH, JSON.stringify({ tasks: tasks }), options);
 }
 
 /**
@@ -782,12 +796,11 @@ async function RunTask(taskName: string, expectedOutput: string): Promise<void> 
  * Generates launch configuration.
  * @returns Generated configuration name.
  */
-async function GenerateLaunchConfigurations(): Promise<string> {
-    const remote = REMOTE_DEBUGGING;
+async function GenerateLaunchConfigurations(options: FsOptions): Promise<string> {
     const launchJsonPath = `${VSCODE_PATH}/launch.json`;
 
-    if (await fs.FileExistsAsync(launchJsonPath, { remotePath: remote })) {
-        const launchJson = await fs.LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath, { remotePath: remote });
+    if (await FileExistsAsync(launchJsonPath, options)) {
+        const launchJson = await LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath, options);
         const configurationName = launchJson.configurations[0].name;
 
         return configurationName;
@@ -811,14 +824,14 @@ async function GenerateLaunchConfigurations(): Promise<string> {
     try { await input.cancel(); }
     catch { /* empty */ }
     await Wait(2000);
-    const launchJson = await fs.LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath, { remotePath: remote });
+    const launchJson = await LoadAndParseJsonFile<{configurations: {miDebuggerPath: string; name: string}[]}>(launchJsonPath, options);
 
     assert.exists(launchJson.configurations[0], "[ERROR] Debug launch configuration hasn't been created!");
     logger.Pass("Debug launch configuration has been created and exists in 'launch.json'");
     launchJson.configurations[0].miDebuggerPath = "/opt/intel/oneapi/debugger/latest/bin/gdb-oneapi";
     const configurationName: string = launchJson.configurations[0].name;
 
-    await fs.WriteFileAsync(launchJsonPath, JSON.stringify(launchJson), { remotePath: REMOTE_DEBUGGING });
+    await WriteFileAsync(launchJsonPath, JSON.stringify(launchJson), options);
 
     return configurationName;
 }
