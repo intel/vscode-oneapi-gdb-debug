@@ -4,14 +4,13 @@
  */
 
 import { RemoveAllBreakpoints, SetConditionalBreakpoint, ContinueDebugging, CheckIfBreakpointConditionHasBeenMet } from "../utils/Debugging/Debugging";
-import { GetRandomInt, LaunchSequence, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
+import { GetRandomInt, GetResourcePathFromEnv, LaunchSequence, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
 import { GetGpuThreads, GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
 import { ConditionalBreakpoint, ConditionalBreakpointType } from "../utils/Debugging/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { By, Workbench } from "vscode-extension-tester";
 import { assert } from "chai";
-import { FileExistsSync } from "../utils/FileSystem";
 
 export default function() {
     describe("Validate 'OneAPI GPU Threads' pane", () => {
@@ -20,7 +19,6 @@ export default function() {
             this.retries(1);
             await CheckTargetIdTest();
         });
-
         it.skip("Check if current SIMD lane indicator has red background", async function() {
             this.timeout(10 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
@@ -123,10 +121,9 @@ async function CheckSimdLaneSymbols(resources: string[]): Promise<void> {
     const indicator = "🠶";
     const activeLaneSymbol = "A";
     const inactiveLaneSymbol = "I";
-    const path = GetArrayTransformFilePath(resources) as string;
+    const path = GetResourcePathFromEnv() ?? resources.find(x => x.includes(".cpp")) ?? (() => { throw Error("Can't find any source file"); })();
 
     try {
-
         // Change array length to '65' to spawn inactive lanes "constexpr size_t length = .*"
         ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 65;", path);
         await LaunchSequence();
@@ -174,15 +171,3 @@ async function CheckSimdLaneSymbols(resources: string[]): Promise<void> {
 }
 
 //#endregion
-
-function GetArrayTransformFilePath(resources: string[]): string | undefined {
-    const test_resources = process.env["TEST_RESOURCES"];
-    let arrayTransformPath = test_resources?.includes("array-transform") ? test_resources.concat("/src/array-transform.cpp") : undefined;
-
-    arrayTransformPath = arrayTransformPath ?? resources.find(x => x.includes(".cpp"));
-    if (!FileExistsSync(arrayTransformPath ?? "")) {
-        return;
-    }
-
-    return arrayTransformPath;
-}

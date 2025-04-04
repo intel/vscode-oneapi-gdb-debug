@@ -648,6 +648,16 @@ export async function SetSettingValue(settingId: string, newValue: string, setti
     await ACTIVE_LANE_SYMBOL.setValue(newValue);
 }
 
+export function GetResourcePathFromEnv(): string | undefined {
+    const arrayTransformPath = process.env["TEST_RESOURCES"]?.concat("/src/array-transform.cpp");
+
+    if (!FileExistsSync(arrayTransformPath ?? "")) {
+        return;
+    }
+    
+    return arrayTransformPath;
+}
+
 /**
  * Gets view control.
  * @param viewControl View constrol name to get.
