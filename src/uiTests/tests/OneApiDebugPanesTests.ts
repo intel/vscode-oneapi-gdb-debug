@@ -308,7 +308,11 @@ async function GetLaneIdFromView(pane: LaneContainingPane) {
 
 async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: number) {
     const checkIfSelectedLaneViewContainsExpectedLane = async(expectedLaneId: number): Promise<void> => {
-        const selectedLaneViewContent = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+        const selectedLaneViewContent = await Retry(async() => {
+            const temp = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+            if (temp.length <= 0) {throw new Error();}
+            return temp;
+        }, 10 * 1000) as string[];
 
         assert.include(selectedLaneViewContent, `Lane Index: ${expectedLaneId}`, `Lane number doesn't match.\nExpected: 'Lane Index: ${expectedLaneId}'\nto be included in ${selectedLaneViewContent}`);
         logger.Pass(`Lane number matches. Actual: ${expectedLaneId}`);
