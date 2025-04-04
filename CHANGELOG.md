@@ -1,5 +1,13 @@
 # Change Log
 
+##  0.5.1
+
+  - Debug panel extended with Scheduler-locking controls
+
+  - Launch JSON description moved to settings
+
+  - Various bug fixes and performance improvements
+
 ##  0.5.0
 
   - Added Debugger Healths Checks for oneAPI
@@ -7,7 +15,7 @@
   - Improved UI panels
 
   - Improved launch configs
-  
+
   - Various bug fixes and performance improvements
 
 ##  0.4.2
@@ -17,7 +25,7 @@
   - Added Thread info panel
 
   - Added controls to disable annoying notifications
-  
+
   - Improved UI panels
 
 ##  0.4.1
