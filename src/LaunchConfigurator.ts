@@ -148,11 +148,9 @@ export class LaunchConfigurator {
 
     async checkLaunchConfig(): Promise<void> {
         if (!await this.isThereDebugConfig()) {
-            const yes = "Yes";
-            const no = "No";
-            const selection = await vscode.window.showInformationMessage("Unable to identify oneAPI C++ launch configuration in your launch.json file.\
-        Would you like to create a debug launch configuration now?", yes, no);
-            if (selection === yes) {
+            const selection = await vscode.window.showInformationMessage("Unable to identify oneAPI C++ launch configuration in your launch.json file. Would you like to create a debug launch configuration now?", "Yes", "No");
+
+            if (selection === "Yes") {
                 await vscode.commands.executeCommand("intelOneAPI.launchConfigurator.generateLaunchJson");
             }
         }
@@ -236,13 +234,9 @@ export class LaunchConfigurator {
             return [];
         }
     }
-    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+
     private async checkLaunchItem(listItems: { label: string }[], newItem: any): Promise<boolean> {
-        if (listItems.length === 0) {
-            return true; // for tests
-        }
-        const existItem = listItems.find((item: { label: string }) => item.label === newItem.label);
-        const dialogOptions: string[] = ["Cancel", "Rename configuration"];
+        if (listItems.length === 0) return true; // for tests
 
         const existItem = listItems.find(item => item.label === newItem.label);
         if (existItem) {
