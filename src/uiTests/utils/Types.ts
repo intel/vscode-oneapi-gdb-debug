@@ -17,9 +17,9 @@ export enum OneApiDebugPane {
 
 // #region Types
 
-type RemoteTestOptions = {
+export type RemoteTestOptions = {
     remoteTests: true;
-    ssh: NodeSSH;
+    ssh: Promise<NodeSSH>;
     remoteUser: string;
     remotePass: string;
     remoteHost: string;
@@ -33,12 +33,15 @@ export type TestOptions = LocalTestOptions | RemoteTestOptions;
 
 type RemoteFsOptions = {
     remotePath: true;
-    ssh: NodeSSH;
+    ssh: Promise<NodeSSH>;
 }
 
 type LocalFsOptions = {
     remotePath: false;
 };
+
+export type CustomExtensionSection = { customName: string };
+export type ExtensionSection = "Installed" | CustomExtensionSection;
 
 export type FsOptions = LocalFsOptions | RemoteFsOptions;
 
