@@ -6,16 +6,16 @@
 import { ExecuteInIFrame, GetNotificationActions, GetNotifications, SetInputText, TakeNotificationAction, Wait } from "../utils/CommonFunctions";
 import { By, EditorView, NotificationType, Workbench } from "vscode-extension-tester";
 import { LoggerAggregator as logger } from "../utils/Logger";
-import { NotificationPopup } from "../utils/Types";
+import { NotificationPopup, TestOptions } from "../utils/Types";
 import { exec } from "child_process";
 import { assert } from "chai";
 import * as util from "util";
 import axios from "axios";
-import { FileSystem as fs } from "../utils/FileSystem";
 import { HttpsProxyAgent } from "https-proxy-agent";
+import { LoadAndParseJsonFile } from "../utils/FileSystem";
 
-export default function() {
-    describe("Check help pages", () => {
+export default function(options: TestOptions) {
+    (options.remoteTests ? describe.skip : describe)("Check help pages", () => {
         it("Check online help page", async function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CheckOnlineHelpTest();
@@ -103,7 +103,7 @@ async function CheckOfflineHelpPageTest(): Promise<void> {
     try {
         logger.Info("Check offline help page");
         await SetInputText("> Intel oneAPI: List gdb-oneapi debugger unique commands (help)");
-        const offlineHelpReference = await fs.LoadAndParseJsonFile("media/userHelp/content.json", { remotePath: false });//JSON.parse(fs.readFileSync("media/userHelp/content.json", "utf-8"));
+        const offlineHelpReference = await LoadAndParseJsonFile("media/userHelp/content.json", { remotePath: false });
 
         logger.Info("Get all nested values");
         const values = GetAllNestedValues(offlineHelpReference);
@@ -111,7 +111,9 @@ async function CheckOfflineHelpPageTest(): Promise<void> {
 
         await ExecuteInIFrame(async() => {
             await ExecuteInIFrame(async(driver) => {
+                logger.Info("Get page source");
                 offlineHelpBody = await driver.getPageSource();
+                logger.Info("Got page source");
             });
         });
         for (const value of values) {
