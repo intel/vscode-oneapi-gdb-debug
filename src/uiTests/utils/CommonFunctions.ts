@@ -344,7 +344,8 @@ export async function SetBreakpoint({ fileName, lineNumber }: Breakpoint): Promi
  */
 export async function StartDebugging(options: FsOptions): Promise<void> {
     const configurationName = await GenerateLaunchConfigurations(options);
-    const input = await SetInputText(`debug ${configurationName}`);
+    
+    await SetInputText(`debug ${configurationName}`);
 }
 
 /**
@@ -353,22 +354,12 @@ export async function StartDebugging(options: FsOptions): Promise<void> {
  */
 export async function CheckIfBreakpointHasBeenHit(breakpoint: Breakpoint | ConditionalBreakpoint): Promise<void> {
     const breakpointStr = `${breakpoint.fileName}:${breakpoint.lineNumber}`;
-
-    await CloseAllNotifications();
-    const workbench = new Workbench();
-    const input = await workbench.openCommandPrompt();
-
-    await ClearInputText(input);
-    await Retry(async() => {
-        const bp = await workbench.findElement(By.id("workbench.parts.panel"));
-        const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
-    
-        await outputButton.click();
-    }, 60 * 1000);
-    const debugOutputWindow = new DebugConsoleView();
     const line = await Retry(async() => {
         await Wait(1000);
-        return (await debugOutputWindow.getText()).split("\n").find(x => x.includes(breakpointStr));
+        const result = (await GetDebugConsoleOutput()).find(x => x.includes(breakpointStr));
+
+        if (!result) {throw new Error();}
+        return result;
     }, 60 * 1000);
 
     assert.exists(line, `Breakpoint ${breakpointStr} has not been hit`);
@@ -440,16 +431,16 @@ export async function GetTerminalOutput(terminalName: string): Promise<string | 
  * @returns Debug console output as array of strings.
  */
 export async function GetDebugConsoleOutput(): Promise<string[]> {
-    const workbench = new Workbench();
-    const bp = await workbench.findElement(By.id("workbench.parts.panel"));
-    const outputButton = await bp.findElement(By.xpath("//*[@id=\"workbench.parts.panel\"]/div[1]/div[1]/div/div/ul/li[3]"));
+    const lines = await Retry(async() => {
+        await SetInputText("> Debug Console: Focus on Debug Console View");
+        await Wait(2000);
+        const view = new DebugConsoleView();
 
-    await outputButton.click();
-    const debugOutputWindow = new DebugConsoleView();
-    const debugOutput = await debugOutputWindow.getText();
-    const lines = debugOutput.split("\n");
+        if (!view) {throw new Error();}
+        return (await view.getText()).split("\n");
+    }, 60 * 1000);
 
-    return lines;
+    return lines ?? [];
 }
 
 /**
@@ -744,9 +735,10 @@ async function CreateCCppPropertiesFile(options: FsOptions): Promise<void> {
  */
 async function InitDefaultEnvironment(): Promise<void> {
     const input = await Retry(async() => {
-         const temp = await SetInputText("> Intel oneAPI: Initialize default environment variables");
-         if (!temp) throw Error();
-         return temp;
+        const temp = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+        
+        if (!temp) {throw Error();}
+        return temp;
     }, 10 * 1000) as InputBox;
     
     await input.clear();
