@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { NotificationType } from "vscode-extension-tester";
-import { GetExtensionsSection, GetNotificationActions, GetNotifications, InstallExtension, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait } from "../utils/CommonFunctions";
+import { InputBox, Notification, NotificationType } from "vscode-extension-tester";
+import { GetExtensionsSection, GetNotificationActions, GetNotifications, InstallExtension, Retry, SetInputText, TakeNotificationAction, UninstallExtension, Wait, WaitForConnection } from "../utils/CommonFunctions";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { assert } from "chai";
-import { NotificationPopup, TestOptions } from "../utils/Types";
+import { ExtensionSection, NotificationPopup, TestOptions } from "../utils/Types";
 
 const expectedNotifications: {[k: string]: NotificationPopup} = {
     env_config: {
-        name: "Environment Configurator for Intel® oneAPI Toolkits",
+        name: "Environment Configurator for Intel Software Developer Tools",
         message : "Please install the \"Environment Configurator for Intel oneAPI Toolkits\" to configure your development environment.",
         installButton : "Environment Configurator for Intel oneAPI Toolkits",
         id: "intel-corporation.oneapi-environment-configurator"
@@ -26,19 +26,23 @@ const expectedNotifications: {[k: string]: NotificationPopup} = {
 
 export default function(options: TestOptions) {
     describe(`Install extensions from notifications${options.remoteTests ? " on remote target" : ""}`, () => {
-        before(async() => {
+        before(async function() {
             try {
                 for (const notification of Object.values(expectedNotifications)) {
-                    UninstallExtension(notification.id as string, options);
+                    await UninstallExtension(notification.id as string, options);
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
+                if (options.remoteTests) {
+                    await SetInputText(options.remotePass, { input: new InputBox() });
+                    await WaitForConnection(options.remoteHost, this.test?.ctx?.defaultTimeout);
+                }
             } catch(e) { logger.Error(e); }
         });
         after(async() => {
             try {
                 for (const notification of Object.values(expectedNotifications)) {
-                    InstallExtension(notification.id as string, options);
+                    await InstallExtension(notification.id as string, options);
                 }
                 await SetInputText("> Developer: Reload WIndow");
                 await Wait(5 * 1000);
@@ -47,7 +51,7 @@ export default function(options: TestOptions) {
         for (const notification of Object.values(expectedNotifications)) {
             it(`Install '${notification.name}' extension`, async function() {
                 this.timeout(this.test?.ctx?.defaultTimeout);
-                await InstallExtensionFromNotificationTest(notification);
+                await InstallExtensionFromNotificationTest(notification, options);
             });
         }
     });
@@ -55,7 +59,7 @@ export default function(options: TestOptions) {
 
 //#region Tests
 
-async function InstallExtensionFromNotificationTest(expectedNotification: NotificationPopup) {
+async function InstallExtensionFromNotificationTest(expectedNotification: NotificationPopup, options: TestOptions) {
     try {
         logger.Info(`Install '${expectedNotification.name}' extension from notiification popup`);
         await ClearUnwantedNotifications();
@@ -76,7 +80,12 @@ async function InstallExtensionFromNotificationTest(expectedNotification: Notifi
                 await TakeNotificationAction(notification, expectedNotification.installButton);
                 await Retry(async() => {
                     await Wait(1000);
-                    const extensionsView = await GetExtensionsSection("Installed");
+                    let section: ExtensionSection = "Installed";
+
+                    if (options.remoteTests) {
+                        section = { customName: `SSH: ${options.remoteHost} - Installed` };
+                    }
+                    const extensionsView = await GetExtensionsSection(section);
                     const installedExtensions = await extensionsView.getText();
 
                     assert.include(installedExtensions, expectedNotification.name, `Extension: '${expectedNotification.name}' hasn't been installed`);
@@ -97,7 +106,10 @@ async function InstallExtensionFromNotificationTest(expectedNotification: Notifi
 
 async function ClearUnwantedNotifications(): Promise<void> {
     logger.Info("Clear unwanted notifications");
-    let notifications = await GetNotifications(NotificationType.Any);
+    let notifications = await Retry(async() => {
+        await Wait(2000);
+        return await GetNotifications(NotificationType.Any);
+    }, 20 * 1000) as Notification[];
 
     while (notifications.length > 2 ) {
         for (const notification of notifications) {
