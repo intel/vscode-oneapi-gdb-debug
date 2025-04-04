@@ -83,8 +83,8 @@ export class SIMDWatchProvider {
     public async getSIMDWidthMask(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
         const simdWidth = await this.getSIMDWidth(session);
         const width = (simdWidth.success ? simdWidth.width : 32) ?? 32;
-        const bitmask = (1 << width) - 1;
-        let bitmaskAsString = "0x" + bitmask.toString(16);
+        const bitmask = (BigInt(1) << BigInt(width)) - BigInt(1);
+        const bitmaskAsString = "0x" + bitmask.toString(16);
 
         return {
             success: true,
