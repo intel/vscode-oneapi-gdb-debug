@@ -344,18 +344,7 @@ export async function SetBreakpoint({ fileName, lineNumber }: Breakpoint): Promi
  */
 export async function StartDebugging(options: FsOptions): Promise<void> {
     const configurationName = await GenerateLaunchConfigurations(options);
-
-    await Retry(async() => {
-        await Wait(5 * 1000);
-        const debugView = await GetDebugView();
-    
-        logger.Info(`Select '${configurationName}' launch configuration`);
-        await debugView.selectLaunchConfiguration(configurationName);
-        logger.Info("Start debugging");
-        await debugView.start();
-        await Wait(5 * 1000);
-        await CloseAllNotifications();
-    }, 3 * 60 * 1000, true);
+    const input = await SetInputText(`debug ${configurationName}`);
 }
 
 /**
@@ -754,7 +743,11 @@ async function CreateCCppPropertiesFile(options: FsOptions): Promise<void> {
  * Initializates default oneAPI environment.
  */
 async function InitDefaultEnvironment(): Promise<void> {
-    const input = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+    const input = await Retry(async() => {
+         const temp = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+         if (!temp) throw Error();
+         return temp;
+    }, 10 * 1000) as InputBox;
     
     await input.clear();
     const quickPick = await input.findQuickPick(0);
