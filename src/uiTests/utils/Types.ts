@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { NodeSSH } from "node-ssh";
+
 // #region Enums
 
 export enum OneApiDebugPane {
@@ -15,9 +17,30 @@ export enum OneApiDebugPane {
 
 // #region Types
 
-export type FsOptions = {
-    remotePath: boolean;
+type RemoteTestOptions = {
+    remoteTests: true;
+    ssh: NodeSSH;
+    remoteUser: string;
+    remotePass: string;
+    remoteHost: string;
 }
+
+type LocalTestOptions = {
+    remoteTests: false;
+}
+
+export type TestOptions = LocalTestOptions | RemoteTestOptions;
+
+type RemoteFsOptions = {
+    remotePath: true;
+    ssh: NodeSSH;
+}
+
+type LocalFsOptions = {
+    remotePath: false;
+};
+
+export type FsOptions = LocalFsOptions | RemoteFsOptions;
 
 /**
  * Represents the notification popup.
