@@ -14,7 +14,7 @@ import { TestOptions } from "../utils/Types";
 import { ReadFileAsync } from "../utils/FileSystem";
 
 export default function(options: TestOptions) {
-    describe("Debugging tests", () => {
+    describe(`Debugging ${options.remoteTests ? "on remote machine " : ""}tests`, () => {
         it("Can hit breakpoint as many times as expected", async function() {
             this.timeout(this.test?.ctx?.defaultTimeout);
             await CanHitBreakpointAsManyTimesAsExpectedTest(options);
@@ -24,17 +24,17 @@ export default function(options: TestOptions) {
 
 //#region Tests
 
-async function CanHitBreakpointAsManyTimesAsExpectedTest(options?: TestOptions): Promise<void> {
+async function CanHitBreakpointAsManyTimesAsExpectedTest(options: TestOptions): Promise<void> {
     logger.Info("Check if BP has been hit exact amount of times as expexted");
     try {
-        await LaunchSequence(MapTestOptions(options as TestOptions));
+        await LaunchSequence(MapTestOptions(options));
         await Wait(3 * 1000);
         const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"));
         const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
         const currentDevice = DEVICES.find(d => d.Name === deviceName) as HwInfo;
         
         const path = `${TEST_DIR}/src/array-transform.cpp`;
-        const file = await ReadFileAsync(path, "utf-8", MapTestOptions(options as TestOptions));
+        const file = await ReadFileAsync(path, "utf-8", MapTestOptions(options));
         const line = file.split("\n").find(l => l.includes("constexpr size_t length"));
         const simdNumber = line?.split("=")[1].trim().slice(0, -1);
         const expectedThreadCount = Math.ceil(Number(simdNumber) / currentDevice?.SimdWidth);
