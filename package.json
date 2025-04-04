@@ -3,7 +3,7 @@
     "displayName": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
     "description": "An extension to expose additional features of GPU debugging with GDB for Intel® oneAPI.",
     "publisher": "intel-corporation",
-    "version": "0.5.0",
+    "version": "0.5.1",
     "license": "MIT",
     "icon": "media/oneapi-logo.png",
     "keywords": [
@@ -538,8 +538,8 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.13.0",
-        "@stylistic/eslint-plugin-ts": "^2.9.0",
-        "@types/chai": "^4.3.19",
+        "@stylistic/eslint-plugin-ts": "^4.0.1",
+        "@types/chai": "^5.0.1",
         "@types/glob": "^8.1.0",
         "@types/mocha": "^10.0.8",
         "@types/node": "^22.5.5",
@@ -551,13 +551,14 @@
         "@vscode/test-electron": "^2.3.10",
         "@vscode/vsce": "^3.1.0",
         "axios": "^1.7.7",
-        "chai": "4.4.1",
+        "chai": "5.2.0",
         "eslint": "^9.13.0",
         "globals": "^15.11.0",
-        "mocha": "^10.7.3",
+        "mocha": "^11.1.0",
         "mocha-junit-reporter": "^2.2.1",
         "mocha-multi-reporters": "^1.5.1",
-        "react": "^18.3.1",
+        "node-ssh": "^13.2.0",
+        "react": "^19.0.0",
         "source-map-support": "^0.5.21",
         "type-fest": "^4.26.1",
         "typescript": "^5.6.2",
@@ -572,7 +573,6 @@
         "@vscode/codicons": "^0.0.36",
         "@vscode/debugadapter": "^1.67.0",
         "@vscode/debugprotocol": "^1.67.0",
-        "@vscode/webview-ui-toolkit": "^1.4.0",
-        "node-ssh": "^13.2.0"
+        "@vscode/webview-ui-toolkit": "^1.4.0"
     }
 }
