@@ -12,30 +12,12 @@ import { OneApiDebugPane, OneApiDebugPaneFrameTitle } from "../utils/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { By, WebElement } from "vscode-extension-tester";
-import { DEFAULT_BREAKPOINT } from "../utils/Consts";
+import { DEFAULT_BREAKPOINT, DEVICES } from "../utils/Consts";
 import { assert } from "chai";
+import { HwInfo } from "../utils/HardwareInfo/Types";
 
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
-type HwInfo = {
-    [key: string]: string | undefined | number;
-    Name: string;
-    Cores: number | string;
-    Location?: string;
-    Number?: number | string;
-    "Sub device"?: string;
-    "Vendor ID": string;
-    "Target ID": string;
-}
-
-const devices: HwInfo[] = [
-    {
-        Name: "Intel(R) Arc(TM) A730M Graphics",
-        Cores: 384,
-        "Vendor ID": "0x8086",
-        "Target ID": "0x5691",
-    }
-];
 
 export default function() {
     describe("Examine debugging functionality", () => {
@@ -256,7 +238,7 @@ async function CheckIfHwInfoViewContainsExpectedInfo() {
     const hwInfoViewContent = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
     const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
     const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
-    const expectedDeviceInfo: HwInfo = { Location: "", Number: "", "Sub device": "", ...devices.find(x => x.Name === deviceName)! };
+    const expectedDeviceInfo: HwInfo = { Location: "", Number: "", "Sub device": "", ...DEVICES.find(x => x.Name === deviceName)! };
     const currentDeviceInfo: HwInfo = Object.keys(expectedDeviceInfo).reduce((acc, curr) => {
         // Skip first 5 chars because of '[i2] ' pefix
         acc[curr] = curr === "Name" ? hwInfoViewContent[0].substring(5) : hwInfoViewContent.find(x => x.includes(curr))?.split(": ").pop();
