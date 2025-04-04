@@ -216,7 +216,7 @@ At this point you should be able to run the extension in the "Extension Developm
 
 2. oneapi-gdb-debug-0.5.0.vsix\extension\media\userHelp\content.json
 
-    Copyright (c) 2021-2024 Intel Corporation
+    Copyright (c) 2021-2025 Intel Corporation
 
     Permission is granted to copy, distribute and/or modify this document under the terms of
     the GNU Free Documentation License, Version 1.3 or any later version published by the Free
