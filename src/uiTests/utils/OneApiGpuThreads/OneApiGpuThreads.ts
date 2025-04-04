@@ -3,14 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { By, WebElement, Workbench } from "vscode-extension-tester";
 import { ExecuteInOneApiDebugPaneFrame, GetDebugPane, GetStringBetweenStrings, SetInputText, Wait } from "../CommonFunctions";
-import { Thread, SimdLane, SimdLaneDetails } from "./Types";
+import { By, WebElement, Workbench } from "vscode-extension-tester";
+import { SimdLane, SimdLaneDetails, Thread } from "./Types";
 
-/**
- * Gets OneAPI GPU threads.
- * @returns OneAPI GPU threads as array of Thread.
- */
 export async function GetGpuThreads(): Promise<Thread[]> {
     const gpuThreadsView = await GetDebugPane("oneAPI GPU Threads Section");
     const gpuThreadsViewClass = await gpuThreadsView?.getAttribute("class");
@@ -91,4 +87,10 @@ export async function GetGpuThreads(): Promise<Thread[]> {
 
         return gpuThreadsObj;
     }, "oneAPI GPU Threads");
+}
+
+export async function GetCurrentThread(threads?: Thread[]): Promise<Thread | undefined> {
+    threads = threads ?? await GetGpuThreads();
+
+    return threads.find(x => x.simdLanes.find(x => x.current));
 }

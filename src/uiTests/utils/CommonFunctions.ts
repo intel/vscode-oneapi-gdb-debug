@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
-import { Breakpoint, ConditionalBreakpoint, DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
-import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
-import { LoggerAggregator as logger } from "./Logger";
-import { assert } from "chai";
+import { ActivityBar, By, DebugConsoleView, DebugView, ExtensionsViewSection, InputBox, Key, Notification, NotificationType, QuickOpenBox, QuickPickItem, SideBarView, TerminalView, TextEditor, VSBrowser, ViewControl, WebDriver, WebElement, Workbench } from "vscode-extension-tester";
 import { FileExistsSync, MkdirSync, WriteFileSync, LoadAndParseJsonFile } from "./FileSystem";
+import { VSCODE_PATH, TASKS_JSON_PATH, DEFAULT_BREAKPOINT } from "./Consts";
+import { DebugPane, OneApiDebugPaneFrameTitle, VsCodeTask } from "./Types";
+import { Breakpoint, ConditionalBreakpoint } from "./Debugging/Types";
+import { RemoveAllBreakpoints } from "./Debugging/Debugging";
+import { LoggerAggregator as logger } from "./Logger";
 import { execSync } from "child_process";
+import { assert } from "chai";
 
 type ExtensionSection = "Installed";
 type ViewControlName = "Run" | "Extensions";
@@ -132,7 +134,7 @@ export async function SetInputText(command: string, options?: SetInputTextOption
     await input.setText(command);
     await Wait(1 * 1000);
     if (confirmCommand) {
-        await input.sendKeys(Key.ENTER)
+        await input.sendKeys(Key.ENTER);
     }
     return input;
 }
@@ -464,13 +466,6 @@ export async function GetDebugConsoleOutput(): Promise<string[]> {
 }
 
 /**
- * Removes all breakpoints.
- */
-export async function RemoveAllBreakpoints(): Promise<void> {
-    await SetInputText("> Remove All Breakpoints");
-}
-
-/**
  * Checks if breakpoint has been set.
  * @param param0 Breakpoint to check if has been set.
  * @returns True if breakpoint has been set.
@@ -494,11 +489,13 @@ export async function CheckIfBreakpointHasBeenSet({ fileName, lineNumber }: Brea
 
 export function InstallExtension(id: string) {
     const output = execSync(`code --install-extension ${id}`);
+
     logger.Info(output.toString());
 }
 
 export function UninstallExtension(id: string) {
     const output = execSync(`code --uninstall-extension ${id}`);
+
     logger.Info(output.toString());
 }
 
@@ -542,6 +539,49 @@ export function GetStringBetweenStrings(str: string, startStr: string, endStr: s
     const pos = str.indexOf(startStr) + startStr.length;
 
     return str.substring(pos, str.indexOf(endStr, pos));
+}
+
+export async function PerformContextMenuAction(element: WebElement, action: string) {
+    const driver = new Workbench().getDriver();
+
+    await driver.actions({ async: true, bridge: undefined }).contextClick(element).perform();
+    const actions = await driver.findElements(By.className("action-label"));
+
+    for (const menuAction of actions) {
+        const text = await menuAction.getText();
+
+        if (text === action) {
+            menuAction.click();
+            await Wait(3 * 1000);
+            break;
+        }
+    }
+}
+
+export async function GetLineNumberWebElement(lineNumber: number) {
+    const textEditor = new TextEditor();
+    const lineNumbers = await textEditor.findElements(By.className("line-numbers lh-odd"));
+
+    return await (async() => {
+        for (const line of lineNumbers) {
+            const elementText = await line.getText();
+
+            if (elementText === `${lineNumber}`) { return line; }
+        }
+    })();
+}
+
+export function GetRandomInt(min: number, max: number): number {
+    return Math.floor(Math.random() * (max - min) + min);
+}
+
+export async function GetExceptionPopupMessage(): Promise<string | undefined> {
+    return await Retry(async() => {
+        const exceptionPopup = await new Workbench().getDriver().findElement(By.className("zone-widget-container exception-widget"));
+
+        assert.notEqual(exceptionPopup, undefined, "Cannot find 'breakpoint hit' exception popup");
+        return await exceptionPopup.findElement(By.className("description")).getText();
+    }, 10 * 1000);
 }
 
 /**

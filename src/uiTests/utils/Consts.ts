@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Breakpoint } from "./Types";
+import { Breakpoint } from "./Debugging/Types";
 
 export const VSCODE_PATH = "../array-transform/.vscode";
 export const TASKS_JSON_PATH = `${VSCODE_PATH}/tasks.json`;
