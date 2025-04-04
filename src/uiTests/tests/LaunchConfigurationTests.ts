@@ -8,9 +8,9 @@ import { CheckIfTaskWasExecuted, ClearInputText,LaunchSequence,
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { VsCodeTask } from "../utils/Types";
 import { Workbench } from "vscode-extension-tester";
-import { TASKS_JSON_PATH } from "../utils/Consts";
+import { REMOTE_DEBUGGING, TASKS_JSON_PATH } from "../utils/Consts";
 import { assert } from "chai";
-import { LoadAndParseJsonFile } from "../utils/FileSystem";
+import { FileSystem as fs } from "../utils/FileSystem";
 
 export default function() {
     describe("Generate launch configurations", () => {
@@ -45,7 +45,7 @@ async function GenerateTaskTest(taskName: string): Promise<void> {
         input = await SelectQuickPick("Select a new target", input);
         input = await SelectQuickPick(taskName, input);
         await SelectQuickPick("Close", input);
-        const tasks = LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH).tasks;
+        const tasks = (await fs.LoadAndParseJsonFile<{tasks: VsCodeTask[]}>(TASKS_JSON_PATH, { remotePath: REMOTE_DEBUGGING })).tasks;
         const runCpuTask = tasks.find(task => task.label === taskName) as VsCodeTask;
 
         assert.exists(runCpuTask, `'${taskName}' task doesn't exists!`);

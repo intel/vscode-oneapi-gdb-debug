@@ -4,10 +4,11 @@
  */
 
 import { RemoveAllBreakpoints, SetConditionalBreakpoint, ContinueDebugging, CheckIfBreakpointConditionHasBeenMet } from "../utils/Debugging/Debugging";
-import { GetRandomInt, GetResourcePathFromEnv, LaunchSequence, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
+import { GetRandomInt, LaunchSequence, ReplaceStringInFile, SetSettingValue, Wait } from "../utils/CommonFunctions";
 import { GetGpuThreads, GetCurrentThread } from "../utils/OneApiGpuThreads/OneApiGpuThreads";
 import { ConditionalBreakpoint, ConditionalBreakpointType } from "../utils/Debugging/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
+import { REMOTE_DEBUGGING, TEST_DIR } from "../utils/Consts";
 import { LoggerAggregator as logger } from "../utils/Logger";
 import { By, Workbench } from "vscode-extension-tester";
 import { assert } from "chai";
@@ -27,7 +28,7 @@ export default function() {
         it("Check SIMD lanes symbols", async function() {
             this.timeout(4 * this.test?.ctx?.defaultTimeout);
             this.retries(1);
-            await CheckSimdLaneSymbols(this.resources);
+            await CheckSimdLaneSymbols();
         });
     });
 }
@@ -116,16 +117,16 @@ async function CheckCurrentLaneIndicatorTest(): Promise<void> {
     }
 }
 
-async function CheckSimdLaneSymbols(resources: string[]): Promise<void> {
+async function CheckSimdLaneSymbols(): Promise<void> {
     logger.Info("Check if SIMD lane symbols are displayed");
     const indicator = "🠶";
     const activeLaneSymbol = "A";
     const inactiveLaneSymbol = "I";
-    const path = GetResourcePathFromEnv() ?? resources.find(x => x.includes(".cpp")) ?? (() => { throw Error("Can't find any source file"); })();
+    const path = `${TEST_DIR}/array-transform.cpp`;
 
     try {
         // Change array length to '65' to spawn inactive lanes "constexpr size_t length = .*"
-        ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 65;", path);
+        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 65;", path, REMOTE_DEBUGGING);
         await LaunchSequence();
         await Wait(3 * 1000);
         const allThreads = await GetGpuThreads();
@@ -166,7 +167,7 @@ async function CheckSimdLaneSymbols(resources: string[]): Promise<void> {
         logger.Error(e);
         throw e;
     } finally {
-        ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 64;", path);
+        await ReplaceStringInFile("constexpr size_t length", "constexpr size_t length = 64;", path, REMOTE_DEBUGGING);
     }
 }
 
