@@ -68,9 +68,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
             }
         } catch {}
 
-        if (firstRun) {
-            await SetInputText(testOptions.remotePass, { input: new InputBox() });
-        }
+        await SetInputText(testOptions.remotePass, { input: new InputBox() });
         await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
         try {
             await SetInputText("", {});
