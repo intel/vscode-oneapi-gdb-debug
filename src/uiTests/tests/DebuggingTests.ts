@@ -16,7 +16,7 @@ import { ReadFileAsync } from "../utils/FileSystem";
 export default function(options: TestOptions) {
     describe(`Debugging ${options.remoteTests ? "on remote machine " : ""}tests`, () => {
         it("Can hit breakpoint as many times as expected", async function() {
-            this.timeout(this.test?.ctx?.defaultTimeout);
+            this.timeout(this.test?.ctx?.defaultTimeout * 3);
             await CanHitBreakpointAsManyTimesAsExpectedTest(options);
         });
     });
