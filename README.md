@@ -115,6 +115,19 @@ You can see your device's info in a separate tab while debugging.
 
 ![Hardware info](/media/hwinfo.png)
 
+
+## Scheduler-locking
+Buttons in the debug toolbar provide quick access to turning scheduler-locking on or off for **step** and **continue** flags. Scheduler-locking controls how GDB handles other threads during debugging.
+
+- **step**: When *on*, the scheduler is locked for stepping commands duringnormal execution and record modes.  While stepping, other threads may not preempt the current thread, so that the focus of debugging does not change unexpectedly.  This setting is *off* by default.
+
+- **continue**: When *on*, the scheduler is locked for continuing commands during normal execution and record modes.  For continuing commands other threads may not preempt the current thread.  This setting is *off* by default.
+
+The overall status of scheduler-locking is displayed in the status bar.
+
+![Scheduler-locking info](/media/scheduler.png)
+
+
 ## SIMD Variable Watch
 The SIMD Variable Watch functions like the classic Watch panel but displays values for all lanes, making it convenient to compare values without the need for switching between lanes.
 Most expressions can be evaluated only for active lanes, however GDB convenience variables are usually available for inactive lanes, too, e.g. $_workitem_global_id or $_workitem_local_id.
