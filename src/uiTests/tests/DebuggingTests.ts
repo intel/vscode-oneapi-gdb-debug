@@ -28,7 +28,7 @@ async function CanHitBreakpointAsManyTimesAsExpectedTest(): Promise<void> {
     try {
         await LaunchSequence();
         await Wait(3 * 1000);
-        const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
+        const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"));
         const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
         const currentDevice = DEVICES.find(d => d.Name === deviceName) as HwInfo;
         
