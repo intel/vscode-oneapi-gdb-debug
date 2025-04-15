@@ -235,7 +235,7 @@ export class SimdProvider {
         await vscode.window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
             () => vscode.window.withProgress(
-                { location: { viewId: "intelOneAPI.debug.threadInfoLane" } },
+                { location: { viewId: "intelOneAPI.debug.threadInfo" } },
                 async() => vscode.window.withProgress(
                     { location: { viewId: "intelOneAPI.debug.selectedLane" } },
                     async() => {

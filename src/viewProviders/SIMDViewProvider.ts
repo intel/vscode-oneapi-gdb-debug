@@ -243,7 +243,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 </div>
                 <button id="helpBtn" class="codicon codicon-question"></button>
                 <button id="applyFilterBtn" class="codicon codicon-check"></button>
-                <button id="clearBtn" class="codicon codicon-clear-selected-lanes"></button>
+                <button id="clearBtn" class="codicon codicon-clear-all"></button>
                 <button id="closeFilterBtn" class="codicon codicon-close"></button>
             </div>
 

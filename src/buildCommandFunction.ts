@@ -1,261 +1,121 @@
 import { Filter } from "./SimdProvider";
 
-/**
- * Main function to build the final command string (e.g., `-exec -thread-filter ... && (extraFilter)`).
- */
 export function buildFilterCommand(filter?: Filter): string | undefined {
-    if (!filter) {
-        return undefined;
+    if (!filter) {return undefined;}
+
+    const mainQuery = buildQuery(filter);
+    const userFilter = filter.filter?.trim();
+
+    if (!mainQuery && !userFilter) {return undefined;}
+
+    let command = "-exec -thread-filter";
+
+    if (mainQuery) {command += ` ${mainQuery}`;}
+
+    if (userFilter) {
+        const separator = mainQuery && !isFlagOnly(mainQuery) ? " && " : " ";
+
+        command += `${separator}(${userFilter})`;
     }
 
-    const mainQuery = buildQueryString(filter).trim();
-
-    if (!mainQuery && !filter.filter) {
-        return undefined;
-    }
-
-    if (filter.filter) {
-        // If mainQuery contains "&&", we assume there are coordinate conditions => keep "&&".
-        // Otherwise, place the user filter with a space.
-        const separator = mainQuery.includes("&&") ? " && " : " ";
-
-        return `-exec -thread-filter --s ${mainQuery}${separator}(${filter.filter})`;
-    }
-
-    return `-exec -thread-filter --s ${mainQuery}`;
+    return command;
 }
 
+function buildQuery(filter: Filter): string {
+    const threadPart = formatValue(filter.threadValue);
+    const lanePart = formatLane(filter.laneValue, !!threadPart);
 
-/**
- * Build the raw query string according to the rules for thread/lane
- * and the optional local/global/workGroup coordinates.
- */
-function buildQueryString(filter: Filter): string {
-    // Check special flags: -all / --all-lanes
-    const finalFlag = checkSpecialFlags(filter.threadValue, filter.laneValue);
+    let query = threadPart;
 
-    if (finalFlag) {
-        // If we have a special flag, skip normal parsing but still consider any coordinate conditions
-        const extraConditions = buildCoordinateConditions(filter);
-
-        // 1) If finalFlag is either "--selected-lanes" or "--all-lanes"
-        // 2) There are no coordinate conditions
-        // 3) There's also no user-defined filter
-        // => We want no filter at all, so return ""
-        const userHasNoFilter = !(filter.filter && filter.filter.trim());
-
-        if (!extraConditions && userHasNoFilter && (finalFlag === "--selected-lanes" || finalFlag === "--all-lanes")) {
-            // Return empty => leads to undefined in buildFilterCommand
-            return "";
-        }
-
-        // Otherwise, if we still have finalFlag plus possible conditions
-        if (extraConditions) {
-            // Join them with a space, if you don't want && in front
-            return `${finalFlag} ${extraConditions}`;
-        }
-        return finalFlag;
+    if (lanePart) {
+        query += query
+            ? needsColon(lanePart)
+                ? `:${lanePart}`
+                : ` ${lanePart}`
+            : lanePart;
     }
 
-    // If no finalFlag, handle normal thread/lane logic
-    const threadPart = formatThreadValue(filter.threadValue);
-    const lanePart = formatLaneValue(filter.laneValue, threadPart);
-    let result = "";
+    const coordinates = buildCoordinateConditions(filter);
 
-    if (threadPart && lanePart) {
-        result = `${threadPart}:${lanePart}`;
-    } else if (threadPart) {
-        result = threadPart;
-    } else if (lanePart) {
-        result = lanePart;
-    }
-
-    // Build coordinate conditions
-    const extraConditions = buildCoordinateConditions(filter);
-
-    if (extraConditions) {
-        // Join with a space instead of &&
-        if (result) {
-            result += ` ${extraConditions}`;
-        } else {
-            result = extraConditions;
-        }
-    }
-
-    return result.trim();
+    return [query.trim(), coordinates].filter(Boolean).join(" ").trim();
 }
 
-
-/**
- * Check if we have any of the special top-level flags:
- *   - threadValue=-all and laneValue=-all => output "--selected-lanes"
- *   - threadValue=-all and laneValue=--all-lanes => output "--all-lanes"
- */
-function checkSpecialFlags(threadValue?: string, laneValue?: string): string {
-    if (threadValue === "--selected-lanes" && laneValue === "--selected-lanes") {
-        return "--selected-lanes";
-    }
-    if (threadValue === "--selected-lanes" && laneValue === "--all-lanes") {
-        return "--all-lanes";
-    }
-    // Otherwise, no special flag
-    return "";
+function formatValue(value?: string): string {
+    if (!value) {return "";}
+    return value === "*"
+        ? "*"
+        : value
+            .split(",")
+            .map((v) => v.trim())
+            .join(" ");
 }
 
-/**
- * Format the threadValue unless it's a special flag.
- * If threadValue = "--selected-lanes", return "*".
- */
-function formatThreadValue(threadValue?: string): string {
-    if (!threadValue) {
-        return "";
+function formatLane(laneValue?: string, hasThread: boolean = false): string {
+    if (!laneValue || hasThread) {return "";}
+    if (laneValue === "--all-lanes" || laneValue === "--selected-lanes") {
+        return `${laneValue} --s`;
     }
-    if (threadValue === "--selected-lanes") {
-        // Previously returned "", but we need "*" so we get *:3 5 7
-        return "*";
-    }
-    return formatRange(threadValue);
+    return formatValue(laneValue);
 }
 
-/**
- * Format the laneValue.
- *   - If laneValue === --all-lanes => "*"
- *   - If laneValue === -all and threadPart is not empty => "*"
- *   - Otherwise parse numeric or range
- */
-function formatLaneValue(laneValue?: string, threadPart?: string): string {
-    if (!laneValue) {
-        return "";
-    }
-
-    if (laneValue === "--all-lanes") {
-        return "*";
-    }
-
-    if (laneValue === "--selected-lanes") {
-        // only if threadPart is nonempty (which might be "*")
-        if (threadPart) {
-            return "*";
-        }
-        return "";
-    }
-
-    // Otherwise parse numeric range
-    return formatRange(laneValue);
+function needsColon(lanePart: string): boolean {
+    return !(
+        lanePart.includes("--all-lanes") || lanePart.includes("--selected-lanes")
+    );
 }
 
-/**
- * Convert commas to spaces, keep dashes as is, and handle "*" as is.
- *   "*" => "*"
- *   "1,2,3" => "1 2 3"
- *   "1-3" => "1-3"
- *   "1,3,5" => "1 3 5"
- */
-function formatRange(value: string): string {
-    if (value.trim() === "*") {
-        return "*";
-    }
-    // Split on commas and join with spaces
-    const parts = value.split(",").map((part) => part.trim());
-
-    return parts.join(" ");
-}
-
-/**
- * Build conditions for localWorkItemValue, globalWorkItemValue, workGroupValue.
- * Combine them with " && " if multiple exist.
- */
 function buildCoordinateConditions(filter: Filter): string {
     const conditions: string[] = [];
 
-    if (filter.localWorkItemValue) {
-        const local = parseCoordinates(filter.localWorkItemValue, "$_workitem_local_id");
+    addCondition(filter.localWorkItemValue, "$_workitem_local_id", conditions);
+    addCondition(filter.globalWorkItemValue, "$_workitem_global_id", conditions);
+    addCondition(filter.workGroupValue, "$_thread_workgroup", conditions);
 
-        if (local) {
-            conditions.push(local);
-        }
-    }
-
-    if (filter.globalWorkItemValue) {
-        const global = parseCoordinates(filter.globalWorkItemValue, "$_workitem_global_id");
-
-        if (global) {
-            conditions.push(global);
-        }
-    }
-
-    if (filter.workGroupValue) {
-        const group = parseCoordinates(filter.workGroupValue, "$_thread_workgroup");
-
-        if (group) {
-            conditions.push(group);
-        }
-    }
-
-    if (!conditions.length) {
-        return "";
-    }
-    // The conditions themselves are joined by &&, e.g.:
-    // ($_workitem_local_id[2] == 0) && ($_workitem_global_id[1] == 0)
     return conditions.join(" && ");
 }
 
-/**
- * Parse coordinate-like input (e.g., "*,*,0") into dimension checks:
- *   "($_workitem_local_id[2] == 0)"
- * Skips "*" dimensions and expands dash ranges to OR conditions if needed.
- */
-function parseCoordinates(input: string, variable: string): string {
-    if (!input.trim()) {
-        return "";
-    }
+function addCondition(
+    value: string | undefined,
+    variable: string,
+    conditions: string[]
+): void {
+    const condition = parseCoordinates(value, variable);
 
-    const components = input.split(",").map((part) => part.trim());
-    const dimensionChecks: string[] = [];
+    if (condition) {conditions.push(condition);}
+}
 
-    components.forEach((value, index) => {
-        if (!value || value === "*") {
-            // skip wildcard dimension
-            return;
-        }
+function parseCoordinates(input: string | undefined, variable: string): string {
+    if (!input) {return "";}
 
-        if (value.includes("-")) {
-            // e.g.: "1-3" => expand to (x==1) || (x==2) || (x==3)
-            const numericMatches = expandRange(value);
+    const dimensions = input.split(/[,\.]/).map((v) => v.trim());
+    const checks: string[] = [];
 
-            if (numericMatches.length > 0) {
-                const orClause = numericMatches
-                    .map((num) => `(${variable}[${index}] == ${num})`)
-                    .join(" || ");
+    dimensions.forEach((dim, idx) => {
+        if (!dim || dim === "*") {return;}
 
-                dimensionChecks.push(`(${orClause})`);
-            }
+        if (dim.includes("-")) {
+            const rangeChecks = expandRange(dim)
+                .map((num) => `(${variable}[${idx}] == ${num})`)
+                .join(" || ");
+
+            if (rangeChecks) {checks.push(`(${rangeChecks})`);}
         } else {
-            // single numeric value
-            dimensionChecks.push(`(${variable}[${index}] == ${value})`);
+            checks.push(`(${variable}[${idx}] == ${dim})`);
         }
     });
 
-    return dimensionChecks.join(" && ");
+    return checks.join(" && ");
 }
 
-/**
- * Expand a dash range like "1-3" into ["1","2","3"].
- * If invalid, returns an empty array.
- */
-function expandRange(rangeStr: string): string[] {
-    const [startStr, endStr] = rangeStr.split("-").map((x) => x.trim());
-    const start = parseInt(startStr, 10);
-    const end = parseInt(endStr, 10);
+function expandRange(range: string): string[] {
+    const [start, end] = range.split("-").map(Number);
 
-    if (isNaN(start) || isNaN(end) || start > end) {
-        return [];
-    }
+    if (isNaN(start) || isNaN(end) || start > end) {return [];}
+    return Array.from({ length: end - start + 1 }, (_, i) =>
+        (start + i).toString()
+    );
+}
 
-    const result: string[] = [];
-
-    for (let i = start; i <= end; i++) {
-        result.push(i.toString());
-    }
-    return result;
+function isFlagOnly(query: string): boolean {
+    return /^--\S+(\s--\S+)*$/.test(query);
 }
