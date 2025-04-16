@@ -1,16 +1,22 @@
 import { Filter } from "./SimdProvider";
 
 export function buildFilterCommand(filter?: Filter): string | undefined {
-    if (!filter) {return undefined;}
+    if (!filter) {
+        return undefined;
+    }
 
     const mainQuery = buildQuery(filter);
     const userFilter = filter.filter?.trim();
 
-    if (!mainQuery && !userFilter) {return undefined;}
+    if (!mainQuery && !userFilter) {
+        return undefined;
+    }
 
     let command = "-exec -thread-filter";
 
-    if (mainQuery) {command += ` ${mainQuery}`;}
+    if (mainQuery) {
+        command += ` ${mainQuery}`;
+    }
 
     if (userFilter) {
         const separator = mainQuery && !isFlagOnly(mainQuery) ? " && " : " ";
@@ -41,7 +47,9 @@ function buildQuery(filter: Filter): string {
 }
 
 function formatValue(value?: string): string {
-    if (!value) {return "";}
+    if (!value) {
+        return "";
+    }
     return value === "*"
         ? "*"
         : value
@@ -51,7 +59,9 @@ function formatValue(value?: string): string {
 }
 
 function formatLane(laneValue?: string, hasThread: boolean = false): string {
-    if (!laneValue || hasThread) {return "";}
+    if (!laneValue || hasThread) {
+        return hasThread ? laneValue || "" : "";
+    }
     if (laneValue === "--all-lanes" || laneValue === "--selected-lanes") {
         return `${laneValue} --s`;
     }
@@ -81,24 +91,32 @@ function addCondition(
 ): void {
     const condition = parseCoordinates(value, variable);
 
-    if (condition) {conditions.push(condition);}
+    if (condition) {
+        conditions.push(condition);
+    }
 }
 
 function parseCoordinates(input: string | undefined, variable: string): string {
-    if (!input) {return "";}
+    if (!input) {
+        return "";
+    }
 
     const dimensions = input.split(/[,\.]/).map((v) => v.trim());
     const checks: string[] = [];
 
     dimensions.forEach((dim, idx) => {
-        if (!dim || dim === "*") {return;}
+        if (!dim || dim === "*") {
+            return;
+        }
 
         if (dim.includes("-")) {
             const rangeChecks = expandRange(dim)
                 .map((num) => `(${variable}[${idx}] == ${num})`)
                 .join(" || ");
 
-            if (rangeChecks) {checks.push(`(${rangeChecks})`);}
+            if (rangeChecks) {
+                checks.push(`(${rangeChecks})`);
+            }
         } else {
             checks.push(`(${variable}[${idx}] == ${dim})`);
         }
@@ -110,7 +128,9 @@ function parseCoordinates(input: string | undefined, variable: string): string {
 function expandRange(range: string): string[] {
     const [start, end] = range.split("-").map(Number);
 
-    if (isNaN(start) || isNaN(end) || start > end) {return [];}
+    if (isNaN(start) || isNaN(end) || start > end) {
+        return [];
+    }
     return Array.from({ length: end - start + 1 }, (_, i) =>
         (start + i).toString()
     );
