@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024-2025 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 import * as vscode from "vscode";
 import * as path from "path";
 import { exec } from "child_process";
