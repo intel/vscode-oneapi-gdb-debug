@@ -124,7 +124,7 @@
         const threadSelectedValue = document.getElementById("threadSelectedValue");
         restoreDropdownAndInput(
             storedFilter.threadValue,
-            "--selected-lanes",              // default if empty
+            "",              // default if empty
             "All",               // label if it's -all
             "threadDropdownMenu",
             "threadDropdownContainer",
@@ -154,71 +154,57 @@
         document.getElementById("filterInput").focus();
     }
 
-    /**
-* Restores a dropdown/input pair based on the stored value.
-* @param {string} value - The stored field value (e.g., "--selected-lanes", "3,5,7", etc.)
-* @param {string} defaultValue - The fallback if `value` is empty (usually "--selected-lanes")
-* @param {string} defaultLabel - The label to show if we interpret this as the default (e.g. "All")
-* @param {string} menuId - The ID of the dropdown menu element (e.g. "laneDropdownMenu")
-* @param {string} containerId - The ID of the container for that dropdown (e.g. "laneDropdownContainer")
-* @param {HTMLElement} selectedValueEl - The <span> or <div> that shows the selected label
-* @param {HTMLInputElement} inputEl - The text input for custom values
-*/
-    function restoreDropdownAndInput(
-        value,
-        defaultValue,
-        defaultLabel,
-        menuId,
-        containerId,
-        selectedValueEl,
-        inputEl
-    ) {
-        const menu = document.getElementById(menuId);
-        const container = document.getElementById(containerId);
+/**
+ * Restores a dropdown/input pair based on the stored value.
+ * @param {string} value - The stored field value (e.g., "--selected-lanes", "3,5,7", etc.)
+ * @param {string} defaultValue - The fallback if `value` is empty (usually "--selected-lanes")
+ * @param {string} defaultLabel - The label to show if we interpret this as the default (e.g. "All")
+ * @param {string} menuId - The ID of the dropdown menu element (e.g. "laneDropdownMenu")
+ * @param {string} containerId - The ID of the container for that dropdown (e.g. "laneDropdownContainer")
+ * @param {HTMLElement} selectedValueEl - The <span> or <div> that shows the selected label
+ * @param {HTMLInputElement} inputEl - The text input for custom values
+ */
+function restoreDropdownAndInput(
+    value,
+    defaultValue,
+    defaultLabel,
+    menuId,
+    containerId,
+    selectedValueEl,
+    inputEl
+) {
+    const menu = document.getElementById(menuId);
+    const container = document.getElementById(containerId);
+    const dropdownSelected = container?.querySelector(".dropdown-selected");
 
-        // Clear any previously selected dropdown option
-        if (menu) {
-            const previouslySelected = menu.querySelector(".dropdown-option.selected");
-            if (previouslySelected) {
-                previouslySelected.classList.remove("selected");
-            }
-        }
+    // Clear previous selection
+    const previouslySelected = menu?.querySelector(".dropdown-option.selected");
+    previouslySelected?.classList.remove("selected");
 
-        // If nothing stored, or the user had an empty string, treat as default
-        if (!value || value.trim() === "") {
-            selectedValueEl.textContent = defaultLabel;
-            inputEl.value = defaultValue;
-            inputEl.style.display = "none";
-            selectOptionInMenu(menu, defaultValue);
-            return;
-        }
+    const isEmpty = !value || value.trim() === "";
+    const specialFlags = ["--selected-lanes", "--all-lanes"];
+    const isSpecial = specialFlags.includes(value);
 
-        // Check if it's the special flags
-        if (value === "--selected-lanes" || value === "--all-lanes") {
-            // For example, if threadValue === "--selected-lanes", we show "All"
-            // If laneValue === "--all-lanes", we might show "All Lanes"
-            const label = (value === "--all-lanes") ? "All Lanes" : defaultLabel;
-            selectedValueEl.textContent = label;
-            inputEl.value = value;
-            inputEl.style.display = "none";
-            selectOptionInMenu(menu, value);
-            return;
-        }
+    if (isEmpty || isSpecial) {
+        const displayValue = isEmpty ? defaultValue : value;
+        const label = value === "--all-lanes" ? "All Lanes" : defaultLabel;
 
-        // If we get here, it's presumably a custom numeric or star/range (e.g., "3,5,7", "*", "2.129" etc.)
-        selectedValueEl.textContent = value; // or "Custom" if you prefer
-        inputEl.value = value;
-        inputEl.style.display = "block"; // let the user see and edit
-        selectOptionInMenu(menu, "custom");
-
-        // Hide the default .dropdown-selected container so only input is visible
-        if (container) {
-            const dropdownSelected = container.querySelector(".dropdown-selected");
-            if (dropdownSelected) {
-                dropdownSelected.style.display = "none";
-            }
-        }
+        selectedValueEl.textContent = label;
+        inputEl.value = displayValue;
+        inputEl.style.display = "none";
+        selectOptionInMenu(menu, displayValue);
+        if (dropdownSelected) dropdownSelected.style.display = "flex";
+        return;
     }
+
+    // Otherwise, treat as custom
+    selectedValueEl.textContent = "Custom";
+    inputEl.value = value;
+    inputEl.style.display = "block";
+    selectOptionInMenu(menu, "custom");
+    if (dropdownSelected) dropdownSelected.style.display = "none";
+}
+
 
     /**
      * Finds the dropdown-option in `menu` with data-value == desiredValue
@@ -263,33 +249,33 @@
 
     function isNonEmptyFilter(filterObj) {
         return (
-          // 1) Main filter text must be non-empty
-          (filterObj.filter && filterObj.filter.trim() !== "") ||
-      
-          // 2) threadValue must be defined, not empty, and not "--selected-lanes"
-          (filterObj.threadValue &&
-           filterObj.threadValue.trim() !== "" &&
-           filterObj.threadValue.trim() !== "--selected-lanes") ||
-      
-          // 3) laneValue must be defined, not empty, and not "--selected-lanes"
-          (filterObj.laneValue &&
-           filterObj.laneValue.trim() !== "" &&
-           filterObj.laneValue.trim() !== "--selected-lanes" &&
-           filterObj.laneValue.trim() !== "--all-lanes") ||
-      
-          // 4) localWorkItemValue, globalWorkItemValue, workGroupValue:
-          //    any must be defined and not empty
-          (filterObj.localWorkItemValue &&
-           filterObj.localWorkItemValue.trim() !== "") ||
-      
-          (filterObj.globalWorkItemValue &&
-           filterObj.globalWorkItemValue.trim() !== "") ||
-      
-          (filterObj.workGroupValue &&
-           filterObj.workGroupValue.trim() !== "")
+            // 1) Main filter text must be non-empty
+            (filterObj.filter && filterObj.filter.trim() !== "") ||
+
+            // 2) threadValue must be defined, not empty, and not "--selected-lanes"
+            (filterObj.threadValue &&
+                filterObj.threadValue.trim() !== "" &&
+                filterObj.threadValue.trim() !== "--selected-lanes") ||
+
+            // 3) laneValue must be defined, not empty, and not "--selected-lanes"
+            (filterObj.laneValue &&
+                filterObj.laneValue.trim() !== "" &&
+                filterObj.laneValue.trim() !== "--selected-lanes" &&
+                filterObj.laneValue.trim() !== "--all-lanes") ||
+
+            // 4) localWorkItemValue, globalWorkItemValue, workGroupValue:
+            //    any must be defined and not empty
+            (filterObj.localWorkItemValue &&
+                filterObj.localWorkItemValue.trim() !== "") ||
+
+            (filterObj.globalWorkItemValue &&
+                filterObj.globalWorkItemValue.trim() !== "") ||
+
+            (filterObj.workGroupValue &&
+                filterObj.workGroupValue.trim() !== "")
         );
-      }
-      
+    }
+
 
     function setVSCodeMessageListener() {
         window.addEventListener("message", (event) => {
@@ -316,56 +302,30 @@
     }
 
     function setupFilterPanel() {
-        document.getElementById("helpBtn").addEventListener("click", () => openFilterHelp());
-        document.getElementById("applyFilterBtn").addEventListener("click", () => applyFilter());
-        document.getElementById("clearBtn").addEventListener("click", () => clearFilter());
-        document.getElementById("closeFilterBtn").addEventListener("click", () => closeFilterPanel());
+        document.getElementById("helpBtn").addEventListener("click", openFilterHelp);
+        document.getElementById("applyFilterBtn").addEventListener("click", applyFilter);
+        document.getElementById("clearBtn").addEventListener("click", clearFilter);
+        document.getElementById("closeFilterBtn").addEventListener("click", closeFilterPanel);
 
-        document.getElementById("threadInput").value = "";
-        document.getElementById("laneInput").value = "";
-        document.getElementById("localWorkItemInput").value = "";
-        document.getElementById("globalWorkItemInput").value = "";
-        document.getElementById("workGroupInput").value = "";
-
-        // Initialize dropdowns
         initializeCustomDropdown('threadDropdownContainer', 'threadDropdownMenu', 'threadInput', 'threadDropdownToggle', 'threadSelectedValue');
         initializeCustomDropdown('laneDropdownContainer', 'laneDropdownMenu', 'laneInput', 'laneDropdownToggle', 'laneSelectedValue');
         initializeLaneDropdown();
 
-        document.querySelector(".filter-panel").style.display = "none";
+        restoreFilterValues();
+
+        // Ensure the filter panel is hidden by default
+        const filterPanel = document.querySelector(".filter-panel");
+        if (filterPanel) {
+            filterPanel.style.display = "none";
+        }
     }
 
     function openFilterHelp() {
-        vscode.postMessage({
-            command: "openFilterHelp",
-            payload: undefined
-        });
+        vscode.postMessage({ command: "openFilterHelp" });
     }
 
     function applyFilter() {
-        const filterText = document.getElementById("filterInput").value.trim();
-        const threadValue = document.getElementById("threadInput").value.trim() || "--selected-lanes";
-        const localWorkItemValue = document.getElementById("localWorkItemInput").value.trim() || "";
-        const globalWorkItemValue = document.getElementById("globalWorkItemInput").value.trim() || "";
-        const workGroupValue = document.getElementById("workGroupInput").value.trim() || "";
-
-        const laneInputElement = document.getElementById("laneInput");
-        let laneValue = laneInputElement.value.trim();
-
-        if (!laneValue) {
-            const selectedDropdownOption = document.querySelector("#laneDropdownMenu .dropdown-option.selected");
-            laneValue = selectedDropdownOption ? selectedDropdownOption.getAttribute("data-value") : "--selected-lanes";
-        }
-
-
-        const filterData = {
-            filter: filterText,
-            threadValue,
-            laneValue: laneValue,
-            localWorkItemValue,
-            globalWorkItemValue,
-            workGroupValue,
-        };
+        const filterData = gatherFilterData();
 
         localStorage.setItem("ThreadFilter", JSON.stringify(filterData));
 
@@ -373,61 +333,102 @@
             command: "applyFilter",
             payload: JSON.stringify(filterData)
         });
+
+        updateFilterIcon(isNonEmptyFilter(filterData));
     }
 
     function clearFilter() {
-        // Clear the saved filter
         localStorage.removeItem("ThreadFilter");
-    
-        // Reset all input values to default
-        document.getElementById("filterInput").value = "";
-        document.getElementById("threadInput").value = "";
-        document.getElementById("laneInput").value = "";
-        document.getElementById("localWorkItemInput").value = "";
-        document.getElementById("globalWorkItemInput").value = "";
-        document.getElementById("workGroupInput").value = "";
-    
-        // Reset the displayed labels for thread & lane
+
+        resetFilterInputs();
+        applyFilter();
+    }
+
+    function closeFilterPanel() {
+        document.querySelector(".filter-panel").style.display = "none";
+    }
+
+    function gatherFilterData() {
+        const getInputValue = (id) => document.getElementById(id).value.trim() || "";
+
+        let laneValue = getInputValue("laneInput");
+
+        if (!laneValue) {
+            const selectedOption = document.querySelector("#laneDropdownMenu .dropdown-option.selected");
+            laneValue = selectedOption ? selectedOption.getAttribute("data-value") : "";
+        }
+
+        return {
+            filter: getInputValue("filterInput"),
+            threadValue: getInputValue("threadInput"),
+            laneValue,
+            localWorkItemValue: getInputValue("localWorkItemInput"),
+            globalWorkItemValue: getInputValue("globalWorkItemInput"),
+            workGroupValue: getInputValue("workGroupInput"),
+        };
+    }
+
+    function resetFilterInputs() {
+        ["filterInput", "threadInput", "laneInput", "localWorkItemInput", "globalWorkItemInput", "workGroupInput"]
+            .forEach(id => document.getElementById(id).value = "");
+
         document.getElementById("threadSelectedValue").textContent = "All";
         document.getElementById("laneSelectedValue").textContent = "Selected";
+
+        ["threadInput", "laneInput"].forEach(id => document.getElementById(id).style.display = "none");
+
+        ["threadDropdownContainer", "laneDropdownContainer"].forEach(containerId => {
+            const container = document.getElementById(containerId);
+            const dropSelected = container.querySelector(".dropdown-selected");
+            if (dropSelected) dropSelected.style.display = "flex";
+
+            const selectedOption = container.querySelector(".dropdown-option.selected");
+            if (selectedOption) selectedOption.classList.remove("selected");
+        });
+
+        updateFilterIcon(false);
+    }
+
+    function restoreFilterValues() {
+        const storedFilter = JSON.parse(localStorage.getItem("ThreadFilter")) || {};
     
-        // Hide the custom text fields if they were shown
-        document.getElementById("threadInput").style.display = "none";
-        document.getElementById("laneInput").style.display = "none";
+        document.getElementById("filterInput").value = storedFilter.filter || "";
     
-        // Make sure the standard .dropdown-selected container is visible
-        const threadDropdownContainer = document.getElementById("threadDropdownContainer");
-        if (threadDropdownContainer) {
-            const dropSelected = threadDropdownContainer.querySelector(".dropdown-selected");
-            if (dropSelected) {
-                dropSelected.style.display = "flex";
-            }
-        }
-        const laneDropdownContainer = document.getElementById("laneDropdownContainer");
-        if (laneDropdownContainer) {
-            const dropSelected = laneDropdownContainer.querySelector(".dropdown-selected");
-            if (dropSelected) {
-                dropSelected.style.display = "flex";
-            }
-        }
+        restoreDropdownAndInput(
+            storedFilter.threadValue,
+            "",
+            "All",
+            "threadDropdownMenu",
+            "threadDropdownContainer",
+            document.getElementById("threadSelectedValue"),
+            document.getElementById("threadInput")
+        );
     
-        // Clear any `.selected` options in the dropdown menus
-        const laneDropdownMenu = document.getElementById("laneDropdownMenu");
-        if (laneDropdownMenu) {
-            const selectedOption = laneDropdownMenu.querySelector(".dropdown-option.selected");
-            if (selectedOption) {
-                selectedOption.classList.remove("selected");
-            }
-        }
-        const threadDropdownMenu = document.getElementById("threadDropdownMenu");
-        if (threadDropdownMenu) {
-            const selectedOption = threadDropdownMenu.querySelector(".dropdown-option.selected");
-            if (selectedOption) {
-                selectedOption.classList.remove("selected");
-            }
-        }
+        restoreDropdownAndInput(
+            storedFilter.laneValue,
+            "--selected-lanes",
+            "Selected",
+            "laneDropdownMenu",
+            "laneDropdownContainer",
+            document.getElementById("laneSelectedValue"),
+            document.getElementById("laneInput")
+        );
+    
+        document.getElementById("localWorkItemInput").value = storedFilter.localWorkItemValue || "";
+        document.getElementById("globalWorkItemInput").value = storedFilter.globalWorkItemValue || "";
+        document.getElementById("workGroupInput").value = storedFilter.workGroupValue || "";
     }
     
+
+    function updateFilterIcon(active) {
+        const icon = document.getElementById("filterIcon");
+        if (icon) icon.className = active ? "icon-filter-active" : "icon-filter";
+    }
+
+    function isNonEmptyFilter(filterObj) {
+        return Object.values(filterObj).some(value => value && value.trim() !== "" && !["--selected-lanes", "--all-lanes"].includes(value));
+    }
+
 
     function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId) {
         const container = document.getElementById(containerId);
@@ -466,10 +467,6 @@
             input.style.display = 'none';
             container.querySelector('.dropdown-selected').style.display = 'flex';
         });
-    }
-
-    function closeFilterPanel() {
-        document.querySelector(".filter-panel").style.display = "none";
     }
 
     let currentIndex = 0; // To keep track of the current focused element
@@ -706,68 +703,68 @@
             handleWidth = 0,
             handleHeight = 0;
         const margin = 10; // Extra margin to ensure complete visibility beyond scrollbars
-    
+
         handle.onmousedown = (e) => {
             drag = true;
             const elementRect = element.getBoundingClientRect();
             const handleRect = handle.getBoundingClientRect();
-    
+
             // Calculate the offset from the mouse position to the element's top-left
             offsetX = e.clientX - elementRect.left;
             offsetY = e.clientY - elementRect.top;
-    
+
             // Determine the handle's position and size relative to the element
             handleOffsetX = handleRect.left - elementRect.left;
             handleOffsetY = handleRect.top - elementRect.top;
             handleWidth = handleRect.width;
             handleHeight = handleRect.height;
-    
+
             document.onmousemove = onMouseMove;
             document.onmouseup = () => {
                 drag = false;
                 document.onmousemove = document.onmouseup = null;
             };
         };
-    
+
         function onMouseMove(e) {
             if (!drag) return;
-    
+
             // Proposed new position for the element
             let candidateLeft = e.clientX - offsetX;
             let candidateTop = e.clientY - offsetY;
-    
+
             // Get viewport dimensions (excluding scrollbars)
             const viewportWidth = document.documentElement.clientWidth;
             const viewportHeight = document.documentElement.clientHeight;
-    
+
             // Calculate the absolute position of the .drag-handle relative to the viewport
             let handleLeftAbsolute = candidateLeft + handleOffsetX;
             let handleTopAbsolute = candidateTop + handleOffsetY;
-    
+
             // Constrain horizontally with margin so that the entire handle is visible
             if (handleLeftAbsolute < margin) {
                 candidateLeft = margin - handleOffsetX;
             } else if (handleLeftAbsolute + handleWidth > viewportWidth - margin) {
                 candidateLeft = viewportWidth - margin - handleWidth - handleOffsetX;
             }
-    
+
             // Constrain vertically with margin so that the entire handle is visible
             if (handleTopAbsolute < margin) {
                 candidateTop = margin - handleOffsetY;
             } else if (handleTopAbsolute + handleHeight > viewportHeight - margin) {
                 candidateTop = viewportHeight - margin - handleHeight - handleOffsetY;
             }
-    
+
             element.style.left = `${candidateLeft}px`;
             element.style.top = `${candidateTop}px`;
         }
-    
+
         // Adjust element's position when the window is resized
         function adjustPosition() {
             // Get the current element position from its inline style or computed position
             let candidateLeft = parseFloat(element.style.left) || element.getBoundingClientRect().left;
             let candidateTop = parseFloat(element.style.top) || element.getBoundingClientRect().top;
-    
+
             // Recalculate the handle's offset relative to the element
             const elementRect = element.getBoundingClientRect();
             const handleRect = handle.getBoundingClientRect();
@@ -775,29 +772,29 @@
             const currentHandleOffsetY = handleRect.top - elementRect.top;
             const currentHandleWidth = handleRect.width;
             const currentHandleHeight = handleRect.height;
-    
+
             const viewportWidth = document.documentElement.clientWidth;
             const viewportHeight = document.documentElement.clientHeight;
-    
+
             let handleLeftAbsolute = candidateLeft + currentHandleOffsetX;
             let handleTopAbsolute = candidateTop + currentHandleOffsetY;
-    
+
             if (handleLeftAbsolute < margin) {
                 candidateLeft = margin - currentHandleOffsetX;
             } else if (handleLeftAbsolute + currentHandleWidth > viewportWidth - margin) {
                 candidateLeft = viewportWidth - margin - currentHandleWidth - currentHandleOffsetX;
             }
-    
+
             if (handleTopAbsolute < margin) {
                 candidateTop = margin - currentHandleOffsetY;
             } else if (handleTopAbsolute + currentHandleHeight > viewportHeight - margin) {
                 candidateTop = viewportHeight - margin - currentHandleHeight - currentHandleOffsetY;
             }
-    
+
             element.style.left = `${candidateLeft}px`;
             element.style.top = `${candidateTop}px`;
         }
-    
+
         // Listen for window resize events to adjust the element's position
         window.addEventListener("resize", adjustPosition);
     }
