@@ -1,3 +1,8 @@
+/**
+ * Copyright (c) 2024-2025 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
 "use strict";
 import * as vscode from "vscode";
 import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";

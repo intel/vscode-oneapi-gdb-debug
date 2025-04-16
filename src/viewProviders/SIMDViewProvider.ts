@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2022-2024 Intel Corporation
+ * Copyright (c) 2022-2025 Intel Corporation
  * SPDX-License-Identifier: MIT
  */
 
@@ -19,6 +19,8 @@ import { ThreadInfoViewProvider } from "./threadInfoViewProvider";
 import { SelectedLaneViewProvider } from "./selectedLaneViewProvider";
 import { getNonce } from "./utils";
 import { Filter } from "../SimdProvider";
+import { FilterHelpWebview } from "./filterHelpViewProvider";
+
 
 enum ViewState {
     COLORS,
@@ -570,46 +572,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                 }
                 break;
             case "openFilterHelp": {
-                window.showInformationMessage(
-                    `Thread filter options allows to filter the range of thread or lanes and also
-then further filter from the selection using expression options given below. Here is the overview
-of these options:
-
-Select range of threads using available options. The option "all" shows all threads
-and other option "custom range" allows to enter range for consecutive list of threads. E.g. 1-5
-
-Similarly lanes can be filtered from one of these options, "all" i.e. all lanes of each thread,
-"selected" i.e. default selected range of each thread and lastly custom range of lanes can be selected
-e.g. 1-3 i.e. all 1 to 3 lanes of each stopped thread.
-
-The selected range of threads and lanes can be further filtered using the combination of these GPU
-application fields "Work-item Local Id" / "Workitem Global Id" / "Work-Group Id". All these options take
-input in x,y,z format.
-
-To skip any of x/y/z either use "*" or leave the place empty for respective value.
-E.g. "y" can be skipped by entering value "x,*,z" or "x,,z"
-
-To enter range with maximum and minimum value of x/y/z, "*" can be used in place of end range for any
-of these.
-
-E.g. "x" can be filtered for all values where x>=100 using input value "100" or for range of values
-100-* to filter all values where x>=100
-
-In addition to above filter options more advance C/C++ expressions can be added using gdb-oneapi
-convenience or program variables can be used for filter using "Custom Expression" text box.
-
-Examples using convenience variables:
-    1) To filter all threads with Id above 150: $_thread>150
-    2) To filter all threads with workitem_local_id convenience variable
-        first index > 0: $_workitem_local_id[0]>0
-    3) Both (1) & (2) can be used together by using logical operator:
-        $_thread>150 && $_workitem_local_id[0]>0
-
-Example using program variables:
-    1) To filter all threads with variable "x" value greater than 100 but less than 200: x > 100 && x<200
-`,
-                    { modal: true }
-                );
+                FilterHelpWebview.show(this.context);
             }
                 break;
                     

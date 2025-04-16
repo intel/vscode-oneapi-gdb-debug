@@ -1,3 +1,7 @@
+/**
+ * Copyright (c) 2025 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
 import { Filter } from "./SimdProvider";
 
 export function buildFilterCommand(filter?: Filter): string | undefined {

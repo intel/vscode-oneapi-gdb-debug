@@ -1,0 +1,41 @@
+/**
+ * Copyright (c) 2025 Intel Corporation
+ * SPDX-License-Identifier: MIT
+ */
+
+body {
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+  padding: 15px;
+}
+
+h3,
+h4 {
+  margin-top: 0;
+  color: var(--vscode-textLink-foreground);
+}
+
+ul {
+  padding-left: 20px;
+}
+
+li {
+  margin-bottom: 5px;
+}
+
+code {
+  background-color: var(--vscode-textCodeBlock-background);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: var(--vscode-editor-font-family);
+}
+
+pre {
+  background-color: var(--vscode-textCodeBlock-background);
+  padding: 8px;
+  border-radius: 4px;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family);
+}
