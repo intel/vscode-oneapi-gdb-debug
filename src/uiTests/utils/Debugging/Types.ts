@@ -28,3 +28,11 @@ export type ConditionalBreakpoint = {
     type: ConditionalBreakpointType;
     condition: string;
 } & Breakpoint;
+
+/**
+ * Exception breakpoint template.
+ */
+export enum SchedulerLockingType {
+    Continue = "continue",
+    Step = "step"
+}

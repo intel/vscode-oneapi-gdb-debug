@@ -406,24 +406,54 @@ export async function GetDebugPane(paneToFind: DebugPane): Promise<WebElement | 
  * @returns Teminal output as string
  */
 export async function GetTerminalOutput(terminalName: string): Promise<string | undefined> {
-    const input = await SetInputText("> Terminal: Switch Active Terminal");
-    const qps = await input.getQuickPicks();
+    return await Retry(async() => {
+        const input = await SetInputText("> Terminal: Switch Active Terminal");
+        const qps = await input.getQuickPicks();
 
-    for (const qp of qps) {
-        const text = await qp.getText();
+        for (const qp of qps) {
+            const text = await qp.getText();
 
-        if (text.includes(terminalName)) {
-            await qp.select();
-            break;
+            if (text.includes(terminalName)) {
+                await qp.select();
+                break;
+            }
         }
-    }
 
-    const terminal = new TerminalView();
+        const terminal = new TerminalView();
 
-    logger.Info(`Get '${terminalName}' terminal text`);
-    const innerText = await Retry(async() => await terminal.getText(), 5 * 1000);
+        logger.Info(`Get '${terminalName}' terminal text`);
+        const innerText = await Retry(async() => await terminal.getText(), 5 * 1000);
 
-    return innerText;
+        return innerText;
+    }, 60 * 1000);
+}
+
+
+/**
+ * Evaluates a given expression in the Debug Console and retrieves the resulting output.
+ * @param expression The expression to evaluate in the Debug Console.
+ * @returns Array of strings representing the output lines
+ */
+export async function EvaluateExpression(expression: string): Promise<string[] | undefined> {
+    return await Retry(async() => {
+        await SetInputText("> Debug Console: Focus on Debug Console View");
+        await Wait(2000);
+        const view = new DebugConsoleView();
+
+        if (!view) {throw new Error();}
+        await view.evaluateExpression(expression);
+        await Wait(2000);
+        const lines = (await view.getText()).split("\n");
+
+        if (lines[lines.length - 1] === "Unable to perform this action because the process is running.") {
+            throw new Error("Unable to perform this action because the process is running.");
+        }
+        // const index = lines.findLastIndex(x => x.includes(expression));
+        const index = lines.map((x, i) => x.includes(expression) ? i : -1).filter(i => i !== -1).pop() ?? -1;
+
+        return lines.slice(index + 1);
+        // return (await view.getText()).split("\n").pop() as string;
+    }, 60 * 1000);
 }
 
 /**
