@@ -64,6 +64,14 @@ export async function ContinueDebugging(): Promise<void> {
     await continueButton.click();
 }
 
+export async function StepOver(): Promise<void> {
+    logger.Info("StepOver");
+    const driver = new Workbench().getDriver();
+    const continueButton = await driver.findElement(By.css("a.action-label.codicon.codicon-debug-step-over"));
+
+    await continueButton.click();
+}
+
 export async function CheckIfBreakpointConditionHasBeenMet(options: {
     expectedSimdLaneId?: number;
     expectedThread: Thread;
