@@ -33,9 +33,10 @@ export async function Wait(duration: number): Promise<void> {
  * @param fn The function to retry.
  * @param timeout Timeout in milliseconds.
  * @param throwOnTimeout Throws an exception on `timeout` when set to true. Default is `false`.
+ * @param echo Prints log messages when set to true. Default is `true`.
  * @returns Result of `fn` function.
  */
-export async function Retry<TResult>(fn: () => TResult, timeout: number, throwOnTimeout: boolean = false): Promise<TResult | undefined> {
+export async function Retry<TResult>(fn: () => TResult, timeout: number, throwOnTimeout: boolean = false, echo: boolean = true): Promise<TResult | undefined> {
     const startTime = Date.now();
     let currentTime = startTime;
     let result: TResult | undefined;
@@ -43,13 +44,13 @@ export async function Retry<TResult>(fn: () => TResult, timeout: number, throwOn
     let iteration = 1;
 
     while (eleapsed < timeout) {
-        logger.Info(`Retry iteration ${iteration} | Elapsed ${eleapsed} ms`);
+        if (echo) {logger.Info(`Retry iteration ${iteration} | Elapsed ${eleapsed} ms`);}
         eleapsed = currentTime - startTime;
         try {
             result = await fn();
             break;
         } catch (e) {
-            logger.Error(e);
+            if (echo) {logger.Error(e);}
             iteration++;
             currentTime = Date.now();
             eleapsed = currentTime - startTime;
@@ -58,7 +59,7 @@ export async function Retry<TResult>(fn: () => TResult, timeout: number, throwOn
             }
         }
     }
-    logger.Info(`Elapsed ${eleapsed} ms`);
+    if (echo) {logger.Info(`Elapsed ${eleapsed} ms`);}
     return result;
 }
 
@@ -448,11 +449,9 @@ export async function EvaluateExpression(expression: string): Promise<string[] |
         if (lines[lines.length - 1] === "Unable to perform this action because the process is running.") {
             throw new Error("Unable to perform this action because the process is running.");
         }
-        // const index = lines.findLastIndex(x => x.includes(expression));
         const index = lines.map((x, i) => x.includes(expression) ? i : -1).filter(i => i !== -1).pop() ?? -1;
 
         return lines.slice(index + 1);
-        // return (await view.getText()).split("\n").pop() as string;
     }, 60 * 1000);
 }
 
@@ -693,6 +692,27 @@ export async function WaitForConnection(ip: string, timeout: number) {
 }
 
 /**
+ * Initializates default oneAPI environment.
+ */
+export async function InitDefaultEnvironment(): Promise<void> {
+    const input = await Retry(async() => {
+        const temp = await SetInputText("> Intel oneAPI: Initialize default environment variables");
+
+        if (!temp) {throw Error();}
+        return temp;
+    }, 10 * 1000) as InputBox;
+
+    await input.clear();
+    const quickPick = await input.findQuickPick(0);
+
+    await Wait(3 * 1000);
+    const driver = new Workbench().getDriver();
+
+    await driver.executeScript("arguments[0].click()", quickPick);
+    await Wait(3 * 1000);
+}
+
+/**
  * Gets view control.
  * @param viewControl View constrol name to get.
  * @returns View control as ViewControl.
@@ -758,27 +778,6 @@ async function CreateCCppPropertiesFile(options: FsOptions): Promise<void> {
     if (!exists) {
         ccppPropertiesFileContent.configurations.push(ccppProperties.configurations[0]);
     }
-}
-
-/**
- * Initializates default oneAPI environment.
- */
-async function InitDefaultEnvironment(): Promise<void> {
-    const input = await Retry(async() => {
-        const temp = await SetInputText("> Intel oneAPI: Initialize default environment variables");
-        
-        if (!temp) {throw Error();}
-        return temp;
-    }, 10 * 1000) as InputBox;
-    
-    await input.clear();
-    const quickPick = await input.findQuickPick(0);
-
-    await Wait(3 * 1000);
-    const driver = new Workbench().getDriver();
-
-    await driver.executeScript("arguments[0].click()", quickPick);
-    await Wait(3 * 1000);
 }
 
 /**
