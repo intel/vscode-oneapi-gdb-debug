@@ -51,7 +51,7 @@ export class FilterHelpWebview {
             Similarly lanes can be filtered from one of these options, <code>\"all\"</code> i.e. all lanes of each thread, <code>\"selected\"</code> i.e. default selected range of each thread and lastly custom range of lanes can be selected e.g. <code>1-3</code> i.e. all 1 to 3 lanes of each stopped thread.
         </li>
         <li>
-            The selected range of threads and lanes can be further filtered using the combination of these GPU application fields <code>\"Work-item Local Id\"</code> / <code>\"Workitem Global Id\"</code> / <code>\"Work-Group Id\"</code>.
+            The selected range of threads and lanes can be further filtered using the combination of these GPU application fields <code>\"Work-item Local ID\"</code> / <code>\"Work-item Global ID\"</code> / <code>\"Work-group ID\"</code>.
         </li>
         <li>
             All these options take input in <code>x,y,z</code> format.
@@ -74,16 +74,16 @@ export class FilterHelpWebview {
     <h4>Examples using convenience variables:</h4>
     <pre>
 1) To filter all threads with Id above 150: $_thread > 150
-2) To filter all threads with workitem_local_id convenience variable
-   first index > 0: $_workitem_local_id[0] > 0
+2) To filter all threads where the first index of the workitem_local_id
+   convenience variable is greater than 0: $_workitem_local_id[0] > 0
 3) Both (1) & (2) can be used together by using logical operator:
    $_thread > 150 && $_workitem_local_id[0] > 0
     </pre>
 
     <h4>Example using program variables:</h4>
     <pre>
-1) To filter all threads with variable "x" value greater than 100 but less than 200:
-   x > 100 && x < 200
+To filter all threads with variable "x" value greater than 100
+   but less than 200: x>100 && x<200
     </pre>
 </body>
 </html>`;

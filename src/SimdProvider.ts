@@ -122,7 +122,7 @@ export async function getThread(threadAndLane?: string): Promise<CurrentThread |
 export class SimdProvider {
 
     private threadsInfoArray: ThreadInfo[] = [];
-    private _showInactiveThreads: boolean | undefined;
+    private _showActiveThreadsOnly: boolean | undefined;
     private _globalCurrentThread!: number;
     private _filter: Filter | undefined;
 
@@ -155,10 +155,10 @@ export class SimdProvider {
         );
     }
 
-    public set showInactiveThreads(flag: boolean | undefined) {
-        this._showInactiveThreads = false;
+    public set showActiveThreadsOnly(flag: boolean | undefined) {
+        this._showActiveThreadsOnly = true;
         if (flag !== undefined) {
-            this._showInactiveThreads = flag;
+            this._showActiveThreadsOnly = flag;
         }
     }
 
@@ -251,7 +251,7 @@ export class SimdProvider {
                                 vscode.commands.executeCommand("setContext", "oneapi:filterActive", false);
                             }
                             // If query exists, we use it, otherwise default
-                            const filter = query ? query : `-exec -thread-info ${this._showInactiveThreads ? "" : "--stopped"}`;
+                            const filter = query ? query : `-exec -thread-info ${!this._showActiveThreadsOnly ? "" : "--stopped"}`;
 
                             // Evaluate the filter in gdb
                             await session.customRequest("threads");

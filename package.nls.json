@@ -1,7 +1,7 @@
 {
     "capabilities.ACTIVE_LANE_SYMBOL.description" : "Symbol to indicate active lane.\n",
     "capabilities.INACTIVE_LANE_SYMBOL.description": "Symbol to indicate inactive lane.\n",
-    "capabilities.SHOW_ALL.description": "Show inactive threads.\n",
+    "capabilities.SHOW_ONLY_ACTIVE.description": "Show only stopped threads.\n",
     "capabilities.DISABLE_ONEAPI_GDB_PATH_NOTIFICATION.description": "Disable check for gdb-oneapi notification.\n",
     "capabilities.DISABLE_ONEAPI_ENV_NOTIFICATION.description": "Disable oneAPI environment extension notification.\n"
 }

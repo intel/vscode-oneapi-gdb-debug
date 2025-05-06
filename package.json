@@ -42,10 +42,10 @@
             {
                 "title": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
                 "properties": {
-                    "intelOneAPI.debug.SHOW_ALL": {
+                    "intelOneAPI.debug.SHOW_ONLY_ACTIVE": {
                         "type": "boolean",
-                        "description": "%capabilities.SHOW_ALL.description%",
-                        "default": false
+                        "description": "%capabilities.SHOW_ONLY_ACTIVE.description%",
+                        "default": true
                     },
                     "intelOneAPI.debug.ACTIVE_LANE_SYMBOL": {
                         "type": "string",
