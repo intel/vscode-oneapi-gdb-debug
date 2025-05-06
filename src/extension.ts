@@ -194,11 +194,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
     const simd = new SimdProvider(context, simdViewProvider, deviceViewProvider, simdWatchProvider);
 
-    simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
+    simd.showActiveThreadsOnly = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ONLY_ACTIVE");
 
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
-        if (e.affectsConfiguration("intelOneAPI.debug.SHOW_ALL")) {
-            simd.showInactiveThreads = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ALL");
+        if (e.affectsConfiguration("intelOneAPI.debug.SHOW_ONLY_ACTIVE")) {
+            simd.showActiveThreadsOnly = vscode.workspace.getConfiguration("intelOneAPI.debug").get<boolean>("SHOW_ONLY_ACTIVE");
         }
     }));
 
