@@ -4,6 +4,11 @@
  */
 import { Filter } from "./SimdProvider";
 
+/**
+ * Builds the full -exec -thread-filter command with thread/lane/coordinate/user filters.
+ * Automatically omits unnecessary parts, e.g., lane when thread is set,
+ * or "&&" when no coordinates exist before a user filter.
+ */
 export function buildFilterCommand(filter?: Filter): string | undefined {
     if (!filter) {
         return undefined;
@@ -18,12 +23,20 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
 
     let command = "-exec -thread-filter";
 
-    if (mainQuery) {
-        command += ` ${mainQuery}`;
+    // Remove the internal tag used to detect presence of coordinates
+    const noCoord = mainQuery.includes("__NO_COORD__");
+    const cleanedMainQuery = mainQuery.replace(" __NO_COORD__", "");
+
+    if (cleanedMainQuery) {
+        command += ` ${cleanedMainQuery}`;
     }
 
     if (userFilter) {
-        const separator = mainQuery && !isFlagOnly(mainQuery) ? " && " : " ";
+        // Add "&&" before user filter only if there is a non-flag main query AND coordinates exist
+        const separator =
+            cleanedMainQuery && !isFlagOnly(cleanedMainQuery) && !noCoord
+                ? " && "
+                : " ";
 
         command += `${separator}(${userFilter})`;
     }
@@ -31,9 +44,25 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
     return command;
 }
 
+/**
+ * Constructs the main part of the thread-filter query: thread + lane + coordinates.
+ * If only thread exists (no coordinates), marks this with a `__NO_COORD__` tag.
+ */
 function buildQuery(filter: Filter): string {
     const threadPart = formatValue(filter.threadValue);
-    const lanePart = formatLane(filter.laneValue, !!threadPart);
+
+    const hasUserFilter = !!filter.filter?.trim();
+    const hasThread = !!filter.threadValue?.trim();
+    const hasCoordinates = !!(
+        filter.localWorkItemValue?.trim() ||
+        filter.globalWorkItemValue?.trim() ||
+        filter.workGroupValue?.trim()
+    );
+
+    // Allow lane only if there's no thread filter, and some other conditions exist
+    const allowLane = !hasThread && (hasUserFilter || hasCoordinates);
+
+    const lanePart = allowLane ? formatLane(filter.laneValue, !!threadPart) : "";
 
     let query = threadPart;
 
@@ -47,9 +76,26 @@ function buildQuery(filter: Filter): string {
 
     const coordinates = buildCoordinateConditions(filter);
 
-    return [query.trim(), coordinates].filter(Boolean).join(" ").trim();
+    const parts = [query.trim(), coordinates].filter(Boolean);
+
+    if (parts.length === 1 && !coordinates) {
+        // Signal to the caller that there are no coordinates,
+        // used to suppress extra "&&" before user filters
+        return parts[0] + " __NO_COORD__";
+    }
+
+    return parts.join(" ").trim();
 }
 
+function needsColon(lanePart: string): boolean {
+    return !(
+        lanePart.includes("--all-lanes") || lanePart.includes("--selected-lanes")
+    );
+}
+
+/**
+ * Formats comma-separated thread values.
+ */
 function formatValue(value?: string): string {
     if (!value) {
         return "";
@@ -62,22 +108,26 @@ function formatValue(value?: string): string {
             .join(" ");
 }
 
+/**
+ * Formats lane filter unless suppressed by thread filter.
+ */
 function formatLane(laneValue?: string, hasThread: boolean = false): string {
     if (!laneValue || hasThread) {
         return hasThread ? laneValue || "" : "";
     }
-    if (laneValue === "--all-lanes" || laneValue === "--selected-lanes") {
-        return `${laneValue} --s`;
-    }
-    return formatValue(laneValue);
+    return formatValue(`${laneValue} --s`);
 }
 
-function needsColon(lanePart: string): boolean {
-    return !(
-        lanePart.includes("--all-lanes") || lanePart.includes("--selected-lanes")
-    );
+/**
+ * Returns true if the query consists only of flags like `--all-lanes --s`
+ */
+function isFlagOnly(query: string): boolean {
+    return /^--\S+(\s--\S+)*$/.test(query);
 }
 
+/**
+ * Builds all coordinate conditions (local/global/workgroup)
+ */
 function buildCoordinateConditions(filter: Filter): string {
     const conditions: string[] = [];
 
@@ -88,6 +138,9 @@ function buildCoordinateConditions(filter: Filter): string {
     return conditions.join(" && ");
 }
 
+/**
+ * Adds a parsed coordinate condition (if valid)
+ */
 function addCondition(
     value: string | undefined,
     variable: string,
@@ -100,6 +153,10 @@ function addCondition(
     }
 }
 
+/**
+ * Converts a 1D, 2D, or 3D coordinate string (e.g. "1,2,3") into filter conditions.
+ * Handles ranges like "4-6".
+ */
 function parseCoordinates(input: string | undefined, variable: string): string {
     if (!input) {
         return "";
@@ -129,6 +186,9 @@ function parseCoordinates(input: string | undefined, variable: string): string {
     return checks.join(" && ");
 }
 
+/**
+ * Expands a numeric range like "4-6" into ["4", "5", "6"]
+ */
 function expandRange(range: string): string[] {
     const [start, end] = range.split("-").map(Number);
 
@@ -138,8 +198,4 @@ function expandRange(range: string): string[] {
     return Array.from({ length: end - start + 1 }, (_, i) =>
         (start + i).toString()
     );
-}
-
-function isFlagOnly(query: string): boolean {
-    return /^--\S+(\s--\S+)*$/.test(query);
 }
