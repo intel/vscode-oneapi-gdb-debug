@@ -59,16 +59,20 @@ function buildQuery(filter: Filter): string {
         filter.workGroupValue?.trim()
     );
 
-    // Allow lane only if there's no thread filter, and some other conditions exist
-    const allowLane = !hasThread && (hasUserFilter || hasCoordinates);
+    // Detect if lane must be included even with thread (e.g., '--all-lanes' or '--selected-lanes')
+    const laneExplicit =
+        filter.laneValue?.includes("--all-lanes") ||
+        filter.laneValue?.includes("--selected-lanes");
 
-    const lanePart = allowLane ? formatLane(filter.laneValue, !!threadPart) : "";
+    const allowLane = laneExplicit || (!hasThread && (hasUserFilter || hasCoordinates));
+
+    const lanePart = allowLane ? formatLane(filter.laneValue, hasThread) : "";
 
     let query = threadPart;
 
     if (lanePart) {
         query += query
-            ? needsColon(lanePart)
+            ? needsColon(lanePart, hasThread)
                 ? `:${lanePart}`
                 : ` ${lanePart}`
             : lanePart;
@@ -87,7 +91,18 @@ function buildQuery(filter: Filter): string {
     return parts.join(" ").trim();
 }
 
-function needsColon(lanePart: string): boolean {
+function needsColon(lanePart: string, hasThread: boolean): boolean {
+    // If '--all-lanes' is present and a thread is specified, use colon with '*'
+    if (hasThread && lanePart.includes("--all-lanes")) {
+        return true;
+    }
+
+    // If '--selected-lanes' is present, never use colon
+    if (lanePart.includes("--selected-lanes")) {
+        return false;
+    }
+
+    // Fallback to original logic for other lane flags
     return !(
         lanePart.includes("--all-lanes") || lanePart.includes("--selected-lanes")
     );
@@ -109,14 +124,32 @@ function formatValue(value?: string): string {
 }
 
 /**
- * Formats lane filter unless suppressed by thread filter.
+ * Formats the lane part.
+ * If thread is present and '--all-lanes' is used, returns '*'.
+ * If thread is present and '--selected-lanes' is used, suppresses lane.
+ * Otherwise returns laneValue with '--s'.
  */
 function formatLane(laneValue?: string, hasThread: boolean = false): string {
-    if (!laneValue || hasThread) {
-        return hasThread ? laneValue || "" : "";
+    if (!laneValue) {
+        return "";
     }
-    return formatValue(`${laneValue} --s`);
+
+    const trimmed = laneValue.trim();
+
+    // Special case: with thread + --all-lanes → return '*'
+    if (hasThread && trimmed === "--all-lanes") {
+        return "*";
+    }
+
+    // Special case: with thread + --selected-lanes → suppress lane
+    if (hasThread && trimmed === "--selected-lanes") {
+        return "";
+    }
+
+    // Default formatting with '--s'
+    return formatValue(`${trimmed} --s`);
 }
+
 
 /**
  * Returns true if the query consists only of flags like `--all-lanes --s`
