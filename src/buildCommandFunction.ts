@@ -195,7 +195,7 @@ function parseCoordinates(input: string | undefined, variable: string): string {
         return "";
     }
 
-    const dimensions = input.split(/[,\.]/).map((v) => v.trim());
+    const dimensions = input.split(",").map((v) => v.trim());
     const checks: string[] = [];
 
     dimensions.forEach((dim, idx) => {
