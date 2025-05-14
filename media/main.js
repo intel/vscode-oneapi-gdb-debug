@@ -138,7 +138,7 @@
         restoreDropdownAndInput(
             storedFilter.laneValue,
             "--selected-lanes",               // default if empty
-            "Selected",                // label if it's -all
+            "Selected",                // label if it's --selected-lanes
             "laneDropdownMenu",
             "laneDropdownContainer",
             laneSelectedValue,
