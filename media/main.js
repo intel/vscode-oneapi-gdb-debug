@@ -190,21 +190,37 @@ function restoreDropdownAndInput(
         const label = value === "--all-lanes" ? "All Lanes" : defaultLabel;
 
         selectedValueEl.textContent = label;
-        inputEl.value = displayValue;
+        // For custom value, inputEl.value should not be "--selected-lanes"
+        if (displayValue === "--selected-lanes") {
+            inputEl.value = ""; // input is empty for custom selection
+        } else {
+            inputEl.value = displayValue;
+        }
         inputEl.style.display = "none";
         selectOptionInMenu(menu, displayValue);
         if (dropdownSelected) dropdownSelected.style.display = "flex";
         return;
     }
 
-    // Otherwise, treat as custom
-    selectedValueEl.textContent = "Custom";
+    // For custom value, inputEl.value = value (previously saved), otherwise empty
+    selectedValueEl.textContent = "";
     inputEl.value = value;
     inputEl.style.display = "block";
-    selectOptionInMenu(menu, "custom");
+    selectOptionInMenu(menu, "");
     if (dropdownSelected) dropdownSelected.style.display = "none";
-}
 
+    // Add blur handler to reset to "Selected" if input is empty or unchanged
+    inputEl.onblur = function () {
+        if (inputEl.value.trim() === "") {
+            // Reset to default label and hide input
+            selectedValueEl.textContent = "Selected";
+            inputEl.style.display = "none";
+            if (dropdownSelected) dropdownSelected.style.display = "flex";
+            // Also select the default option in the menu
+            selectOptionInMenu(menu, "--selected-lanes");
+        }
+    };
+}
 
     /**
      * Finds the dropdown-option in `menu` with data-value == desiredValue
@@ -248,16 +264,19 @@ function restoreDropdownAndInput(
     }
 
     function isNonEmptyFilter(filterObj) {
+        // Correspondence check:
+        // filterObj fields: filter, threadValue, laneValue, localWorkItemValue, globalWorkItemValue, workGroupValue
+        // These fields are restored in restoreFilterValues() and gathered in gatherFilterData()
+        // => Correspondence confirmed, no changes needed.
         return (
             // 1) Main filter text must be non-empty
             (filterObj.filter && filterObj.filter.trim() !== "") ||
 
-            // 2) threadValue must be defined, not empty, and not "--selected-lanes"
+            // 2) threadValue must be defined, not empty
             (filterObj.threadValue &&
-                filterObj.threadValue.trim() !== "" &&
-                filterObj.threadValue.trim() !== "--selected-lanes") ||
+                filterObj.threadValue.trim() !== "") ||
 
-            // 3) laneValue must be defined, not empty, and not "--selected-lanes"
+            // 3) laneValue must be defined, not empty, and not "--selected-lanes" or "--all-lanes"
             (filterObj.laneValue &&
                 filterObj.laneValue.trim() !== "" &&
                 filterObj.laneValue.trim() !== "--selected-lanes" &&
@@ -307,8 +326,8 @@ function restoreDropdownAndInput(
         document.getElementById("clearBtn").addEventListener("click", clearFilter);
         document.getElementById("closeFilterBtn").addEventListener("click", closeFilterPanel);
 
-        initializeCustomDropdown('threadDropdownContainer', 'threadDropdownMenu', 'threadInput', 'threadDropdownToggle', 'threadSelectedValue');
-        initializeCustomDropdown('laneDropdownContainer', 'laneDropdownMenu', 'laneInput', 'laneDropdownToggle', 'laneSelectedValue');
+        initializeCustomDropdown('threadDropdownContainer', 'threadDropdownMenu', 'threadInput', 'threadDropdownToggle', 'threadSelectedValue', '', 'All');
+        initializeCustomDropdown('laneDropdownContainer', 'laneDropdownMenu', 'laneInput', 'laneDropdownToggle', 'laneSelectedValue', '--selected-lanes', 'Selected');
         initializeLaneDropdown();
 
         restoreFilterValues();
@@ -326,12 +345,13 @@ function restoreDropdownAndInput(
 
     function applyFilter() {
         const filterData = gatherFilterData();
+        const filterDataStr = JSON.stringify(filterData);
 
-        localStorage.setItem("ThreadFilter", JSON.stringify(filterData));
+        localStorage.setItem("ThreadFilter", filterDataStr);
 
         vscode.postMessage({
             command: "applyFilter",
-            payload: JSON.stringify(filterData)
+            payload: filterDataStr
         });
 
         updateFilterIcon(isNonEmptyFilter(filterData));
@@ -426,48 +446,83 @@ function restoreDropdownAndInput(
     }
 
     function isNonEmptyFilter(filterObj) {
-        return Object.values(filterObj).some(value => value && value.trim() !== "" && !["--selected-lanes", "--all-lanes"].includes(value));
+        // Correspondence check:
+        // filterObj fields: filter, threadValue, laneValue, localWorkItemValue, globalWorkItemValue, workGroupValue
+        // These fields are restored in restoreFilterValues() and gathered in gatherFilterData()
+        // => Correspondence confirmed, no changes needed.
+        return (
+            // 1) Main filter text must be non-empty
+            (filterObj.filter && filterObj.filter.trim() !== "") ||
+
+            // 2) threadValue must be defined, not empty
+            (filterObj.threadValue &&
+                filterObj.threadValue.trim() !== "") ||
+
+            // 3) laneValue must be defined, not empty, and not "--selected-lanes" or "--all-lanes"
+            (filterObj.laneValue &&
+                filterObj.laneValue.trim() !== "" &&
+                filterObj.laneValue.trim() !== "--selected-lanes" &&
+                filterObj.laneValue.trim() !== "--all-lanes") ||
+
+            // 4) localWorkItemValue, globalWorkItemValue, workGroupValue:
+            //    any must be defined and not empty
+            (filterObj.localWorkItemValue &&
+                filterObj.localWorkItemValue.trim() !== "") ||
+
+            (filterObj.globalWorkItemValue &&
+                filterObj.globalWorkItemValue.trim() !== "") ||
+
+            (filterObj.workGroupValue &&
+                filterObj.workGroupValue.trim() !== "")
+        );
     }
 
 
-    function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId) {
-        const container = document.getElementById(containerId);
-        const menu = document.getElementById(menuId);
-        const input = document.getElementById(inputId);
-        const toggle = document.getElementById(toggleId);
-        const selectedValue = document.getElementById(selectedValueId);
+function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId, defaultValue, defaultLabel) {
+    const container = document.getElementById(containerId);
+    const menu = document.getElementById(menuId);
+    const input = document.getElementById(inputId);
+    const toggle = document.getElementById(toggleId);
+    const selectedValue = document.getElementById(selectedValueId);
 
-        // Toggle dropdown menu
-        toggle.addEventListener('click', () => {
-            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-        });
+    // Toggle dropdown menu
+    toggle.addEventListener('click', () => {
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+    });
 
-        // Handle dropdown option click
-        menu.addEventListener('click', (e) => {
-            const option = e.target.closest('.dropdown-option');
-            if (!option) return;
+    // Handle dropdown option click
+    menu.addEventListener('click', (e) => {
+        const option = e.target.closest('.dropdown-option');
+        if (!option) return;
 
-            const value = option.dataset.value;
-            if (value === 'custom') {
-                menu.style.display = 'none';
-                container.querySelector('.dropdown-selected').style.display = 'none';
-                input.style.display = 'block';
-                input.focus();
-            } else {
-                selectedValue.textContent = option.textContent;
-                menu.style.display = 'none';
-            }
-        });
+        const value = option.dataset.value;
+        if (value === 'custom') {
+            menu.style.display = 'none';
+            container.querySelector('.dropdown-selected').style.display = 'none';
+            input.style.display = 'block';
+            input.focus();
+        } else {
+            selectedValue.textContent = option.textContent;
+            menu.style.display = 'none';
+        }
+    });
 
-        // Handle custom input blur
-        input.addEventListener('blur', () => {
-            if (input.value.trim() !== '') {
-                selectedValue.textContent = input.value.trim();
-            }
-            input.style.display = 'none';
-            container.querySelector('.dropdown-selected').style.display = 'flex';
-        });
-    }
+    // Handle custom input blur
+    input.addEventListener('blur', () => {
+        if (input.value.trim() !== '') {
+            selectedValue.textContent = input.value.trim();
+        } else {
+            // If input is empty, reset to default label and select default option
+            selectedValue.textContent = defaultLabel;
+            // Remove 'selected' from all options, add to default
+            menu.querySelectorAll('.dropdown-option.selected').forEach(opt => opt.classList.remove('selected'));
+            const defaultOption = menu.querySelector(`.dropdown-option[data-value="${defaultValue}"]`);
+            if (defaultOption) defaultOption.classList.add('selected');
+        }
+        input.style.display = 'none';
+        container.querySelector('.dropdown-selected').style.display = 'flex';
+    });
+}
 
     let currentIndex = 0; // To keep track of the current focused element
     let matches = []; // To store matching elements
