@@ -61,12 +61,6 @@ export class FilterHelpWebview {
             E.g. <code>\"y\"</code> can be skipped by entering value <code>\"x,*,z\"</code> or <code>\"x,,z\"</code>
         </li>
         <li>
-            To enter range with maximum and minimum value of x/y/z, <code>*</code> can be used in place of end range for any of these.
-        </li>
-        <li>
-            E.g. <code>\"x\"</code> can be filtered for all values where x ≥ 100 using input value <code>\"100\"</code> or for range of values <code>100-*</code> to filter all values where x ≥ 100.
-        </li>
-        <li>
             In addition to above filter options more advance C/C++ expressions can be added using gdb-oneapi.<br/>
             Convenience or program variables can be used for filter using <code>\"Custom Expression\"</code> text box.
         </li>
