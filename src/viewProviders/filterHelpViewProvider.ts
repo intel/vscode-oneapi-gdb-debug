@@ -76,8 +76,8 @@ export class FilterHelpWebview {
 
     <h4>Example using program variables:</h4>
     <pre>
-To filter all threads with variable "x" value greater than 100
-   but less than 200: x>100 && x<200
+To filter all threads with variable "x" value greater than 100 but less than 200:
+   x > 100 && x < 200
     </pre>
 </body>
 </html>`;
