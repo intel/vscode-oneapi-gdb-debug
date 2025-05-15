@@ -228,6 +228,10 @@ export class SimdProvider {
         // Build a custom query if available
         const query = buildFilterCommand(this.filter);
 
+        // If the query is empty, the filter value has been recognized as equivalent to undefined
+        if(!query && this.filter) {
+            this.context.globalState.update("ThreadFilter", undefined);
+        }
         await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
         this.simdViewProvider.waitForViewToBecomeVisible(() => {
             this.simdViewProvider.setLoadingView();

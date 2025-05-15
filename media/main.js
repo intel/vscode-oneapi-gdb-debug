@@ -189,6 +189,32 @@ function restoreDropdownAndInput(
         const displayValue = isEmpty ? defaultValue : value;
         const label = value === "--all-lanes" ? "All Lanes" : defaultLabel;
 
+        // If a special flag is entered in thread, move it to lane and reset thread
+        if (menuId === "threadDropdownMenu" && specialFlags.includes(value)) {
+            // Move the flag to lane
+            const laneInput = document.getElementById("laneInput");
+            const laneSelectedValue = document.getElementById("laneSelectedValue");
+            const laneMenu = document.getElementById("laneDropdownMenu");
+            const laneDropdownContainer = document.getElementById("laneDropdownContainer");
+            const laneDropdownSelected = laneDropdownContainer?.querySelector(".dropdown-selected");
+            laneInput.value = "";
+            laneInput.style.display = "none";
+            selectOptionInMenu(laneMenu, value);
+            laneSelectedValue.textContent = value === "--all-lanes" ? "All Lanes" : "Selected";
+            if (laneDropdownSelected) laneDropdownSelected.style.display = "flex";
+
+            // Reset thread field
+            selectedValueEl.textContent = "All";
+            inputEl.value = "";
+            inputEl.style.display = "none";
+            selectOptionInMenu(menu, "");
+            if (dropdownSelected) dropdownSelected.style.display = "flex";
+            // Actually update the stored value in localStorage (if needed)
+            // and in the filter object if used elsewhere
+            // (This is a UI fix; for full fix, gatherFilterData should not take this value from thread)
+            return;
+        }
+
         selectedValueEl.textContent = label;
         // For custom value, inputEl.value should not be "--selected-lanes"
         if (displayValue === "--selected-lanes") {
@@ -209,7 +235,7 @@ function restoreDropdownAndInput(
     selectOptionInMenu(menu, "");
     if (dropdownSelected) dropdownSelected.style.display = "none";
 
-    // Add blur handler to reset to "Selected" if input is empty or unchanged
+    // Add blur handler to reset to default label and value if input is empty
     inputEl.onblur = function () {
         if (inputEl.value.trim() === "") {
             // Reset to default label and hide input
@@ -371,6 +397,7 @@ function restoreDropdownAndInput(
     function gatherFilterData() {
         const getInputValue = (id) => document.getElementById(id).value.trim() || "";
 
+        let threadValue = getInputValue("threadInput");
         let laneValue = getInputValue("laneInput");
 
         if (!laneValue) {
@@ -378,9 +405,17 @@ function restoreDropdownAndInput(
             laneValue = selectedOption ? selectedOption.getAttribute("data-value") : "";
         }
 
+        // If a special lane flag is present in threadValue, move it to laneValue and reset threadValue.
+        // This ensures that the backend receives the correct filter object regardless of UI state.
+        const specialFlags = ["--selected-lanes", "--all-lanes"];
+        if (specialFlags.includes(threadValue)) {
+            laneValue = threadValue;
+            threadValue = "";
+        }
+
         return {
             filter: getInputValue("filterInput"),
-            threadValue: getInputValue("threadInput"),
+            threadValue,
             laneValue,
             localWorkItemValue: getInputValue("localWorkItemInput"),
             globalWorkItemValue: getInputValue("globalWorkItemInput"),
