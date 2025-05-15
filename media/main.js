@@ -154,99 +154,95 @@
         document.getElementById("filterInput").focus();
     }
 
-/**
- * Restores a dropdown/input pair based on the stored value.
- * @param {string} value - The stored field value (e.g., "--selected-lanes", "3,5,7", etc.)
- * @param {string} defaultValue - The fallback if `value` is empty (usually "--selected-lanes")
- * @param {string} defaultLabel - The label to show if we interpret this as the default (e.g. "All")
- * @param {string} menuId - The ID of the dropdown menu element (e.g. "laneDropdownMenu")
- * @param {string} containerId - The ID of the container for that dropdown (e.g. "laneDropdownContainer")
- * @param {HTMLElement} selectedValueEl - The <span> or <div> that shows the selected label
- * @param {HTMLInputElement} inputEl - The text input for custom values
- */
-function restoreDropdownAndInput(
-    value,
-    defaultValue,
-    defaultLabel,
-    menuId,
-    containerId,
-    selectedValueEl,
-    inputEl
-) {
-    const menu = document.getElementById(menuId);
-    const container = document.getElementById(containerId);
-    const dropdownSelected = container?.querySelector(".dropdown-selected");
+    /**
+     * Restores a dropdown/input pair based on the stored value.
+     * @param {string} value - The stored field value (e.g., "--selected-lanes", "3,5,7", etc.)
+     * @param {string} defaultValue - The fallback if `value` is empty (usually "--selected-lanes")
+     * @param {string} defaultLabel - The label to show if we interpret this as the default (e.g. "All")
+     * @param {string} menuId - The ID of the dropdown menu element (e.g. "laneDropdownMenu")
+     * @param {string} containerId - The ID of the container for that dropdown (e.g. "laneDropdownContainer")
+     * @param {HTMLElement} selectedValueEl - The <span> or <div> that shows the selected label
+     * @param {HTMLInputElement} inputEl - The text input for custom values
+     */
+    function restoreDropdownAndInput(
+        value,
+        defaultValue,
+        defaultLabel,
+        menuId,
+        containerId,
+        selectedValueEl,
+        inputEl
+    ) {
+        const menu = document.getElementById(menuId);
+        const container = document.getElementById(containerId);
+        const dropdownSelected = container?.querySelector(".dropdown-selected");
 
-    // Clear previous selection
-    const previouslySelected = menu?.querySelector(".dropdown-option.selected");
-    previouslySelected?.classList.remove("selected");
+        // Clear previous selection
+        const previouslySelected = menu?.querySelector(".dropdown-option.selected");
+        previouslySelected?.classList.remove("selected");
 
-    const isEmpty = !value || value.trim() === "";
-    const specialFlags = ["--selected-lanes", "--all-lanes"];
-    const isSpecial = specialFlags.includes(value);
+        const isEmpty = !value || value.trim() === "";
+        const specialFlags = ["--selected-lanes", "--all-lanes"];
+        const isSpecial = specialFlags.includes(value);
 
-    if (isEmpty || isSpecial) {
-        const displayValue = isEmpty ? defaultValue : value;
-        const label = value === "--all-lanes" ? "All Lanes" : defaultLabel;
+        if (isEmpty || isSpecial) {
+            const displayValue = isEmpty ? defaultValue : value;
+            const label = value === "--all-lanes" ? "All Lanes" : defaultLabel;
 
-        // If a special flag is entered in thread, move it to lane and reset thread
-        if (menuId === "threadDropdownMenu" && specialFlags.includes(value)) {
-            // Move the flag to lane
-            const laneInput = document.getElementById("laneInput");
-            const laneSelectedValue = document.getElementById("laneSelectedValue");
-            const laneMenu = document.getElementById("laneDropdownMenu");
-            const laneDropdownContainer = document.getElementById("laneDropdownContainer");
-            const laneDropdownSelected = laneDropdownContainer?.querySelector(".dropdown-selected");
-            laneInput.value = "";
-            laneInput.style.display = "none";
-            selectOptionInMenu(laneMenu, value);
-            laneSelectedValue.textContent = value === "--all-lanes" ? "All Lanes" : "Selected";
-            if (laneDropdownSelected) laneDropdownSelected.style.display = "flex";
+            // If a special flag is entered in thread, move it to lane and reset thread
+            if (menuId === "threadDropdownMenu" && specialFlags.includes(value)) {
+                // Move the flag to lane
+                const laneInput = document.getElementById("laneInput");
+                const laneSelectedValue = document.getElementById("laneSelectedValue");
+                const laneMenu = document.getElementById("laneDropdownMenu");
+                const laneDropdownContainer = document.getElementById("laneDropdownContainer");
+                const laneDropdownSelected = laneDropdownContainer?.querySelector(".dropdown-selected");
+                laneInput.value = "";
+                laneInput.style.display = "none";
+                selectOptionInMenu(laneMenu, value);
+                laneSelectedValue.textContent = value === "--all-lanes" ? "All Lanes" : "Selected";
+                if (laneDropdownSelected) laneDropdownSelected.style.display = "flex";
 
-            // Reset thread field
-            selectedValueEl.textContent = "All";
-            inputEl.value = "";
+                // Reset thread field
+                selectedValueEl.textContent = "All";
+                inputEl.value = "";
+                inputEl.style.display = "none";
+                selectOptionInMenu(menu, "");
+                if (dropdownSelected) dropdownSelected.style.display = "flex";
+                return;
+            }
+
+            // Always show the dropdown-selected element and update its label
+            selectedValueEl.textContent = label;
+            inputEl.value = displayValue === "--selected-lanes" ? "" : displayValue;
             inputEl.style.display = "none";
-            selectOptionInMenu(menu, "");
+            selectOptionInMenu(menu, displayValue);
             if (dropdownSelected) dropdownSelected.style.display = "flex";
-            // Actually update the stored value in localStorage (if needed)
-            // and in the filter object if used elsewhere
-            // (This is a UI fix; for full fix, gatherFilterData should not take this value from thread)
             return;
         }
 
-        selectedValueEl.textContent = label;
-        // For custom value, inputEl.value should not be "--selected-lanes"
-        if (displayValue === "--selected-lanes") {
-            inputEl.value = ""; // input is empty for custom selection
+        // For custom value: show it in the styled dropdown, hide input
+        // Only set the span if value is non-empty, otherwise use defaultLabel
+        if (value && value.trim() !== "") {
+            selectedValueEl.textContent = value;
         } else {
-            inputEl.value = displayValue;
+            selectedValueEl.textContent = defaultLabel;
         }
+        inputEl.value = value;
         inputEl.style.display = "none";
-        selectOptionInMenu(menu, displayValue);
+        selectOptionInMenu(menu, "");
         if (dropdownSelected) dropdownSelected.style.display = "flex";
-        return;
+
+        // Add blur handler to reset to default label and value if input is empty (for edit mode)
+        inputEl.onblur = function () {
+            if (inputEl.value.trim() === "") {
+                selectedValueEl.textContent = defaultLabel;
+                inputEl.style.display = "none";
+                if (dropdownSelected) dropdownSelected.style.display = "flex";
+                selectOptionInMenu(menu, "--selected-lanes");
+            }
+        };
     }
-
-    // For custom value, inputEl.value = value (previously saved), otherwise empty
-    selectedValueEl.textContent = "";
-    inputEl.value = value;
-    inputEl.style.display = "block";
-    selectOptionInMenu(menu, "");
-    if (dropdownSelected) dropdownSelected.style.display = "none";
-
-    // Add blur handler to reset to default label and value if input is empty
-    inputEl.onblur = function () {
-        if (inputEl.value.trim() === "") {
-            // Reset to default label and hide input
-            selectedValueEl.textContent = "Selected";
-            inputEl.style.display = "none";
-            if (dropdownSelected) dropdownSelected.style.display = "flex";
-            // Also select the default option in the menu
-            selectOptionInMenu(menu, "--selected-lanes");
-        }
-    };
-}
 
     /**
      * Finds the dropdown-option in `menu` with data-value == desiredValue
@@ -254,10 +250,45 @@ function restoreDropdownAndInput(
      */
     function selectOptionInMenu(menu, desiredValue) {
         if (!menu) return;
-        const option = menu.querySelector(`.dropdown-option[data-value="${desiredValue}"]`);
+        // Select by data-value for normal options, by id for custom
+        let option = menu.querySelector(`.dropdown-option[data-value="${desiredValue}"]`);
+        if (!option && desiredValue === "") {
+            // If desiredValue is empty, try to select the custom option by id
+            option = Array.from(menu.querySelectorAll('.dropdown-option')).find(opt => opt.id && opt.id.endsWith('-custom-option'));
+        }
         if (option) {
             option.classList.add("selected");
         }
+    }
+
+    function initializeThreadDropdown() {
+        const threadDropdownMenu = document.getElementById("threadDropdownMenu");
+        if (!threadDropdownMenu) {
+            console.error("#threadDropdownMenu not found.");
+            return;
+        }
+
+        threadDropdownMenu.addEventListener("click", (event) => {
+            const option = event.target.closest(".dropdown-option");
+            if (!option) return;
+
+            document.querySelectorAll("#threadDropdownMenu .dropdown-option").forEach((opt) =>
+                opt.classList.remove("selected")
+            );
+            option.classList.add("selected");
+
+            const threadInput = document.getElementById("threadInput");
+
+            if (option.id && option.id.endsWith("-custom-option")) {
+                threadInput.style.display = "block";
+                threadInput.focus();
+            } else {
+                threadInput.style.display = "none";
+                threadInput.value = "";
+            }
+
+            document.getElementById("threadSelectedValue").textContent = option.textContent;
+        });
     }
 
 
@@ -274,8 +305,8 @@ function restoreDropdownAndInput(
                 document.querySelectorAll("#laneDropdownMenu .dropdown-option").forEach((opt) => opt.classList.remove("selected"));
                 option.classList.add("selected");
 
-                const value = option.getAttribute("data-value");
-                if (value === "custom") {
+                // Use id-based detection for custom option
+                if (option.id && option.id.endsWith('-custom-option')) {
                     const laneInput = document.getElementById("laneInput");
                     laneInput.style.display = "block";
                     laneInput.focus();
@@ -354,6 +385,7 @@ function restoreDropdownAndInput(
 
         initializeCustomDropdown('threadDropdownContainer', 'threadDropdownMenu', 'threadInput', 'threadDropdownToggle', 'threadSelectedValue', '', 'All');
         initializeCustomDropdown('laneDropdownContainer', 'laneDropdownMenu', 'laneInput', 'laneDropdownToggle', 'laneSelectedValue', '--selected-lanes', 'Selected');
+        initializeThreadDropdown();
         initializeLaneDropdown();
 
         restoreFilterValues();
@@ -395,18 +427,38 @@ function restoreDropdownAndInput(
     }
 
     function gatherFilterData() {
-        const getInputValue = (id) => document.getElementById(id).value.trim() || "";
+        const getInputValue = (id) => document.getElementById(id)?.value.trim() || "";
+        const isVisible = (el) => !!el && el.offsetParent !== null;
 
-        let threadValue = getInputValue("threadInput");
-        let laneValue = getInputValue("laneInput");
+        // === THREAD ===
+        const threadInput = document.getElementById("threadInput");
+        const threadSelectedSpan = document.getElementById("threadSelectedValue");
+        let threadValue = "";
 
-        if (!laneValue) {
-            const selectedOption = document.querySelector("#laneDropdownMenu .dropdown-option.selected");
-            laneValue = selectedOption ? selectedOption.getAttribute("data-value") : "";
+        if (isVisible(threadInput)) {
+            threadValue = threadInput.value.trim();
+        } else {
+            // Always use the visible label (span) for thread value
+        threadValue = threadSelectedSpan?.innerText?.trim() || "";
         }
 
-        // If a special lane flag is present in threadValue, move it to laneValue and reset threadValue.
-        // This ensures that the backend receives the correct filter object regardless of UI state.
+        // === LANE ===
+        const laneInput = document.getElementById("laneInput");
+        const laneSelectedSpan = document.getElementById("laneSelectedValue");
+        let laneValue = "";
+
+        if (isVisible(laneInput)) {
+            laneValue = laneInput.value.trim();
+        } else {
+            const selected = document.querySelector("#laneDropdownMenu .dropdown-option.selected");
+            if (selected && !selected.id?.endsWith("-custom-option")) {
+                laneValue = selected.getAttribute("data-value") || "--selected-lanes";
+            } else {
+                laneValue = laneSelectedSpan?.textContent?.trim() || "--selected-lanes";
+            }
+        }
+
+        // === Lane special flags moved from thread ===
         const specialFlags = ["--selected-lanes", "--all-lanes"];
         if (specialFlags.includes(threadValue)) {
             laneValue = threadValue;
@@ -446,9 +498,9 @@ function restoreDropdownAndInput(
 
     function restoreFilterValues() {
         const storedFilter = JSON.parse(localStorage.getItem("ThreadFilter")) || {};
-    
+
         document.getElementById("filterInput").value = storedFilter.filter || "";
-    
+
         restoreDropdownAndInput(
             storedFilter.threadValue,
             "",
@@ -458,7 +510,7 @@ function restoreDropdownAndInput(
             document.getElementById("threadSelectedValue"),
             document.getElementById("threadInput")
         );
-    
+
         restoreDropdownAndInput(
             storedFilter.laneValue,
             "--selected-lanes",
@@ -468,12 +520,12 @@ function restoreDropdownAndInput(
             document.getElementById("laneSelectedValue"),
             document.getElementById("laneInput")
         );
-    
+
         document.getElementById("localWorkItemInput").value = storedFilter.localWorkItemValue || "";
         document.getElementById("globalWorkItemInput").value = storedFilter.globalWorkItemValue || "";
         document.getElementById("workGroupInput").value = storedFilter.workGroupValue || "";
     }
-    
+
 
     function updateFilterIcon(active) {
         const icon = document.getElementById("filterIcon");
@@ -512,52 +564,51 @@ function restoreDropdownAndInput(
         );
     }
 
+    function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId, defaultValue, defaultLabel) {
+        const container = document.getElementById(containerId);
+        const menu = document.getElementById(menuId);
+        const input = document.getElementById(inputId);
+        const toggle = document.getElementById(toggleId);
+        const selectedValue = document.getElementById(selectedValueId);
 
-function initializeCustomDropdown(containerId, menuId, inputId, toggleId, selectedValueId, defaultValue, defaultLabel) {
-    const container = document.getElementById(containerId);
-    const menu = document.getElementById(menuId);
-    const input = document.getElementById(inputId);
-    const toggle = document.getElementById(toggleId);
-    const selectedValue = document.getElementById(selectedValueId);
+        // Toggle dropdown menu
+        toggle.addEventListener('click', () => {
+            menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+        });
 
-    // Toggle dropdown menu
-    toggle.addEventListener('click', () => {
-        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
-    });
+        // Handle dropdown option click
+        menu.addEventListener('click', (e) => {
+            const option = e.target.closest('.dropdown-option');
+            if (!option) return;
 
-    // Handle dropdown option click
-    menu.addEventListener('click', (e) => {
-        const option = e.target.closest('.dropdown-option');
-        if (!option) return;
+            // Use id-based detection for custom option
+            if (option.id && option.id.endsWith('-custom-option')) {
+                menu.style.display = 'none';
+                container.querySelector('.dropdown-selected').style.display = 'none';
+                input.style.display = 'block';
+                input.focus();
+            } else {
+                selectedValue.textContent = option.textContent;
+                menu.style.display = 'none';
+            }
+        });
 
-        const value = option.dataset.value;
-        if (value === 'custom') {
-            menu.style.display = 'none';
-            container.querySelector('.dropdown-selected').style.display = 'none';
-            input.style.display = 'block';
-            input.focus();
-        } else {
-            selectedValue.textContent = option.textContent;
-            menu.style.display = 'none';
-        }
-    });
-
-    // Handle custom input blur
-    input.addEventListener('blur', () => {
-        if (input.value.trim() !== '') {
-            selectedValue.textContent = input.value.trim();
-        } else {
-            // If input is empty, reset to default label and select default option
-            selectedValue.textContent = defaultLabel;
-            // Remove 'selected' from all options, add to default
-            menu.querySelectorAll('.dropdown-option.selected').forEach(opt => opt.classList.remove('selected'));
-            const defaultOption = menu.querySelector(`.dropdown-option[data-value="${defaultValue}"]`);
-            if (defaultOption) defaultOption.classList.add('selected');
-        }
-        input.style.display = 'none';
-        container.querySelector('.dropdown-selected').style.display = 'flex';
-    });
-}
+        // Handle custom input blur
+        input.addEventListener('blur', () => {
+            if (input.value.trim() !== '') {
+                selectedValue.textContent = input.value.trim();
+            } else {
+                // If input is empty, reset to default label and select default option
+                selectedValue.textContent = defaultLabel;
+                // Remove 'selected' from all options, add to default
+                menu.querySelectorAll('.dropdown-option.selected').forEach(opt => opt.classList.remove('selected'));
+                const defaultOption = menu.querySelector(`.dropdown-option[data-value="${defaultValue}"]`);
+                if (defaultOption) defaultOption.classList.add('selected');
+            }
+            input.style.display = 'none';
+            container.querySelector('.dropdown-selected').style.display = 'flex';
+        });
+    }
 
     let currentIndex = 0; // To keep track of the current focused element
     let matches = []; // To store matching elements
@@ -649,8 +700,6 @@ function initializeCustomDropdown(containerId, menuId, inputId, toggleId, select
             matches = Array.from(container.querySelectorAll(".highlight"));
             if (matches.length > 0) { navigateResults(); }
         }
-
-
 
         highlightTextInNode(table, keyword);
         updateSearchCounter();

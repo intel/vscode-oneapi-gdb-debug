@@ -225,8 +225,8 @@ export class SIMDViewProvider implements WebviewViewProvider {
                         <span id="threadSelectedValue">All</span>
                     </div>
                     <div class="dropdown-menu" id="threadDropdownMenu" style="display: none;">
-                        <div class="dropdown-option" data-value="all">All</div>
-                        <div class="dropdown-option" data-value="custom">Custom range...</div>
+                        <div class="dropdown-option" data-value="">All</div>
+                        <div class="dropdown-option" id="thread-custom-option">Custom range...</div>
                     </div>
                     <input type="text" id="threadInput" class="dropdown-input" placeholder="Enter custom thread range" style="display: none;" />
                 </div>
@@ -239,7 +239,7 @@ export class SIMDViewProvider implements WebviewViewProvider {
                     <div class="dropdown-menu" id="laneDropdownMenu" style="display: none;">
                         <div class="dropdown-option" data-value="--selected-lanes">Selected</div>
                         <div class="dropdown-option" data-value="--all-lanes">All Lanes</div>
-                        <div class="dropdown-option" data-value="custom">Custom lane range...</div>
+                        <div class="dropdown-option" id="lane-custom-option">Custom lane range...</div>
                     </div>
                     <input type="text" id="laneInput" class="dropdown-input" placeholder="Enter custom lane" style="display: none;" />
                 </div>

@@ -13,6 +13,23 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
     if (!filter) {
         return undefined;
     }
+    // Treat empty filter object (from gatherFilterData) as undefined
+    const isThreadAll = filter.threadValue === "All" || filter.threadValue === "";
+
+    const isEmpty =
+        (!filter.filter || filter.filter === "") &&
+        isThreadAll &&
+        (!filter.localWorkItemValue || filter.localWorkItemValue === "") &&
+        (!filter.globalWorkItemValue || filter.globalWorkItemValue === "") &&
+        (!filter.workGroupValue || filter.workGroupValue === "");
+
+    if (isThreadAll) {
+        filter.threadValue = "";
+    }
+
+    if (isEmpty) {
+        return undefined;
+    }
 
     const mainQuery = buildQuery(filter);
     const userFilter = filter.filter?.trim();
@@ -51,22 +68,10 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
 function buildQuery(filter: Filter): string {
     const threadPart = formatValue(filter.threadValue);
 
-    const hasUserFilter = !!filter.filter?.trim();
     const hasThread = !!filter.threadValue?.trim();
-    const hasCoordinates = !!(
-        filter.localWorkItemValue?.trim() ||
-        filter.globalWorkItemValue?.trim() ||
-        filter.workGroupValue?.trim()
-    );
 
-    // Detect if lane must be included even with thread (e.g., '--all-lanes' or '--selected-lanes')
-    const laneExplicit =
-        filter.laneValue?.includes("--all-lanes") ||
-        filter.laneValue?.includes("--selected-lanes");
 
-    const allowLane = laneExplicit || (!hasThread && (hasUserFilter || hasCoordinates));
-
-    const lanePart = allowLane ? formatLane(filter.laneValue, hasThread) : "";
+    const lanePart = formatLane(filter.laneValue, hasThread);
 
     let query = threadPart;
 
@@ -136,20 +141,17 @@ function formatLane(laneValue?: string, hasThread: boolean = false): string {
 
     const trimmed = laneValue.trim();
 
-    // Special case: with thread + --all-lanes → return '*'
-    if (hasThread && trimmed === "--all-lanes") {
-        return "*";
+    if (trimmed === "--all-lanes") {
+        return hasThread ? "*" : formatValue(`${trimmed} --s`);
     }
 
-    // Special case: with thread + --selected-lanes → suppress lane
-    if (hasThread && trimmed === "--selected-lanes") {
-        return "";
+    if (trimmed === "--selected-lanes") {
+        return hasThread ? "" : formatValue(`${trimmed} --s`);
     }
 
-    // Default formatting with '--s'
-    return formatValue(`${trimmed} --s`);
+    // Default: any other custom lane value
+    return formatValue(trimmed);
 }
-
 
 /**
  * Returns true if the query consists only of flags like `--all-lanes --s`
