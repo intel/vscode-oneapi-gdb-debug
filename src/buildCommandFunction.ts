@@ -67,24 +67,27 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
  */
 function buildQuery(filter: Filter): string {
     const threadPart = formatValue(filter.threadValue);
-
     const hasThread = !!filter.threadValue?.trim();
-
-
     const lanePart = formatLane(filter.laneValue, hasThread);
-
+    
+    // If no thread specified but lane exists, set thread to "*"
     let query = threadPart;
 
     if (lanePart) {
-        query += query
-            ? needsColon(lanePart, hasThread)
-                ? `:${lanePart}`
-                : ` ${lanePart}`
-            : lanePart;
+        // If lanePart has value but doesn't include special flags and there's no thread, prepend "*:"
+        if (!hasThread && lanePart.length > 0 && !lanePart.includes("--all-lanes") && !lanePart.includes("--selected-lanes")) {
+            query = "*";
+            query += `:${lanePart}`;
+        } else {
+            query += query
+                ? needsColon(lanePart, hasThread)
+                    ? `:${lanePart}`
+                    : ` ${lanePart}`
+                : lanePart;
+        }
     }
 
     const coordinates = buildCoordinateConditions(filter);
-
     const parts = [query.trim(), coordinates].filter(Boolean);
 
     if (parts.length === 1 && !coordinates) {
