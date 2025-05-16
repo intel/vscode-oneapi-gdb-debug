@@ -4,7 +4,7 @@
  */
 
 "use strict";
-import * as vscode from "vscode";
+import { ExtensionContext, DebugSession, commands, debug } from "vscode";
 import { SIMDWatchViewProvider } from "./viewProviders/SIMDWatchViewProvider";
 import { parseResultToObject } from "./viewProviders/utils";
 
@@ -13,11 +13,9 @@ export class SIMDWatchProvider {
     private _globalCurrentThread: number | undefined;
 
     constructor(
-        private context: vscode.ExtensionContext,
+        private context: ExtensionContext,
         private simdWatchViewProvider: SIMDWatchViewProvider
     ) {
-        const { commands, debug } = vscode;
-
         this._globalCurrentThread = undefined;
 
         context.subscriptions.push(
@@ -37,7 +35,7 @@ export class SIMDWatchProvider {
         await this.simdWatchViewProvider.setView(this);
     }
 
-    public fetchVars(watchRequests: WatchRequests, session: vscode.DebugSession): {
+    public fetchVars(watchRequests: WatchRequests, session: DebugSession): {
         promises: Promise<void>[];
         reqVariablesList: reqVariablesList;
     } {
@@ -45,7 +43,7 @@ export class SIMDWatchProvider {
         const promises: Promise<void>[] = [];
 
         watchRequests.requests.forEach((request, index) => {
-            promises.push((async () => {
+            promises.push((async() => {
                 const result = await this.ensureVariableCreation(session, request.expression);
 
                 if (result && result["result-class"] === "done" && result.vars) {
@@ -71,7 +69,7 @@ export class SIMDWatchProvider {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private async executeCustomRequest(session: vscode.DebugSession, expression: string): Promise<any> {
+    private async executeCustomRequest(session: DebugSession, expression: string): Promise<any> {
         try {
             const response = await session.customRequest("evaluate", {
                 expression,
@@ -85,7 +83,7 @@ export class SIMDWatchProvider {
         }
     }
 
-    public async getSIMDWidthMask(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
+    public async getSIMDWidthMask(session: DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
         const simdWidth = await this.getSIMDWidth(session);
         const width = (simdWidth.success ? simdWidth.width : 32) ?? 32;
         const bitmask = (BigInt(1) << BigInt(width)) - BigInt(1);
@@ -97,7 +95,7 @@ export class SIMDWatchProvider {
         };
     }
 
-    public async getSIMDWidth(session: vscode.DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
+    public async getSIMDWidth(session: DebugSession): Promise<SIMDExecMaskOrWidthRequest> {
         try {
             const result = await this.executeCustomRequest(session, "-exec -thread-simd-width");
             const resultObject = parseResultToObject(result);
@@ -125,7 +123,7 @@ export class SIMDWatchProvider {
         }
     }
 
-    private async createVariable(session: vscode.DebugSession, expression: string): Promise<VariableWatchRequest> {
+    private async createVariable(session: DebugSession, expression: string): Promise<VariableWatchRequest> {
         try {
             const result = await this.executeCustomRequest(session, `-exec -var-create - * ${expression}`);
 
@@ -141,16 +139,17 @@ export class SIMDWatchProvider {
         }
     }
 
-    private async deleteVariable(session: vscode.DebugSession, name: string): Promise<boolean> {
+    private async deleteVariable(session: DebugSession, name: string): Promise<boolean> {
         try {
             await this.executeCustomRequest(session, `-exec -var-delete "${name}"`);
             return true;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             return false;
         }
     }
 
-    private async ensureVariableCreation(session: vscode.DebugSession, expression: string): Promise<ResultObject | undefined> {
+    private async ensureVariableCreation(session: DebugSession, expression: string): Promise<ResultObject | undefined> {
 
         const simdWidthReq = await this.getSIMDWidthMask(session);
 
@@ -177,7 +176,7 @@ export class SIMDWatchProvider {
         return resultObject;
     }
 
-    private async fetchChildrenForVarObject(name: string, session: vscode.DebugSession): Promise<Variables | null> {
+    private async fetchChildrenForVarObject(name: string, session: DebugSession): Promise<Variables | null> {
         const miFetchChildrenResult = await this.executeCustomRequest(session, `-exec -var-list-children --no-values "${name}" 0 1000`);
         const resultObject = parseResultToObject(miFetchChildrenResult);
 
@@ -190,7 +189,7 @@ export class SIMDWatchProvider {
         return childrenArray;
     }
 
-    private async getNextChild(var0name: string, session: vscode.DebugSession): Promise<Variables | null> {
+    private async getNextChild(var0name: string, session: DebugSession): Promise<Variables | null> {
         const childrenArray = await this.fetchChildrenForVarObject(var0name, session);
 
         if (childrenArray === null) {
@@ -208,7 +207,7 @@ export class SIMDWatchProvider {
             if (child.type === "") {
                 // Push a promise to the array
                 promises.push(
-                    (async () => {
+                    (async() => {
                         const childVars = await this.getNextChild(child.name, session);
 
                         if (childVars && childVars.vars.length > 0) {
@@ -227,7 +226,7 @@ export class SIMDWatchProvider {
     }
 
 
-    public async getInfoExp(var0name: string, session: vscode.DebugSession):
+    public async getInfoExp(var0name: string, session: DebugSession):
         Promise<{
             promises: Promise<void>[];
             resultVariables: Variables;
@@ -246,7 +245,7 @@ export class SIMDWatchProvider {
         }
 
         nextlevelChildren.vars.forEach((child, index) => {
-            promises.push((async () => {
+            promises.push((async() => {
                 child.pathExp = await this.getInfoPath(child.name, session);
                 resultVariables.vars[index] = child;
             })());
@@ -259,7 +258,7 @@ export class SIMDWatchProvider {
     }
 
 
-    private async getInfoPath(name: string, session: vscode.DebugSession): Promise<string | undefined> {
+    private async getInfoPath(name: string, session: DebugSession): Promise<string | undefined> {
         const miFetchChildrenResult = await this.executeCustomRequest(session, `-exec -var-info-path-expression "${name}"`);
 
         const resultObject = parseResultToObject(miFetchChildrenResult);
@@ -335,7 +334,7 @@ export class SIMDWatchProvider {
         return { uniqueId: name, vars: variables, expression: variables[0].exp };
     }
 
-    private async parseVariables(varsString: string, uniqueId: string, session: vscode.DebugSession): Promise<Variables> {
+    private async parseVariables(varsString: string, uniqueId: string, session: DebugSession): Promise<Variables> {
         let expression: string = "";
         /* 
         Trsnform string like:

@@ -4,7 +4,21 @@
  */
 
 "use strict";
-import * as vscode from "vscode";
+import { 
+    debug,
+    window,
+    commands,
+    ExtensionContext,
+    BreakpointsChangeEvent,
+    SourceBreakpoint,
+    Breakpoint,
+    Location,
+    Position,
+    DebugSession,
+    ProviderResult,
+    DebugAdapterTracker,
+    DebugAdapterTrackerFactory
+} from "vscode";
 import { parse } from "path";
 import { buildFilterCommand } from "./buildCommandFunction";
 
@@ -34,7 +48,7 @@ export interface CurrentThread {
 }
 
 export async function getThread(threadId: number, laneNum?: number): Promise<CurrentThread | undefined> {
-    const session = vscode.debug.activeDebugSession;
+    const session = debug.activeDebugSession;
 
     if (session) {
         await session.customRequest("threads");
@@ -163,48 +177,48 @@ export class SimdProvider {
     }
 
     constructor(
-        private context: vscode.ExtensionContext,
+        private context: ExtensionContext,
         private simdViewProvider: SIMDViewProvider,
         private deviceViewProvider: DeviceViewProvider,
         private simdWatchProvider: SIMDWatchProvider,
     ) {
 
-        context.subscriptions.push(vscode.debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this, simdWatchProvider)));
+        context.subscriptions.push(debug.registerDebugAdapterTrackerFactory("cppdbg", new SimdDebugAdapterProviderFactory(this, simdWatchProvider)));
 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
+        context.subscriptions.push(commands.registerCommand("intelOneAPI.debug.fetchSIMDInfo", async() => {
             this.fetchEMaskForAll(this._globalCurrentThread);
             this.fetchDevicesForAll();
             return;
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerSearch", async() => {
+        context.subscriptions.push(commands.registerCommand("intelOneAPI.debug.triggerSearch", async() => {
             this.simdViewProvider.triggerSearch();
             return;
         }));
 
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerFilterOn", async() => {
+        context.subscriptions.push(commands.registerCommand("intelOneAPI.debug.triggerFilterOn", async() => {
             this.simdViewProvider.triggerFilter();
             return;
         }));
-        context.subscriptions.push(vscode.commands.registerCommand("intelOneAPI.debug.triggerFilterOff", async() => {
+        context.subscriptions.push(commands.registerCommand("intelOneAPI.debug.triggerFilterOff", async() => {
             this.simdViewProvider.triggerFilter();
             return;
         }));
 
         //We need to test if multi debug sessions get affected by this, we might need to initialize multiple instances of this object :/
-        context.subscriptions.push(vscode.debug.onDidTerminateDebugSession(session => {
+        context.subscriptions.push(debug.onDidTerminateDebugSession(session => {
             console.log("Debug Session " + session.id + " terminated");
-            vscode.commands.executeCommand("setContext", "schedulerLockingReady", false);
-            vscode.commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
-            vscode.commands.executeCommand("setContext", "oneapi:filterActive", false);
-            vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", false);
-            vscode.commands.executeCommand("setContext", "oneapi:haveDevice", false);
-            vscode.commands.executeCommand("setContext", "oneapi:haveSelected", false);
+            commands.executeCommand("setContext", "schedulerLockingReady", false);
+            commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
+            commands.executeCommand("setContext", "oneapi:filterActive", false);
+            commands.executeCommand("setContext", "oneapi:haveSIMD", false);
+            commands.executeCommand("setContext", "oneapi:haveDevice", false);
+            commands.executeCommand("setContext", "oneapi:haveSelected", false);
             simdWatchProvider.fetchSimdWatchPanel(this._globalCurrentThread);
 
         }));
 
-        context.subscriptions.push(vscode.debug.onDidChangeBreakpoints(e => {
+        context.subscriptions.push(debug.onDidChangeBreakpoints(e => {
             this.simdBreakpointsHandler(e);
         }));
     }
@@ -232,27 +246,27 @@ export class SimdProvider {
         if(!query && this.filter) {
             this.context.globalState.update("ThreadFilter", undefined);
         }
-        await vscode.commands.executeCommand("setContext", "oneapi:haveSIMD", true);
+        await commands.executeCommand("setContext", "oneapi:haveSIMD", true);
         this.simdViewProvider.waitForViewToBecomeVisible(() => {
             this.simdViewProvider.setLoadingView();
         });
-        await vscode.window.withProgress(
+        await window.withProgress(
             { location: { viewId: "intelOneAPI.debug.simdview" } },
-            () => vscode.window.withProgress(
+            () => window.withProgress(
                 { location: { viewId: "intelOneAPI.debug.threadInfo" } },
-                async() => vscode.window.withProgress(
+                async() => window.withProgress(
                     { location: { viewId: "intelOneAPI.debug.selectedLane" } },
                     async() => {
                         try {
-                            const session = vscode.debug.activeDebugSession;
+                            const session = debug.activeDebugSession;
 
                             if (!session) {
                                 return;
                             }
                             if (query) {
-                                vscode.commands.executeCommand("setContext", "oneapi:filterActive", true);
+                                commands.executeCommand("setContext", "oneapi:filterActive", true);
                             } else {
-                                vscode.commands.executeCommand("setContext", "oneapi:filterActive", false);
+                                commands.executeCommand("setContext", "oneapi:filterActive", false);
                             }
                             // If query exists, we use it, otherwise default
                             const filter = query ? query : `-exec -thread-info ${!this._showActiveThreadsOnly ? "" : "--stopped"}`;
@@ -344,15 +358,15 @@ export class SimdProvider {
     }
 
     public async fetchDevicesForAll(): Promise<void> {
-        await vscode.commands.executeCommand("setContext", "oneapi:haveDevice", true);
+        await commands.executeCommand("setContext", "oneapi:haveDevice", true);
         this.deviceViewProvider.waitForViewToBecomeVisible(() => {
             this.deviceViewProvider.setLoadingView();
         });
-        await vscode.window.withProgress(
+        await window.withProgress(
             { location: { viewId: "intelOneAPI.debug.deviceView" } },
             async() => {
                 try {
-                    const session = vscode.debug.activeDebugSession;
+                    const session = debug.activeDebugSession;
 
                     if (session) {
                         await session.customRequest("threads");
@@ -461,11 +475,11 @@ export class SimdProvider {
         return undefined;
     }
 
-    public async simdBreakpointsHandler(bpEventList: vscode.BreakpointsChangeEvent): Promise<void> {
+    public async simdBreakpointsHandler(bpEventList: BreakpointsChangeEvent): Promise<void> {
         if (bpEventList.added.length !== 0) {
             bpEventList.added.forEach(async bpEvent => {
                 if (bpEvent.condition?.startsWith("-break-insert")) {
-                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint);
+                    await this.createOrChangeBreakPoint(bpEvent as SourceBreakpoint);
                 }
                 return;
             });
@@ -474,7 +488,7 @@ export class SimdProvider {
         if (bpEventList.changed.length !== 0) {
             bpEventList.changed.forEach(async bpEvent => {
                 if (bpEvent.condition?.startsWith("-break-insert")) {
-                    await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint, true);
+                    await this.createOrChangeBreakPoint(bpEvent as SourceBreakpoint, true);
                 }
             });
         }
@@ -484,15 +498,15 @@ export class SimdProvider {
                 if (bpEvent.condition?.startsWith("-break-insert")) {
                     const session = await this.checkGbdOneapiSession();
 
-                    this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session ? session : undefined);
+                    this.removeSimdBreakPoint(bpEvent as SourceBreakpoint, session ? session : undefined);
                 }
             });
         }
     }
 
-    public async checkGbdOneapiSession(): Promise<vscode.DebugSession | undefined> {
+    public async checkGbdOneapiSession(): Promise<DebugSession | undefined> {
 
-        const session = vscode.debug.activeDebugSession;
+        const session = debug.activeDebugSession;
 
         if (!session) {
             return undefined;
@@ -506,16 +520,16 @@ export class SimdProvider {
         return session;
     }
 
-    public addSimdBreakPoints(bp: vscode.SourceBreakpoint): void {
+    public addSimdBreakPoints(bp: SourceBreakpoint): void {
 
-        const bps: vscode.Breakpoint[] = [];
+        const bps: Breakpoint[] = [];
 
         bps.push(bp);
-        vscode.debug.addBreakpoints(bps);
+        debug.addBreakpoints(bps);
         return;
     }
 
-    public async removeSimdBreakPoint(rbp: vscode.SourceBreakpoint, session?: vscode.DebugSession): Promise<void> {
+    public async removeSimdBreakPoint(rbp: SourceBreakpoint, session?: DebugSession): Promise<void> {
 
         if (session) {
             const fileAndLine = this.bpToSourceAndLine(rbp, true);
@@ -532,16 +546,16 @@ export class SimdProvider {
 
     public async findAndAddSimdBreakPoints(): Promise<void> {
 
-        vscode.debug.breakpoints.forEach(async bpEvent => {
+        debug.breakpoints.forEach(async bpEvent => {
             if (bpEvent.condition?.startsWith("-break-insert")) {
-                await this.createOrChangeBreakPoint(bpEvent as vscode.SourceBreakpoint, true);
+                await this.createOrChangeBreakPoint(bpEvent as SourceBreakpoint, true);
             }
         });
 
         return;
     }
 
-    public bpToSourceAndLine(bp: vscode.SourceBreakpoint, isNoZeroBased?: boolean): string {
+    public bpToSourceAndLine(bp: SourceBreakpoint, isNoZeroBased?: boolean): string {
 
         const filename = parse(bp.location.uri.path).base;
         let line = bp.location.range.start.line;
@@ -555,7 +569,7 @@ export class SimdProvider {
         return cond;
     }
 
-    public async createOrChangeBreakPoint(bpEvent: vscode.SourceBreakpoint, isChange?: boolean): Promise<void> {
+    public async createOrChangeBreakPoint(bpEvent: SourceBreakpoint, isChange?: boolean): Promise<void> {
 
         const session = await this.checkGbdOneapiSession();
 
@@ -564,23 +578,23 @@ export class SimdProvider {
         }
 
         if (isChange) {
-            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint, session);
+            await this.removeSimdBreakPoint(bpEvent as SourceBreakpoint, session);
         }
 
-        const bps = bpEvent as vscode.SourceBreakpoint;
+        const bps = bpEvent as SourceBreakpoint;
         const fileAndLine = this.bpToSourceAndLine(bps, true);
         const cond = "-exec " + bpEvent.condition + " " + fileAndLine;
         const evalResult = await session.customRequest("evaluate", { expression: cond, context: "repl" });
 
         if (evalResult.result === "void") {
-            await this.removeSimdBreakPoint(bpEvent as vscode.SourceBreakpoint);
+            await this.removeSimdBreakPoint(bpEvent as SourceBreakpoint);
             return;
         }
     }
 
     public async addSimdBreakPointsFromEditor(): Promise<void> {
 
-        const editor = vscode.window.activeTextEditor;
+        const editor = window.activeTextEditor;
 
         if (editor) {
             const document = editor.document;
@@ -589,7 +603,7 @@ export class SimdProvider {
                 placeHolder: "Please specify <Thread ID>:<SIMD Lane> (Example: 2:3):"
             };
 
-            const rawCondition = await vscode.window.showInputBox(inputBoxText);
+            const rawCondition = await window.showInputBox(inputBoxText);
 
             if (!rawCondition) {
                 return;
@@ -598,12 +612,12 @@ export class SimdProvider {
             const regex = /^\d+:(\d+(-\d+)?(,\d+(-\d+)?)*|\d+(,\d+(-\d+)?)+)$/;
 
             if (!regex.test(rawCondition)) {
-                vscode.window.showErrorMessage("Invalid input format. Please use the '<Thread ID>:<SIMD Lane>' format, where lane can be specified as a range (e.g., 1-5), comma-separated values (e.g., 2,3,4,7) or combination.");
+                window.showErrorMessage("Invalid input format. Please use the '<Thread ID>:<SIMD Lane>' format, where lane can be specified as a range (e.g., 1-5), comma-separated values (e.g., 2,3,4,7) or combination.");
                 return;
             }
 
             const condition = "-p " + rawCondition.split(":")[0] + " -l " + rawCondition.split(":")[1];
-            const bp = new vscode.SourceBreakpoint(new vscode.Location(document.uri, new vscode.Position(selections[0].start.line, 0)), true, "-break-insert " + condition);
+            const bp = new SourceBreakpoint(new Location(document.uri, new Position(selections[0].start.line, 0)), true, "-break-insert " + condition);
 
             if (bp) {
                 this.addSimdBreakPoints(bp);
@@ -917,14 +931,14 @@ class SimdDebugAdapterProviderFactory implements vscode.DebugAdapterTrackerFacto
         private readonly simdWatchProvider: SIMDWatchProvider
     ) { }
 
-    public createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+    public createDebugAdapterTracker(session: DebugSession): ProviderResult<DebugAdapterTracker> {
         console.log("starting session" + session.id + session.type);
         return new SimdDebugAdapterProvider(this.simdtracker, this.simdWatchProvider);
     }
 
 }
 
-class SimdDebugAdapterProvider implements vscode.DebugAdapterTracker {
+class SimdDebugAdapterProvider implements DebugAdapterTracker {
 
     constructor(
         private readonly simdtracker: SimdProvider,
