@@ -66,7 +66,7 @@ export function buildFilterCommand(filter?: Filter): string | undefined {
  * If only thread exists (no coordinates), marks this with a `__NO_COORD__` tag.
  */
 function buildQuery(filter: Filter): string {
-    const threadPart = formatValue(filter.threadValue);
+    const threadPart = formatThreadValue(filter.threadValue);
     const hasThread = !!filter.threadValue?.trim();
     const lanePart = formatLane(filter.laneValue, hasThread);
     
@@ -118,24 +118,34 @@ function needsColon(lanePart: string, hasThread: boolean): boolean {
 
 /**
  * Formats comma-separated thread values.
+ * If value is '*', returns as is.
+ * Otherwise trims, normalizes, and wraps in square brackets.
  */
-function formatValue(value?: string): string {
+function formatThreadValue(value?: string): string {
     if (!value) {
         return "";
     }
-    return value === "*"
-        ? "*"
-        : value
-            .split(",")
-            .map((v) => v.trim())
-            .join(" ");
+
+    const trimmed = value.trim();
+
+    if (trimmed === "*") {
+        return "*";
+    }
+
+    const normalized = trimmed
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0)
+        .join(" ");
+
+    return `[${normalized}]`;
 }
 
 /**
  * Formats the lane part.
  * If thread is present and '--all-lanes' is used, returns '*'.
  * If thread is present and '--selected-lanes' is used, suppresses lane.
- * Otherwise returns laneValue with '--s'.
+ * Otherwise returns normalized laneValue.
  */
 function formatLane(laneValue?: string, hasThread: boolean = false): string {
     if (!laneValue) {
@@ -145,15 +155,39 @@ function formatLane(laneValue?: string, hasThread: boolean = false): string {
     const trimmed = laneValue.trim();
 
     if (trimmed === "--all-lanes") {
-        return hasThread ? "*" : formatValue(`${trimmed} --s`);
+        return hasThread ? "*" : normalizedValue(trimmed);
     }
 
     if (trimmed === "--selected-lanes") {
-        return hasThread ? "" : formatValue(`${trimmed} --s`);
+        return hasThread ? "" : normalizedValue(trimmed);
     }
 
-    // Default: any other custom lane value
-    return formatValue(trimmed);
+    return normalizedValue(trimmed);
+}
+
+/**
+ * Normalizes a lane value:
+ * - If '*', returns as is.
+ * - If '--all-lanes' or '--selected-lanes', appends '--s' (no brackets).
+ * - Otherwise, trims, splits, joins with space, and wraps in [ ].
+ */
+function normalizedValue(value: string): string {
+    const trimmed = value.trim();
+
+    if (trimmed === "*") {
+        return "*";
+    }
+
+    if (trimmed === "--all-lanes" || trimmed === "--selected-lanes") {
+        return `${trimmed} --s`;
+    }
+
+    const parts = trimmed
+        .split(/[,\s]+/)
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+
+    return `[${parts.join(" ")}]`;
 }
 
 /**
