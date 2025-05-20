@@ -62,15 +62,45 @@ In the settings, there's an option to enable or disable the display of inactive 
 
 ![Show incative](/media/show_inactive.png)
 
-## SIMD View
-In the debug view, this extension provides SIMD View, which displays the SIMD lane state of an Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
+## oneAPI GPU Threads View
+In the debug view, this extension provides oneAPI GPU Threads View, which displays the SIMD lane state of an Intel GPU thread. The view will automatically populate when hitting a GPU thread breakpoint.
 
-### oneAPI GPU Threads
 The specific values corresponding to the status of the SIMD lanes in your current color scheme can be found in the SIMD Lanes tooltip. Dark blue represents active lanes that are stopped at a breakpoint, light blue indicates active lanes that do not meet breakpoint conditions, and grey indicates inactive lanes.
 
 ![View of SIMD view in VSCode debug session](/media/simd.gif)
 
-### SIMD lane specific breakpoints
+### Search
+
+Click the **search icon** to open a quick filter box.
+
+![Search Mode](/media/search.png)
+
+- Filter by text in any visible field (e.g., thread ID, location).
+- Use arrows to navigate between matches.
+- Toggle visibility of non-matching rows.
+
+Search affects only the view and does not communicate with the debugger.
+
+### Thread Filtering
+
+Click the **filter icon** to activate advanced filtering.
+
+![Thread Filtering](/media/filter.png)
+
+You can:
+- Select thread IDs and SIMD lanes.
+- Filter by Work-group, Global/Local IDs.
+- Use you own expressions.
+
+Filtering uses the GDB `-thread-filter` command and can take time on large workloads.
+For full syntax and usage, click the **help icon** in the panel to open the documentation.
+
+### Choose SIMD Lane
+You can choose a new SIMD lane by clicking on it. Choosing a new SIMD lane will show updated information in the SELECTED LANE tab, and extended thread information can be found using the debug console (command `-exec -thread-info`).
+
+![Lane info](/media/lane.gif)
+
+## SIMD lane specific breakpoints
 Note that SIMD lane specific breakpoints are saved between sessions, but will be applied only after hitting a regular breakpoint inside the kernel.
 
 There are several ways to set a SIMD lane specific breakpoint:
@@ -122,11 +152,10 @@ You can see additional properties in separate tabs while debugging:
 * Active Lanes mask - the hex mask of the SIMD lanes which were hit by the breakpoint;
 * SIMD Width - the number of working items processed in kernel by a GPU thread.
 
-### Hardware info
+## Hardware info
 You can see your device's info in a separate tab while debugging.
 
 ![Hardware info](/media/hwinfo.png)
-
 
 ## Scheduler-locking
 Buttons in the debug toolbar provide quick access to turning scheduler-locking on or off for **step** and **continue** flags. Scheduler-locking controls how GDB handles other threads during debugging.
@@ -138,7 +167,6 @@ Buttons in the debug toolbar provide quick access to turning scheduler-locking o
 The overall status of scheduler-locking is displayed in the status bar.
 
 ![Scheduler-locking info](/media/scheduler.png)
-
 
 ## SIMD Variable Watch
 The SIMD Variable Watch functions like the classic Watch panel but displays values for all lanes, making it convenient to compare values without the need for switching between lanes.
@@ -226,7 +254,6 @@ To display the differences between these two distributions of GDB:
 3. Choose `Intel oneAPI: List gdb-oneapi debugger unique commands (help)`.
 4. A new window will open with a list of the differences and links to documentation.
 5. For quick access to GDB-oneAPI Online Documentation, see `Intel oneAPI: Open gdb-oneapi debugger online documentation (help)`.
-
 
 Note that the debug session is started by running a command from this terminal. If characters remain in the terminal, this will make the command incorrect and cause the debugging session to hang.
 
