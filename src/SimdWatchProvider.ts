@@ -36,8 +36,8 @@ export class SIMDWatchProvider {
     }
 
     public fetchVars(watchRequests: WatchRequests, session: DebugSession): {
-        promises: Promise<void>[];
-        reqVariablesList: reqVariablesList;
+    promises: Promise<void>[];
+    reqVariablesList: reqVariablesList;
     } {
         const reqVariablesList: reqVariablesList = { vars: [] };
         const promises: Promise<void>[] = [];
@@ -48,6 +48,20 @@ export class SIMDWatchProvider {
 
                 if (result && result["result-class"] === "done" && result.vars) {
                     const variables = await this.parseVariables(result.vars, request.uniqueId, session);
+
+                    // / Manually fetch value if it's hidden by a pretty printer
+                    if (variables.vars.some(v => v.numchild === 0 && v.hasMore === 1)) {
+                        await Promise.all(
+                            variables.vars.map(async(v) => {
+                                const simpleChild = await this.getSimpleChildValue(v.name, session);
+
+                                if (simpleChild) {
+                                    v.value = simpleChild.value;
+                                    v.type = simpleChild.type;
+                                }
+                            })
+                        );
+                    }
 
                     reqVariablesList.vars[index] = variables;
                 } else {
@@ -225,6 +239,25 @@ export class SIMDWatchProvider {
         return childrenArray;
     }
 
+    private async getSimpleChildValue(name: string, session: DebugSession): Promise<{ value: string; type: string } | null> {
+        const resultRaw = await this.executeCustomRequest(session, `-exec -var-list-children --simple-values "${name}" 0 1000`);
+        const resultObject = parseResultToObject(resultRaw);
+
+        if (!resultObject["children"]) {
+            return null;
+        }
+
+        const match = /value=([^,]+),type=([^,}]+)/.exec(resultObject["children"]);
+
+        if (!match) {
+            return null;
+        }
+
+        return {
+            value: match[1].replace(/^"|"$/g, ""),
+            type: match[2]
+        };
+    }
 
     public async getInfoExp(var0name: string, session: DebugSession):
         Promise<{
@@ -327,7 +360,7 @@ export class SIMDWatchProvider {
                 type: child.type,
                 threadId: parseInt(child["thread-id"], 10),
                 lane: child.lane ? parseInt(child.lane, 10) : parseInt(child.name.split("-").pop()!, 10), // Handle missing lane
-                hasMore: child.has_more
+                hasMore: parseInt((child.has_more || "").replace(/[^\d]/g, ""), 10)
             };
         });
 
@@ -372,7 +405,7 @@ export class SIMDWatchProvider {
             type: variable.type,
             threadId: parseInt(variable["thread-id"], 10),
             lane: variable.lane ? parseInt(variable.lane, 10) : parseInt(variable.name.split("-").pop()!, 10),
-            hasMore: variable.has_more
+            hasMore:  parseInt((variable.has_more || "").replace(/[^\d]/g, ""),10)
         }));
 
         return { uniqueId, vars, expression };
@@ -415,7 +448,7 @@ export interface Variable {
     type: string;
     threadId: number;
     lane: number;
-    hasMore: string;
+    hasMore: number;
 }
 
 export interface Variables {
