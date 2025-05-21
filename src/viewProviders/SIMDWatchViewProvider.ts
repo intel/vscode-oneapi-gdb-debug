@@ -421,7 +421,7 @@ export class SIMDWatchViewProvider implements WebviewViewProvider {
     }
     
     /* Generate rows for expanded elements. */
-    private async makeVarListHtml(nextLevel: Variables, fetchedVars: { promises: Promise<void>[], reqVariablesList: reqVariablesList}, 
+    private async makeVarListHtml(nextLevel: Variables, fetchedVars: { promises: Promise<void>[]; reqVariablesList: reqVariablesList}, 
         level: number, simdWidth: number) {
         const rows: string[] = [];
 
