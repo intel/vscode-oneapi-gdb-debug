@@ -32,5 +32,12 @@ export const DEVICES: HwInfo[] = [
         "Vendor ID": "0x8086",
         "Target ID": "0x56a5",
         SimdWidth: 8
+    },
+    {
+        Name: "Intel(R) Arc(TM) B580 Graphics",
+        Cores: 160,
+        "Vendor ID": "0x8086",
+        "Target ID": "0xe20b",
+        SimdWidth: 16
     }
 ];

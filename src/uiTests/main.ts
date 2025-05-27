@@ -53,11 +53,12 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
             await ChangeLocalVsCodeSettings(key, value);
         }
         if (!firstRun) {
-            await ConnectToRemote(testOptions);
+            await ConnectToRemote(testOptions, this.defaultTimeout);
             await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
         }
 
         let fileInput = await SetInputText("> File: Open Folder...");
+
         await Wait(2000);
         fileInput =  await SetInputText(TEST_DIR as string, { input: fileInput });
         await Wait(2000);
@@ -67,7 +68,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
                 await Wait(2000);
             }
         } catch {}
-
+        await WaitForInputBox(this.defaultTimeout);
         await SetInputText(testOptions.remotePass, { input: new InputBox() });
         await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
         try {
@@ -84,7 +85,7 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         this.defaultTimeout = 3 * 60 * 1000;
         if (testOptions.remoteTests) {
             await RmAsync(`/home/${testOptions.remoteUser}/.vscode-server/`, MapTestOptions(testOptions));
-            await ConnectToRemote(testOptions);
+            await ConnectToRemote(testOptions, this.defaultTimeout);
             await WaitForConnection(testOptions.remoteHost, this.defaultTimeout);
             await InstallAllLocalExtensionsOnRemote(testOptions, this.defaultTimeout);
         } else {
@@ -102,6 +103,16 @@ describe("'GDB with GPU Debug Support for Intel® oneAPI Toolkits' extension tes
         (await testOptions.ssh).dispose();
     });
 });
+
+async function WaitForInputBox(timeout: number) {
+    await Retry(async() => {
+        const input = await new InputBox().isDisplayed();
+
+        if (input) { return; }
+        await Wait(5 * 1000);
+        throw new Error();
+    }, timeout, true);
+}
 
 async function InstallAllLocalExtensionsOnRemote(options: RemoteTestOptions, timeout: number) {
     await SetInputText(`> Remote: Install Local Extensions in 'SSH: ${options.remoteHost}'...`);
@@ -124,12 +135,12 @@ async function InstallAllLocalExtensionsOnRemote(options: RemoteTestOptions, tim
     }, timeout);
 }
 
-async function ConnectToRemote(options: RemoteTestOptions) {
+async function ConnectToRemote(options: RemoteTestOptions, timeout: number) {
     const input = await SetInputText("> Remote-SSH: Connect Current Window to Host...");
 
     await Wait(2000);
     await SetInputText(`${options.remoteUser}@${options.remoteHost}`, { input: input });
-    await Wait(3000);
+    await WaitForInputBox(timeout);
     await SetInputText(options.remotePass, { input: new InputBox() });
 }
 

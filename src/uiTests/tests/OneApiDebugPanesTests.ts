@@ -11,10 +11,11 @@ import { ConditionalBreakpointType, ConditionalBreakpoint } from "../utils/Debug
 import { OneApiDebugPane, OneApiDebugPaneFrameTitle, TestOptions } from "../utils/Types";
 import { SimdLane, Thread } from "../utils/OneApiGpuThreads/Types";
 import { LoggerAggregator as logger } from "../utils/Logger";
-import { By, WebElement } from "vscode-extension-tester";
-import { DEFAULT_BREAKPOINT, DEVICES } from "../utils/Consts";
+import { By, Key, WebElement, Workbench } from "vscode-extension-tester";
+import { DEFAULT_BREAKPOINT, DEVICES, TEST_DIR } from "../utils/Consts";
 import { assert } from "chai";
 import { HwInfo } from "../utils/HardwareInfo/Types";
+import { ReadFileAsync } from "../utils/FileSystem";
 
 type LaneContainingPane = `${OneApiDebugPane.SelectedLane}` | `${OneApiDebugPane.OneApiGpuThreads}` | "DebugConsole";
 type ThreadProperty = "Id" | "Location";
@@ -55,10 +56,61 @@ export default function(options: TestOptions) {
                 await SimdLaneConditionalBreakpointTest(simdTestSuite, options);
             });
         }
+        it("SIMD variable watch check", async function() {
+            this.timeout(10 * this.test?.ctx?.defaultTimeout);
+            await CheckSimdVariableWatchTest(options);
+        });
     });
 }
 
 //#region Tests
+
+async function CheckSimdVariableWatchTest(options: TestOptions): Promise<void> {
+    try {
+        await LaunchSequence(MapTestOptions(options));
+        await Wait(3 * 1000);
+        const range = (start: number, end: number) => Array.from({ length: (end - start) }, (v, k) => k + start);
+        const currentDevice = await GetCurrentDevice();
+        const dataCount = await GetKernelDataCount(options);
+        const expectedThreadCount = Math.ceil(dataCount / currentDevice?.SimdWidth);
+        const valuesRange = range(0, dataCount);
+        const simdVariableName = "id0";
+        let possibleValues = valuesRange
+            .map((_, i) => i)
+            .filter(i => i % currentDevice?.SimdWidth === 0)
+            .map(i => valuesRange.slice(i, i + currentDevice?.SimdWidth).map(x => x.toString()));
+
+        await AddSimdWatchVariable(simdVariableName);
+        let currentIteration = 1;
+
+        while (currentIteration <= expectedThreadCount) {
+            await CheckIfBreakpointHasBeenHit(DEFAULT_BREAKPOINT);
+            const selectedLaneViewContent = await Retry(async() => {
+                const temp = await GetDebugPaneContent(OneApiDebugPane.SimdVariableWatch);
+
+                if (temp.length <= 0) {throw new Error();}
+                return temp;
+            }, 10 * 1000) as string[];
+
+            const actualVariables = selectedLaneViewContent.slice(1).map(x => x.split(" ")).map(x => ({ name: x[0], values: x.slice(1) }))
+                .find(x => x.name === `${simdVariableName}:`)?.values;
+
+            assert.deepInclude(possibleValues, actualVariables, `SIMD watch doesn't contain expected values.\nExpected: '${possibleValues}'\nActual: '${actualVariables}'`);
+            possibleValues = possibleValues.filter(x => JSON.stringify(x) !== JSON.stringify(actualVariables));
+            logger.Pass(`SIMD watch contains expected values. Actual: ${actualVariables}`);
+            await ContinueDebugging();
+            currentIteration++;
+        }
+        await Wait(5000);
+        const appHasExited = (await GetDebugConsoleOutput()).filter(x => x.includes("has exited with code")).length > 0;
+
+        logger.Info("Check if app has exited.");
+        assert.isTrue(appHasExited, `App didn't exit as expected! Actual '${appHasExited}' | Expected: 'true'`);
+    } catch (e) {
+        logger.Error(e);
+        throw e;
+    }
+}
 
 async function RefreshSimdDataTest(options: TestOptions): Promise<void> {
     logger.Info("Refresh SIMD data");
@@ -75,11 +127,13 @@ async function RefreshSimdDataTest(options: TestOptions): Promise<void> {
         const currentgpuThread = gpuThreads.find(x => x.simdLanes.find(y => y.current))?.threadId;
         const hwInfoViewContent = await Retry(async() => {
             const temp = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
+
             if (!temp) throw new Error();
             return temp;
         }, 10 * 1000) as string[];
         const selectedLaneViewContent = await Retry(async() => {
             const temp = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+
             if (!temp) throw new Error();
             return temp;
         }, 10 * 1000) as string[];
@@ -211,7 +265,8 @@ async function GetDebugPaneContent(paneToFind: OneApiDebugPane): Promise<string[
     const selectors: { [Prop in OneApiDebugPane]: { selector: By; frameTitle: OneApiDebugPaneFrameTitle }} = {
         "oneAPI GPU Threads Section": { selector: By.id("simd-view"), frameTitle: "oneAPI GPU Threads" },
         "Hardware Info Section": { selector: By.css("body"), frameTitle: "Hardware Info" },
-        "Selected Lane Section": { selector: By.css("tbody"), frameTitle: "Selected Lane" }
+        "Selected Lane Section": { selector: By.css("tbody"), frameTitle: "Selected Lane" },
+        "SIMD Variable Watch Section": { selector: By.css("#simd-watch"), frameTitle: "SIMD Variable Watch" },
     };
     const pane = await GetDebugPane(paneToFind) as WebElement;
     const expanded = (await pane.getAttribute("aria-expanded")) === "true";
@@ -245,6 +300,7 @@ async function RefreshGpuThreadsView(): Promise<void> {
 async function CheckIfHwInfoViewContainsExpectedInfo() {
     const hwInfoViewContent = await Retry(async() => {
         const temp = await GetDebugPaneContent(OneApiDebugPane.HardwareInfo);
+
         if (temp.length <= 0) {throw new Error();}
         return temp;
     }, 10 * 1000) as string[];
@@ -314,6 +370,7 @@ async function CheckIfSelectedLaneViewContainsExpectedInfo(expectedLaneID: numbe
     const checkIfSelectedLaneViewContainsExpectedLane = async(expectedLaneId: number): Promise<void> => {
         const selectedLaneViewContent = await Retry(async() => {
             const temp = await GetDebugPaneContent(OneApiDebugPane.SelectedLane);
+
             if (temp.length <= 0) {throw new Error();}
             return temp;
         }, 10 * 1000) as string[];
@@ -391,4 +448,35 @@ async function GetCallStackInfo(): Promise<string> {
     }
 
     return bpinfo;
+}
+
+async function GetCurrentDevice(): Promise<HwInfo> {
+    const terminalOutput = (await GetTerminalOutput("cppdbg: array-transform"))?.split("\n").find(x => x);
+    const deviceName = GetStringBetweenStrings(terminalOutput as string, "device: [", "] from");
+    const currentDevice = DEVICES.find(d => d.Name === deviceName) as HwInfo;
+
+    return currentDevice;
+}
+
+async function GetKernelDataCount(options: TestOptions): Promise<number> {
+    const path = `${TEST_DIR}/src/array-transform.cpp`;
+    const file = await ReadFileAsync(path, "utf-8", MapTestOptions(options));
+    const line = file.split("\n").find(l => l.includes("constexpr size_t length"));
+    const simdLanesNumber = Number(line?.split("=")[1].trim().slice(0, -1));
+
+    return simdLanesNumber;
+}
+
+async function AddSimdWatchVariable(variableName: string): Promise<void> {
+    const pane = await GetDebugPane(OneApiDebugPane.SimdVariableWatch) as WebElement;
+    const expanded = (await pane.getAttribute("aria-expanded")) === "true";
+
+    if (!expanded) { await pane.click(); }
+    const driver = new Workbench().getDriver();
+    const addSimdWatchButton = await driver.findElement(By.css("[aria-label*=\"Intel oneAPI: Add SIMD Watch\"]"));
+
+    await addSimdWatchButton.click();
+    await ExecuteInOneApiDebugPaneFrame(async(driver) => {
+        await (await driver.findElement(By.className("expression-input"))).sendKeys(variableName, Key.ENTER);
+    }, "SIMD Variable Watch");
 }
