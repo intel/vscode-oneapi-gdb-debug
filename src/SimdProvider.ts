@@ -263,6 +263,11 @@ export class SimdProvider {
                             if (!session) {
                                 return;
                             }
+
+                            //Activate the scheduler locking
+                            commands.executeCommand("intelOneAPI.schedulerLockingStatusBarRefresh");
+                            commands.executeCommand("setContext", "schedulerLockingReady", true);
+
                             if (query) {
                                 commands.executeCommand("setContext", "oneapi:filterActive", true);
                             } else {
