@@ -702,10 +702,10 @@ export async function InitDefaultEnvironment(): Promise<void> {
         return temp;
     }, 10 * 1000) as InputBox;
 
-    await input.clear();
+    await Wait(2 * 1000);
     const quickPick = await input.findQuickPick(0);
 
-    await Wait(3 * 1000);
+    await Wait(2 * 1000);
     const driver = new Workbench().getDriver();
 
     await driver.executeScript("arguments[0].click()", quickPick);

@@ -10,7 +10,8 @@ import { NodeSSH } from "node-ssh";
 export enum OneApiDebugPane {
     OneApiGpuThreads = "oneAPI GPU Threads Section",
     HardwareInfo = "Hardware Info Section",
-    SelectedLane = "Selected Lane Section"
+    SelectedLane = "Selected Lane Section",
+    SimdVariableWatch = "SIMD Variable Watch Section"
 }
 
 // #endregion
@@ -73,6 +74,6 @@ export type DebugPane = "Breakpoints Section" | "Call Stack Section" | `${OneApi
 /**
  * OneAPI debug pane titles
  */
-export type OneApiDebugPaneFrameTitle = "oneAPI GPU Threads" | "Hardware Info" | "Selected Lane";
+export type OneApiDebugPaneFrameTitle = "oneAPI GPU Threads" | "Hardware Info" | "Selected Lane" | "SIMD Variable Watch";
 
 // #endregion
