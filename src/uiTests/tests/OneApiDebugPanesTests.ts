@@ -85,6 +85,7 @@ async function CheckSimdVariableWatchTest(options: TestOptions): Promise<void> {
 
         while (currentIteration <= expectedThreadCount) {
             await CheckIfBreakpointHasBeenHit(DEFAULT_BREAKPOINT);
+            await Wait(1000);
             const selectedLaneViewContent = await Retry(async() => {
                 const temp = await GetDebugPaneContent(OneApiDebugPane.SimdVariableWatch);
 
@@ -100,6 +101,7 @@ async function CheckSimdVariableWatchTest(options: TestOptions): Promise<void> {
             logger.Pass(`SIMD watch contains expected values. Actual: ${actualVariables}`);
             await ContinueDebugging();
             currentIteration++;
+            await Wait(1000);
         }
         await Wait(5000);
         const appHasExited = (await GetDebugConsoleOutput()).filter(x => x.includes("has exited with code")).length > 0;
@@ -476,6 +478,7 @@ async function AddSimdWatchVariable(variableName: string): Promise<void> {
     const addSimdWatchButton = await driver.findElement(By.css("[aria-label*=\"Intel oneAPI: Add SIMD Watch\"]"));
 
     await addSimdWatchButton.click();
+    await Wait(1000);
     await ExecuteInOneApiDebugPaneFrame(async(driver) => {
         await (await driver.findElement(By.className("expression-input"))).sendKeys(variableName, Key.ENTER);
     }, "SIMD Variable Watch");
