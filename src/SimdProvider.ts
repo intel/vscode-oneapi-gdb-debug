@@ -518,7 +518,7 @@ export class SimdProvider {
         }
         const evalResult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
 
-        if (!evalResult.result.includes("lane")) {
+        if (!evalResult.result.includes("ZE")) {
             return undefined;
         }
 
