@@ -25,7 +25,7 @@ export async function checkGbdOneapiSession(): Promise<vscode.DebugSession | und
         try {
             const evalresult = await session.customRequest("evaluate", { expression: "-exec thread", context: "repl" });
 
-            if (evalresult.result.includes("lane") || evalresult.result.includes("inactive")) {
+            if (evalresult.result.includes("ZE") || evalresult.result.includes("inactive")) {
                 return session;
             }
         } catch (error) {
