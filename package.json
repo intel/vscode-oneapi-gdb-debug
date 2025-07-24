@@ -1,6 +1,6 @@
 {
     "name": "oneapi-gdb-debug",
-    "displayName": "GDB with GPU Debug Support for Intel® oneAPI Toolkits",
+    "displayName": "GDB with GPU Debug Support for Intel® oneAPI Toolkits (Deprecated)",
     "description": "An extension to expose additional features of GPU debugging with GDB for Intel® oneAPI.",
     "publisher": "intel-corporation",
     "version": "0.5.2",
