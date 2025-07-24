@@ -1,4 +1,10 @@
-## GDB with GPU Debug Support for Intel® oneAPI Toolkits
+## GDB with GPU Debug Support for Intel® oneAPI Toolkits (Deprecated)
+
+.. note::
+
+   Support for GDB with GPU Debug Support for Intel® oneAPI Toolkit is
+   deprecated as of the Intel® oneAPI Toolkit 2025.2.0 release, and it
+   is no longer being maintained.
 
 This extension for Visual Studio Code (VS Code) enables
 additional features of GPU debugging with GDB for Intel® oneAPI toolkits.
