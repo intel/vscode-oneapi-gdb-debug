@@ -599,7 +599,7 @@
         "@typescript-eslint/parser": "^8.6.0",
         "@vscode/test-electron": "^2.3.10",
         "@vscode/vsce": "^3.1.0",
-        "axios": "^1.7.7",
+        "axios": "^1.11.0",
         "chai": "5.2.0",
         "eslint": "^9.13.0",
         "globals": "^15.11.0",
